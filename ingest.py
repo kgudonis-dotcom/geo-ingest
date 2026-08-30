@@ -6,6 +6,7 @@ from shapely import wkb
 from sqlalchemy import create_engine, text
 
 CKAN = "https://data.gov.lv/dati/api/3/action/package_show?id="
+CLASSIFIERS_URL = "https://gis.vmd.gov.lv/Public/GetClasificators"
 DATASETS = {
     "stands":    "meza-valsts-registra-meza-dati",
     "protected": "ipasi-aizsargajamas-dabas-teritorijas",
@@ -75,10 +76,46 @@ def do_protected(engine, url):
             ins(con, "insert into protected(kind,name,zone,attrs,geom) values (:kind,:name,:zone,cast(:attrs as jsonb),st_setsrid(st_geomfromwkb(decode(:geom,'hex')),4326))", rows, 300)
         print(f"  {os.path.basename(shp)}: {len(rows)} {kind}", flush=True)
 
+def do_classifiers(engine):
+    """VMD DBF_specifikacija: klasifikatoru lapas (APROB, MT, S, ZKAT, P_CIRP, P_DARBV, BV, BA, BON) -> classifiers tabula."""
+    try:
+        import pandas as pd
+        r = requests.get(CLASSIFIERS_URL, timeout=120); r.raise_for_status()
+        data = r.content
+        if data[:2] not in (b"PK", b"\xd0\xcf"):  # ne xlsx/xls: varbūt lapa ar saiti
+            m = re.search(rb'href="([^"]+\.(?:xlsx?|zip))"', data, re.I)
+            if not m: print("  klasifikatoru fails nav atrasts, izlaižu", flush=True); return
+        url2 = m.group(1).decode() if data[:2] not in (b"PK", b"\xd0\xcf") else None
+        if url2:
+            if url2.startswith("/"): url2 = "https://gis.vmd.gov.lv" + url2
+            data = requests.get(url2, timeout=120).content
+        import io as _io
+        if data[:2] == b"PK" and b"[Content_Types]" not in data[:2000]:
+            with zipfile.ZipFile(_io.BytesIO(data)) as z:
+                name = next(n for n in z.namelist() if re.search(r"\.xlsx?$", n, re.I)); data = z.read(name)
+        sheets = pd.read_excel(_io.BytesIO(data), sheet_name=None)
+        rows = []
+        for sh, df in sheets.items():
+            key = re.sub(r"_?klasifikators.*", "", sh, flags=re.I).strip().upper()
+            if df.shape[1] < 2: continue
+            df = df.dropna(how="all")
+            for _, rr in df.iterrows():
+                code, val = str(rr.iloc[0]).strip(), str(rr.iloc[1]).strip()
+                if code and code.lower() not in ("nan","kods","code"):
+                    rows.append({"code_set": key, "code": code, "value": val})
+        with engine.begin() as con:
+            con.execute(text("create table if not exists classifiers(code_set text, code text, value text)"))
+            con.execute(text("truncate classifiers"))
+            ins(con, "insert into classifiers(code_set,code,value) values (:code_set,:code,:value)", rows)
+        print(f"  classifiers: {len(rows)} rindas no {len(sheets)} lapām", flush=True)
+    except Exception as e:
+        print("  klasifikatoru ielāde neizdevās:", e, flush=True)
+
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--only"); ap.add_argument("--filter", default=""); ap.add_argument("--dry", action="store_true"); ap.add_argument("--first", action="store_true")
     a = ap.parse_args()
     engine = None if a.dry else create_engine(os.environ["DATABASE_URL"], pool_pre_ping=True)
+    if engine and (not a.only or a.only == "classifiers"): do_classifiers(engine)
     for table, ds in DATASETS.items():
         if a.only and a.only != table: continue
         print("==", table, ds, flush=True)
