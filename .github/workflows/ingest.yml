@@ -1,0 +1,28 @@
+name: geo-ingest
+on:
+  schedule:
+    - cron: "0 3 5 1,4,7,10 *"   # 5. janv, apr, jūl, okt 03:00 UTC
+  workflow_dispatch:
+    inputs:
+      args:
+        description: "ingest.py argumenti, piem. --dry vai --only stands --filter Madonas"
+        required: false
+        default: ""
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Apply schema
+        run: |
+          sudo apt-get -y install postgresql-client >/dev/null
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f schema.sql
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      - run: pip install -r requirements.txt
+      - run: python ingest.py ${{ github.event.inputs.args }}
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
