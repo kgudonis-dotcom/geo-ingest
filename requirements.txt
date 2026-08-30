@@ -1,0 +1,6 @@
+geopandas>=0.14
+pyogrio
+shapely>=2
+sqlalchemy>=2
+psycopg2-binary
+requests
