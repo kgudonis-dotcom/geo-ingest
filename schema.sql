@@ -47,6 +47,7 @@ returns jsonb language sql stable as $$
     'protected', coalesce((select jsonb_agg(jsonb_build_object('kind', t.kind, 'name', t.name, 'zone', t.zone,
         'overlap_ha', round((st_area(st_intersection(t.geom, p.g)::geography)/10000)::numeric, 2)))
       from protected t, p where st_intersects(t.geom, p.g)), '[]'::jsonb),
+    'expl', coalesce((select jsonb_agg(jsonb_build_object('nilm', e.nilm, 'platiba_ha', e.platiba_ha)) from expl e where e.kadastrs = k), '[]'::jsonb),
     'adjacency', coalesce((select jsonb_agg(jsonb_build_object('a', a.kvartals||'-'||a.nogabals, 'b', b.kvartals||'-'||b.nogabals,
         'len_m', round(st_length(st_intersection(st_boundary(a.geom), st_boundary(b.geom))::geography)::numeric)))
       from s a, s b where a.id < b.id and st_intersects(a.geom, b.geom)
@@ -70,3 +71,9 @@ create table if not exists classifiers(code_set text, code text, value text);
 alter table classifiers enable row level security;
 drop policy if exists "public read classifiers" on classifiers;
 create policy "public read classifiers" on classifiers for select using (true);
+
+create table if not exists expl (kadastrs text, nilm text, platiba_ha numeric);
+create index if not exists expl_kad on expl(kadastrs);
+alter table expl enable row level security;
+drop policy if exists "public read expl" on expl;
+create policy "public read expl" on expl for select using (true);
