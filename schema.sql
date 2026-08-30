@@ -32,28 +32,24 @@ create table if not exists protected (
 );
 create index if not exists protected_geom on protected using gist(geom);
 
--- Viens vaicājums rīkam: kontūra + nogabali + ĪADT
+-- Viens vaicājums rīkam: kontūra (nogabalu apvienojums) + nogabali + ĪADT + kaimiņi
 create or replace function geo_by_kadastrs(k text)
 returns jsonb language sql stable as $$
-  with p as (select * from parcels where kadastrs = k)
+  with s as (select * from stands where kadastrs = k),
+       p as (select st_union(geom) g, sum(platiba_ha) ha from s)
   select jsonb_build_object(
     'kadastrs', k,
-    'parcel', (select st_asgeojson(geom)::jsonb from p),
-    'platiba_ha', (select platiba_ha from p),
+    'parcel', (select st_asgeojson(g)::jsonb from p),
+    'platiba_ha', (select round(ha::numeric,2) from p),
     'stands', coalesce((select jsonb_agg(jsonb_build_object(
-        'kvartals', s.kvartals, 'nogabals', s.nogabals, 'platiba_ha', s.platiba_ha,
-        'attrs', s.attrs, 'geom', st_asgeojson(s.geom)::jsonb))
-      from stands s, p where st_intersects(s.geom, p.geom)
-        and st_area(st_intersection(s.geom, p.geom)::geography) > 0.5 * st_area(s.geom::geography)), '[]'::jsonb),
+        'kvartals', kvartals, 'nogabals', nogabals, 'platiba_ha', platiba_ha,
+        'attrs', attrs, 'geom', st_asgeojson(geom)::jsonb) order by kvartals, nogabals) from s), '[]'::jsonb),
     'protected', coalesce((select jsonb_agg(jsonb_build_object('kind', t.kind, 'name', t.name, 'zone', t.zone,
-        'overlap_ha', round((st_area(st_intersection(t.geom, p.geom)::geography)/10000)::numeric, 2)))
-      from protected t, p where st_intersects(t.geom, p.geom)), '[]'::jsonb),
-    -- kaimiņu pāri ar kopējās robežas garumu metros (tikai nogabali šajā zemes vienībā)
-    'adjacency', coalesce((select jsonb_agg(jsonb_build_object('a', a.nogabals, 'b', b.nogabals,
+        'overlap_ha', round((st_area(st_intersection(t.geom, p.g)::geography)/10000)::numeric, 2)))
+      from protected t, p where st_intersects(t.geom, p.g)), '[]'::jsonb),
+    'adjacency', coalesce((select jsonb_agg(jsonb_build_object('a', a.kvartals||'-'||a.nogabals, 'b', b.kvartals||'-'||b.nogabals,
         'len_m', round(st_length(st_intersection(st_boundary(a.geom), st_boundary(b.geom))::geography)::numeric)))
-      from stands a, stands b, p
-      where a.id < b.id and st_intersects(a.geom, p.geom) and st_intersects(b.geom, p.geom)
-        and st_touches(a.geom, b.geom)
+      from s a, s b where a.id < b.id and st_intersects(a.geom, b.geom)
         and st_length(st_intersection(st_boundary(a.geom), st_boundary(b.geom))::geography) > 5), '[]'::jsonb)
   );
 $$;
