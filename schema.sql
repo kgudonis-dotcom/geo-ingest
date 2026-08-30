@@ -65,3 +65,8 @@ create policy "public read stands" on stands for select using (true);
 drop policy if exists "public read protected" on protected;
 create policy "public read protected" on protected for select using (true);
 grant execute on function geo_by_kadastrs(text) to anon;
+
+create table if not exists classifiers(code_set text, code text, value text);
+alter table classifiers enable row level security;
+drop policy if exists "public read classifiers" on classifiers;
+create policy "public read classifiers" on classifiers for select using (true);
