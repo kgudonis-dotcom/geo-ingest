@@ -10,6 +10,7 @@ CLASSIFIERS_URL = "https://gis.vmd.gov.lv/Public/GetClasificators"
 DATASETS = {
     "stands":    "meza-valsts-registra-meza-dati",
     "protected": "ipasi-aizsargajamas-dabas-teritorijas",
+    "expl":      "kadastra-informacijas-sistemas-atverti-dati",
 }
 STAND_ATTRS = ["zkat","mt","izc","jakopj","jaatjauno","p_darbv","p_darbg","p_cirp","p_cirg","atj_gads","plant_audz",
  "s10","a10","h10","d10","g10","n10","s11","a11","h11","d11","g11","n11","s12","a12","h12","d12","g12","n12",
@@ -76,6 +77,44 @@ def do_protected(engine, url):
             ins(con, "insert into protected(kind,name,zone,attrs,geom) values (:kind,:name,:zone,cast(:attrs as jsonb),st_setsrid(st_geomfromwkb(decode(:geom,'hex')),4326))", rows, 300)
         print(f"  {os.path.basename(shp)}: {len(rows)} {kind}", flush=True)
 
+def do_expl(engine, url):
+    """VZD teksta dati: zemes vienību lietošanas veidu eksplikācija -> expl(kadastrs, nilm, platiba_ha)."""
+    import csv, io as _io
+    b = requests.get(url, timeout=1800).content
+    rows = []
+    with zipfile.ZipFile(_io.BytesIO(b)) as z:
+        names = z.namelist()
+        cand = [n for n in names if re.search(r"lieto|nilm|expl", n, re.I) and n.lower().endswith((".csv",".txt"))]
+        if not cand:
+            print("  zip satur:", names[:15], "... lietošanas veidu fails nav atrasts", flush=True); return
+        for n in cand:
+            raw = z.read(n)
+            for enc in ("utf-8-sig","utf-8","cp1257"):
+                try: txt = raw.decode(enc); break
+                except Exception: continue
+            sniff = txt[:2000]; delim = ";" if sniff.count(";")>=sniff.count(",") else ","
+            rd = csv.reader(_io.StringIO(txt), delimiter=delim)
+            hdr = [h.strip().lower() for h in next(rd)]
+            def col(*keys):
+                for i,h in enumerate(hdr):
+                    if any(k in h for k in keys): return i
+                return None
+            ik = col("apz","kadastr"); inl = col("nilm","lietošanas veida kods","lietosanas veida kods","veida kods"); ip = col("platīb","platib","area")
+            print(f"  {n}: kolonnas {hdr[:8]} -> kad={ik} nilm={inl} plat={ip}", flush=True)
+            if ik is None or inl is None or ip is None: continue
+            for r in rd:
+                try:
+                    kad = re.sub(r"\D","",r[ik])
+                    if len(kad)!=11: continue
+                    ha = float(str(r[ip]).replace(",","."))
+                    if ha>10000: ha = ha/10000  # m2 -> ha
+                    rows.append({"kadastrs":kad,"nilm":str(r[inl]).strip(),"platiba_ha":ha})
+                except Exception: pass
+    if rows:
+        with engine.begin() as con:
+            ins(con, "insert into expl(kadastrs,nilm,platiba_ha) values (:kadastrs,:nilm,:platiba_ha)", rows, 5000)
+        print(f"  expl: {len(rows)} rindas", flush=True)
+
 def do_classifiers(engine):
     """VMD DBF_specifikacija: klasifikatoru lapas (APROB, MT, S, ZKAT, P_CIRP, P_DARBV, BV, BA, BON) -> classifiers tabula."""
     try:
@@ -127,6 +166,7 @@ def main():
             if a.dry:
                 for shp in load_zip(url): print(" ", os.path.basename(shp), list(gpd.read_file(shp, rows=1).columns), flush=True)
             elif table == "stands": do_stands(engine, url)
+            elif table == "expl": do_expl(engine, url)
             else: do_protected(engine, url)
             if a.first: break
     print("gatavs", flush=True)
