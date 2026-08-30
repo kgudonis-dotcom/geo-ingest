@@ -8,6 +8,8 @@ on:
   workflow_dispatch:
     inputs:
       args: {description: "argumenti", required: false, default: ""}
+permissions:
+  contents: write
 jobs:
   ingest:
     runs-on: ubuntu-latest
@@ -19,7 +21,7 @@ jobs:
       - name: Apply schema
         run: |
           sudo apt-get -y install postgresql-client >/dev/null
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f schema.sql 2>&1 | tail -5 | tee -a run.log
         env: {DATABASE_URL: "${{ secrets.DATABASE_URL }}"}
       - run: pip install -r requirements.txt
       - name: Run ingest
@@ -27,5 +29,13 @@ jobs:
           ARGS="${{ github.event.inputs.args }}"
           if [ -z "$ARGS" ] && [ -f RUN_ARGS ]; then ARGS=$(cat RUN_ARGS); fi
           if [ "${{ github.event_name }}" = "schedule" ]; then ARGS=""; fi
-          echo "ARGS=$ARGS"; python ingest.py $ARGS
+          echo "ARGS=$ARGS" | tee -a run.log
+          python -u ingest.py $ARGS 2>&1 | tee -a run.log
         env: {DATABASE_URL: "${{ secrets.DATABASE_URL }}"}
+      - name: Publish log
+        if: always()
+        run: |
+          git config user.name bot; git config user.email bot@local
+          git pull --rebase || true
+          cp run.log LOG.md || echo "no log" > LOG.md
+          git add LOG.md && git commit -m "log $(date -u +%F_%T)" && git push || true
