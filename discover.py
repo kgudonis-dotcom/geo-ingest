@@ -10,6 +10,10 @@ for q in Q:
         print(f" - {d['name']} | {d.get('title','')[:70]} | org={d.get('organization',{}).get('name')} | freq={d.get('frequency','')}")
         for res in d.get("resources",[])[:6]:
             print(f"     · {res.get('format','')} {res.get('url','')[:110]}")
+# sasniedzamības pārbaude no GitHub skrējēja
+for host in ["https://lvmgeo.lvm.lv/","https://gis.vmd.gov.lv/","https://gis.vmd.gov.lv/arcgis/rest/services?f=json","https://melioracija.lv/","https://geolatvija.lv/","https://karte.lad.gov.lv/","https://data.gov.lv/"]:
+    try:r=requests.get(host,timeout=15);print("OK ",r.status_code,host)
+    except Exception as e:print("X  ",host,type(e).__name__)
 # LVM GEO public SHP catalog (ceļi)
 for u in ["https://lvmgeo.lvm.lv/PublicData/SHP/","https://lvmgeo.lvm.lv/PublicData/"]:
     try:
