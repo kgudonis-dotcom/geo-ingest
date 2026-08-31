@@ -42,6 +42,19 @@ def gwkb(g):
 def ins(con, sql, rows, n=1000):
     for i in range(0, len(rows), n): con.execute(text(sql), rows[i:i+n])
 
+def copy_rows(engine, table, cols, rows):
+    """PostgreSQL COPY, ~50-100x ātrāk par INSERT."""
+    import csv, io as _io
+    buf = _io.StringIO(); w = csv.writer(buf, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE, escapechar="\\")
+    for r in rows: w.writerow([("\\N" if v is None else str(v).replace("\t"," ").replace("\n"," ")) for v in r])
+    buf.seek(0)
+    raw = engine.raw_connection()
+    try:
+        cur = raw.cursor()
+        cur.copy_expert(f"copy {table}({','.join(cols)}) from stdin with (format csv, delimiter E'\\t', null '\\N', escape '\\', quote E'\\x01')", buf)
+        raw.commit()
+    finally: raw.close()
+
 def do_stands(engine, url):
     for shp in load_zip(url):
         gdf = gpd.read_file(shp)
@@ -55,8 +68,19 @@ def do_stands(engine, url):
                 "nogabals": (str(d[cols["nog"]]) + ("."+str(d[cols["anog"]]) if cols.get("anog") and str(d[cols["anog"]]) not in ("0","nan","None","") else "")),
                 "platiba_ha": float(d[cols["nog_plat"]]) if cols.get("nog_plat") else None,
                 "attrs": json.dumps(attrs, default=str, ensure_ascii=False), "geom": gwkb(d["geometry"])})
-        with engine.begin() as con:
-            ins(con, "insert into stands(kadastrs,kvartals,nogabals,platiba_ha,attrs,geom) values (:kadastrs,:kvartals,:nogabals,:platiba_ha,cast(:attrs as jsonb),st_setsrid(st_geomfromwkb(decode(:geom,'hex')),4326))", rows)
+        # COPY uz pagaidu tabulu (wkb hex), tad pārliek ar ģeometrijas konversiju
+        import csv, io as _io
+        buf = _io.StringIO(); w = csv.writer(buf, delimiter="\t", lineterminator="\n", quoting=csv.QUOTE_NONE, escapechar="\\")
+        for r in rows: w.writerow([str(r[k]).replace("\t"," ").replace("\n"," ") if r[k] is not None else "\\N" for k in ("kadastrs","kvartals","nogabals","platiba_ha","attrs","geom")])
+        buf.seek(0)
+        raw = engine.raw_connection()
+        try:
+            cur = raw.cursor()
+            cur.execute("create temp table stands_tmp(kadastrs text,kvartals text,nogabals text,platiba_ha numeric,attrs text,geom text) on commit drop")
+            cur.copy_expert("copy stands_tmp from stdin with (format csv, delimiter E'\\t', null '\\N', escape '\\', quote E'\\x01')", buf)
+            cur.execute("insert into stands(kadastrs,kvartals,nogabals,platiba_ha,attrs,geom) select kadastrs,kvartals,nogabals,platiba_ha,attrs::jsonb,st_setsrid(st_geomfromwkb(decode(geom,'hex')),4326) from stands_tmp")
+            raw.commit()
+        finally: raw.close()
         print(f"  {os.path.basename(shp)}: {len(rows)} nogabali", flush=True)
         with engine.begin() as con:
             print("  db size:", con.execute(text("select pg_size_pretty(pg_database_size(current_database()))")).scalar(), flush=True)
