@@ -9,6 +9,22 @@ CKAN="https://data.gov.lv/dati/api/3/action/package_show?id="
 ATTRS=["zkat","mt","izc","p_darbv","p_darbg","p_cirp","p_cirg","saimn_d_ie","jakopj","jaatjauno","atj_gads",
  "s10","a10","h10","d10","g10","n10","s11","a11","h11","d11","g11","n11","s12","a12","h12","d12","g12","n12","s13","a13","h13","d13","g13","n13","s14","a14","h14","d14","g14","n14"]
 OUT="pagasti"
+OWNERS_DS="meza-zemju-ipasnieku-nogabali"
+def load_owners():
+    """Lielo īpašnieku nogabali -> GeoDataFrame(owner, geometry) EPSG:3059 ar sindex. Nosaukums no resursa nosaukuma."""
+    gs=[]
+    try:
+        for name,url in resources(OWNERS_DS):
+            owner=re.sub(r"\s*(meža\s+)?nogabali.*$","",name,flags=re.I).strip().strip('"“”')
+            try:
+                for shp in load_zip(url):
+                    g=gpd.read_file(shp,columns=[]);g=g.set_crs(3059) if g.crs is None else g.to_crs(3059)
+                    g=g[g.geometry.notna()];gs.append(gpd.GeoDataFrame({"owner":owner,"geometry":g.geometry.values},crs=3059))
+                    print(f"  īpašnieks {owner}: {len(g)} nogabali",flush=True)
+            except Exception as e:print("  x īpašnieks",owner,e,flush=True)
+    except Exception as e:print("īpašnieku datu kopa neizdevās:",e,flush=True)
+    if not gs:return None
+    o=gpd.GeoDataFrame(pd.concat(gs,ignore_index=True),crs=3059);o.sindex;return o
 
 def resources(ds):
     r=requests.get(CKAN+ds,timeout=60).json()["result"]["resources"]
@@ -45,7 +61,7 @@ def load_iadt():
     if not gs:return None
     out=gpd.GeoDataFrame(pd.concat(gs,ignore_index=True),crs=3059);out.sindex;return out
 
-def process_shp(shp,iadt,store):
+def process_shp(shp,iadt,store,owners=None,zvgeo=None):
     g=gpd.read_file(shp);g=g.set_crs(3059) if g.crs is None else g.to_crs(3059)
     cols={c.lower():c for c in g.columns};g=g[g.geometry.notna()]
     g["geometry"]=g.geometry.simplify(1.0,preserve_topology=True).buffer(0)
@@ -74,34 +90,88 @@ def process_shp(shp,iadt,store):
                 if geoms[i].intersects(geoms[j]):
                     L=geoms[i].boundary.intersection(geoms[j].boundary).length
                     if L>5:adj.append([i,j,round(L)])
-        ia=[]
+        ia=[];u=unary_union(geoms)
         if iadt is not None:
-            u=unary_union(geoms)
             hit=iadt.iloc[list(iadt.sindex.query(u,predicate='intersects'))]
             for _,t in hit.iterrows():
                 ha=t.geometry.intersection(u).area/10000
                 if ha>0.005:ia.append({"kind":t["kind"],"name":str(t["name"]),"zone":str(t["zone"]),"ha":round(ha,2)})
-        store.setdefault(kad[:4],{})[kad]={"stands":stands,"adj":adj,"iadt":ia}
+        rec={"stands":stands,"adj":adj,"iadt":ia}
+        if owners is not None:
+            own=[]
+            for i in owners.sindex.query(u,predicate="intersects"):
+                a=owners.geometry.iloc[i].intersection(u).area/10000
+                if a>0.01:own.append((owners.owner.iloc[i],a))
+            if own:
+                agg={}
+                for o,a in own:agg[o]=agg.get(o,0)+a
+                rec["owners"]=[{"owner":o,"ha":round(a,2)} for o,a in agg.items()]
+        if zvgeo is not None:zvgeo.setdefault(kad[:4],{})[kad]=u
+        store.setdefault(kad[:4],{})[kad]=rec
     print(f"  {os.path.basename(shp)}: {len(g)} nogabali",flush=True)
 
-def flush(store):
+def neighbours(zv,zvgeo,owners):
+    """Zemes vienību kaimiņu grafs pagastā (meža ZV, kas saskaras) un lielie īpašnieki līdz 3 soļiem."""
+    if not zvgeo:return
+    kads=list(zvgeo.keys());geoms=[zvgeo[k] for k in kads]
+    gdf=gpd.GeoDataFrame({"kad":kads},geometry=geoms,crs=3059);gdf.sindex
+    adjm={k:{} for k in kads}
+    for i,g in enumerate(geoms):
+        for j in gdf.sindex.query(g.buffer(2),predicate="intersects"):
+            if j<=i:continue
+            L=g.boundary.intersection(geoms[j].buffer(2)).length
+            if L>5:adjm[kads[i]][kads[j]]=round(L);adjm[kads[j]][kads[i]]=round(L)
+    ownerOf={}
+    for k in kads:
+        rec=zv.get(k)
+        if rec and rec.get("owners"):ownerOf[k]=rec["owners"][0]["owner"]
+    for k in kads:
+        rec=zv.get(k)
+        if not rec:continue
+        rec["kaimini"]=[{"kad":n,"len_m":L,"owner":ownerOf.get(n)} for n,L in sorted(adjm[k].items(),key=lambda x:-x[1])]
+        # BFS līdz 3 soļiem pēc lielajiem īpašniekiem
+        seen={k:0};front=[k];found={}
+        for hop in (1,2,3):
+            nxt=[]
+            for c in front:
+                for n in adjm[c]:
+                    if n in seen:continue
+                    seen[n]=hop;nxt.append(n)
+                    o=ownerOf.get(n)
+                    if o and o not in found:found[o]={"owner":o,"hops":hop,"kad":n,"dist_m":round(zvgeo[k].distance(zvgeo[n]))}
+            front=nxt
+        # tuvākie īpašnieki pēc attāluma (arī pāri laukiem, ko grafs neredz), līdz 1000 m
+        if owners is not None:
+            g=zvgeo[k]
+            for i in owners.sindex.query(g.buffer(1000),predicate="intersects"):
+                o=owners.owner.iloc[i];d=round(owners.geometry.iloc[i].distance(g))
+                if o in ownerOf.get(k,"") :continue
+                if o not in found or d<found[o]["dist_m"]:found.setdefault(o,{"owner":o,"hops":None,"kad":None,"dist_m":d})["dist_m"]=min(d,found[o]["dist_m"]) if o in found else d
+        rec["lielie"]=sorted(found.values(),key=lambda x:(x["hops"] or 9,x["dist_m"]))
+
+def flush(store,zvgeo=None,owners=None):
     os.makedirs(OUT,exist_ok=True)
+    if zvgeo:
+        for pg,zv in store.items():neighbours(zv,zvgeo.get(pg,{}),owners)
     for pg,zv in store.items():
         path=f"{OUT}/{pg}.json.gz";old={}
         if os.path.exists(path):
             with gzip.open(path,"rt",encoding="utf-8") as f:old=json.load(f).get("zv",{})
+        for k,v in zv.items():
+            if k in old and "lielie" in old[k] and "lielie" not in v:v["lielie"]=old[k]["lielie"];v["kaimini"]=old[k].get("kaimini",[])
         old.update(zv)
         with gzip.open(path,"wt",encoding="utf-8") as f:json.dump({"pagasts":pg,"updated":datetime.date.today().isoformat(),"zv":old},f,ensure_ascii=False,separators=(",",":"))
     store.clear()
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true");ap.add_argument("--no-iadt",action="store_true");a=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true");ap.add_argument("--no-iadt",action="store_true");ap.add_argument("--no-owners",action="store_true");a=ap.parse_args()
     iadt=None if a.no_iadt else load_iadt()
+    owners=None if a.no_owners else load_owners()
     for name,url in resources("meza-valsts-registra-meza-dati"):
         if a.filter and a.filter.lower() not in (name+url).lower():continue
-        store={}
+        store={};zvgeo={}
         for shp in load_zip(url):
-            process_shp(shp,iadt,store);flush(store)
+            process_shp(shp,iadt,store,owners,zvgeo);flush(store,zvgeo,owners);zvgeo={}
         if a.first:break
     n=len(os.listdir(OUT));sz=sum(os.path.getsize(f"{OUT}/{f}") for f in os.listdir(OUT))/1e6
     print(f"gatavs: {n} pagastu faili, {sz:.0f} MB",flush=True)
