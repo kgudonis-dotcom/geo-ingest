@@ -30,6 +30,7 @@ jobs:
   merge:
     needs: build
     if: always()
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,12 +38,18 @@ jobs:
         with: {python-version: "3.12"}
       - uses: actions/download-artifact@v4
         with: {path: artifacts}
-      - run: python merge_pagasti.py 2>&1 | tee -a merged.log
-      - name: Publish logs (main) and data (data branch)
+      - run: |
+          python merge_pagasti.py 2>&1 | tee -a merged.log
+          ls pagasti/*.json.gz >/dev/null 2>&1 || { echo "TUKŠS REZULTĀTS, datu zaru neaiztiek" | tee -a merged.log; echo "SKIP=1" >> $GITHUB_ENV; }
+      - name: Publish logs (main)
         run: |
           git config user.name bot; git config user.email b@l
           mkdir -p logs; for f in artifacts/log-*/run_*.log; do cp "$f" "logs/pagasti_$(date -u +%F_%H%M)_$(basename $f .log).md"; done; cp merged.log "logs/pagasti_$(date -u +%F_%H%M)_merge.md"
           git add logs && git commit -m "pagasti logs" && git pull --rebase origin main && git push || true
+      - name: Publish data (data branch)
+        if: env.SKIP != '1'
+        run: |
+          git config user.name bot; git config user.email b@l
           git fetch origin data:data 2>/dev/null || true
           git checkout --orphan data-new; git rm -rf --cached . >/dev/null 2>&1 || true
           git checkout data -- aplieci 2>/dev/null || true
