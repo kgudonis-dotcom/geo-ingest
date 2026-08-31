@@ -18,16 +18,32 @@ def load_zip(url):
     with zipfile.ZipFile(io.BytesIO(b)) as z:z.extractall(tmp)
     return [os.path.join(dp,f) for dp,_,fs in os.walk(tmp) for f in fs if f.lower().endswith(".shp")]
 
+# DAP (Ozols) datu kopas data.gov.lv: id -> veids; punktiem buferis metros
+DAP_SETS=[("ipasi-aizsargajamas-dabas-teritorijas",None,0),("mikroliegumi","mikroliegums",0),("aizsargajamas-dzivotnes-biotopi","biotops",0),
+          ("aizsargajamo-sugu-atradnes","sugas atradne",0),("aizsargajamie-koki","aizsargājams koks",10),("dabas-pieminekli","dabas piemineklis",10)]
+NAME_COLS=("NAME","SITE_NAME","CATEGORY","NOSAUKUMS","SUGA","SUGA_LV","BIOTOPS","BIOT_KODS","KODS","VEIDS","TIPS","PIEMINEKLIS","NOSAUK")
 def load_iadt():
-    try:
-        gs=[]
-        for name,url in resources("ipasi-aizsargajamas-dabas-teritorijas"):
-            for shp in load_zip(url):
-                g=gpd.read_file(shp);g=g.set_crs(3059) if g.crs is None else g.to_crs(3059)
-                kind="zona" if re.search("zonejum",shp,re.I) else "iadt"
-                g=g[["geometry"]+[c for c in g.columns if c.upper() in ("NAME","SITE_NAME","CATEGORY")]];g["kind"]=kind;gs.append(g)
-        return gpd.GeoDataFrame(pd.concat(gs,ignore_index=True),crs=3059)
-    except Exception as e:print("ĪADT nav:",e,flush=True);return None
+    gs=[]
+    for ds,kind0,buf in DAP_SETS:
+        try:
+            for name,url in resources(ds):
+                for shp in load_zip(url):
+                    try:g=gpd.read_file(shp)
+                    except Exception as e:print("  x",shp,e,flush=True);continue
+                    g=g.set_crs(3059) if g.crs is None else g.to_crs(3059)
+                    g=g[g.geometry.notna()]
+                    if buf and len(g) and g.geometry.iloc[0].geom_type in ("Point","MultiPoint"):g["geometry"]=g.geometry.buffer(buf)
+                    g=g[g.geometry.geom_type.isin(["Polygon","MultiPolygon"])]
+                    kind=kind0 or ("zona" if re.search("zonejum",shp,re.I) else "iadt")
+                    keep=[c for c in g.columns if c.upper() in NAME_COLS]
+                    lab=g[keep[0]].astype(str) if keep else pd.Series([""]*len(g),index=g.index)
+                    if kind=="zona" and "SITE_NAME" in g.columns:lab=g["SITE_NAME"].astype(str)
+                    zone=g["NAME"].astype(str) if kind=="zona" and "NAME" in g.columns else (g["CATEGORY"].astype(str) if "CATEGORY" in g.columns else (g[keep[1]].astype(str) if len(keep)>1 else pd.Series([""]*len(g),index=g.index)))
+                    gs.append(gpd.GeoDataFrame({"kind":kind,"name":lab.values,"zone":zone.values,"geometry":g.geometry.values},crs=3059))
+                    print(f"  DAP {ds}: {os.path.basename(shp)} {len(g)} ({kind})",flush=True)
+        except Exception as e:print("  DAP datu kopa neizdevās:",ds,e,flush=True)
+    if not gs:return None
+    out=gpd.GeoDataFrame(pd.concat(gs,ignore_index=True),crs=3059);out.sindex;return out
 
 def process_shp(shp,iadt,store):
     g=gpd.read_file(shp);g=g.set_crs(3059) if g.crs is None else g.to_crs(3059)
@@ -61,10 +77,10 @@ def process_shp(shp,iadt,store):
         ia=[]
         if iadt is not None:
             u=unary_union(geoms)
-            hit=iadt[iadt.intersects(u)]
+            hit=iadt.iloc[list(iadt.sindex.query(u,predicate='intersects'))]
             for _,t in hit.iterrows():
                 ha=t.geometry.intersection(u).area/10000
-                if ha>0.01:ia.append({"kind":t["kind"],"name":str(t.get("SITE_NAME") or t.get("NAME") or ""),"zone":str(t.get("NAME") if t["kind"]=="zona" else t.get("CATEGORY") or ""),"ha":round(ha,2)})
+                if ha>0.005:ia.append({"kind":t["kind"],"name":str(t["name"]),"zone":str(t["zone"]),"ha":round(ha,2)})
         store.setdefault(kad[:4],{})[kad]={"stands":stands,"adj":adj,"iadt":ia}
     print(f"  {os.path.basename(shp)}: {len(g)} nogabali",flush=True)
 
