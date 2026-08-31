@@ -8,28 +8,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix: {idx: [0,1,2,3,4,5,6,7,8,9]}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -r requirements.txt
-      - name: Esošie pagastu faili (data zars), lai papildinātu
-        run: |
-          git fetch origin data:data 2>/dev/null && git checkout data -- pagasti 2>/dev/null || true
-          git checkout main -- . 2>/dev/null || true
-      - name: Build
+      - name: Build one VMD file
         run: |
           ARGS=$(cat PAGASTI_ARGS 2>/dev/null || echo "")
           if [ "${{ github.event_name }}" = "schedule" ]; then ARGS=""; fi
-          python -u build_pagasti.py $ARGS 2>&1 | tee run.log
-      - name: Publish to data branch
+          python -u build_pagasti.py --index ${{ matrix.idx }} $ARGS 2>&1 | tee run_${{ matrix.idx }}.log
+      - uses: actions/upload-artifact@v4
         if: always()
+        with: {name: "pagasti-${{ matrix.idx }}", path: "pagasti/", if-no-files-found: ignore, retention-days: 3}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: "log-${{ matrix.idx }}", path: "run_${{ matrix.idx }}.log", retention-days: 3}
+  merge:
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - uses: actions/download-artifact@v4
+        with: {path: artifacts}
+      - run: python merge_pagasti.py 2>&1 | tee -a merged.log
+      - name: Publish logs (main) and data (data branch)
         run: |
           git config user.name bot; git config user.email b@l
-          mkdir -p logs; cp run.log "logs/pagasti_$(date -u +%F_%H%M).md" || true
-          git add logs && git commit -m "pagasti log" && git push || true
-          git checkout --orphan data-new
-          git rm -rf --cached . >/dev/null 2>&1 || true
-          git fetch origin data:data 2>/dev/null && git checkout data -- aplieci 2>/dev/null || true
-          git add -f pagasti aplieci 2>/dev/null || git add -f pagasti
+          mkdir -p logs; for f in artifacts/log-*/run_*.log; do cp "$f" "logs/pagasti_$(date -u +%F_%H%M)_$(basename $f .log).md"; done; cp merged.log "logs/pagasti_$(date -u +%F_%H%M)_merge.md"
+          git add logs && git commit -m "pagasti logs" && git pull --rebase origin main && git push || true
+          git fetch origin data:data 2>/dev/null || true
+          git checkout --orphan data-new; git rm -rf --cached . >/dev/null 2>&1 || true
+          git checkout data -- aplieci 2>/dev/null || true
+          git add -f pagasti; git add -f aplieci 2>/dev/null || true
           git commit -m "pagasti $(date -u +%F)" && git push -f origin data-new:data
