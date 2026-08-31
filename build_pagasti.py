@@ -14,6 +14,8 @@ def load_owners():
     """Lielo īpašnieku nogabali -> GeoDataFrame(owner, geometry) EPSG:3059 ar sindex. Nosaukums no resursa nosaukuma."""
     gs=[]
     try:
+        try:requests.head("https://lvmgeo.lvm.lv/",timeout=15)
+        except Exception as e:print("  lvmgeo.lvm.lv nav sasniedzams no šejienes, īpašniekus izlaiž:",e,flush=True);return None
         for name,url in resources(OWNERS_DS):
             owner=re.sub(r"\s*(meža\s+)?nogabali.*$","",name,flags=re.I).strip().strip('"“”')
             try:
@@ -30,7 +32,7 @@ def resources(ds):
     r=requests.get(CKAN+ds,timeout=60).json()["result"]["resources"]
     return [(x.get("name") or x["url"],x["url"]) for x in r if (x.get("url") or "").lower().endswith(".zip")]
 def load_zip(url):
-    print("  lejupielādē",url,flush=True);b=requests.get(url,timeout=1800).content;tmp=tempfile.mkdtemp()
+    print("  lejupielādē",url,flush=True);b=requests.get(url,timeout=(20,1800)).content;tmp=tempfile.mkdtemp()
     with zipfile.ZipFile(io.BytesIO(b)) as z:z.extractall(tmp)
     return [os.path.join(dp,f) for dp,_,fs in os.walk(tmp) for f in fs if f.lower().endswith(".shp")]
 
@@ -164,10 +166,14 @@ def flush(store,zvgeo=None,owners=None):
     store.clear()
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true");ap.add_argument("--no-iadt",action="store_true");ap.add_argument("--no-owners",action="store_true");a=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true");ap.add_argument("--no-iadt",action="store_true");ap.add_argument("--no-owners",action="store_true");ap.add_argument("--index",type=int,default=-1);a=ap.parse_args()
     iadt=None if a.no_iadt else load_iadt()
     owners=None if a.no_owners else load_owners()
-    for name,url in resources("meza-valsts-registra-meza-dati"):
+    res=resources("meza-valsts-registra-meza-dati")
+    if a.index>=0:
+        if a.index>=len(res):print("index ārpus saraksta, nav darba");return
+        res=[res[a.index]]
+    for name,url in res:
         if a.filter and a.filter.lower() not in (name+url).lower():continue
         store={};zvgeo={}
         for shp in load_zip(url):
