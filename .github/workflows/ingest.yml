@@ -37,5 +37,5 @@ jobs:
         run: |
           git config user.name bot; git config user.email bot@local
           git pull --rebase || true
-          cp run.log LOG.md || echo "no log" > LOG.md
-          git add LOG.md && git commit -m "log $(date -u +%F_%T)" && git push || true
+          mkdir -p logs; cp run.log "logs/$(date -u +%F_%H%M)_${{ github.run_id }}.md" || true; cp run.log LOG.md || true
+          git add LOG.md logs && git commit -m "log $(date -u +%F_%T)" && git push || true
