@@ -1,7 +1,7 @@
 """Apvieno vairāku darbu pagasti/ mapes (artifacts/*/pagasti/*.json.gz) vienā pagasti/."""
 import os,gzip,json,glob,datetime
 out={}
-for f in glob.glob("artifacts/**/pagasti/*.json.gz",recursive=True):
+for f in glob.glob("artifacts/**/*.json.gz",recursive=True):
     pg=os.path.basename(f)[:4]
     with gzip.open(f,"rt",encoding="utf-8") as h:d=json.load(h)
     out.setdefault(pg,{}).update(d.get("zv",{}))
