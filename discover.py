@@ -10,6 +10,23 @@ for q in Q:
         print(f" - {d['name']} | {d.get('title','')[:70]} | org={d.get('organization',{}).get('name')} | freq={d.get('frequency','')}")
         for res in d.get("resources",[])[:6]:
             print(f"     · {res.get('format','')} {res.get('url','')[:110]}")
+# ĢeoLatvija / LĢIA: INSPIRE hidrogrāfija, reljefa modelis, topo 1:50k, LAD bloki
+for u in ["https://geo-dpps.viss.gov.lv/api/DPPSPackage/client/Pakalpojum_292_OZr5ZQ/fbc1515c-c78c-4642-a1cb-14ef0f899f60",
+          "https://geo-dpps.viss.gov.lv/api/DPPSPackage/client/Latvijas_m_259_AxFwk2/27d156d8-e181-4e6b-8695-647bf731a0b2",
+          "https://geolatvija.lv/api/v1/atom/3dd3b0c4-c37f-446c-83fe-eb0d95a03abf/serviceatoma",
+          "https://data.gov.lv/dati/api/3/action/package_search?q=hidrogr%C4%81fija&rows=5",
+          "https://data.gov.lv/dati/api/3/action/package_search?q=reljefa%20modelis&rows=5",
+          "https://data.gov.lv/dati/api/3/action/package_search?q=topogr%C4%81fisk%C4%81%20karte%2050%20000&rows=5"]:
+    try:
+        r=requests.get(u,timeout=60);print("\n== ",r.status_code,r.headers.get("content-type","")[:40],u[:100]);t=r.text
+        if "json" in r.headers.get("content-type",""):
+            try:
+                j=r.json();res=j.get("result",{}).get("results",[])
+                for x in res:print("  -",x["name"],"|",x.get("title","")[:60]);[print("      ·",q.get("format"),q.get("url","")[:120]) for q in x.get("resources",[])[:5]]
+                if not res:print("  ",t[:600])
+            except Exception:print("  ",t[:600])
+        else:print("  ",re.sub(r"\s+"," ",t)[:700])
+    except Exception as e:print("X  ",u[:80],type(e).__name__)
 # sasniedzamības pārbaude no GitHub skrējēja
 # jaunais LVM ģeoserveris: WFS iespējas un slāņi
 for u in ["https://geoserver.lvmgeo.lv/wmsvector62531a9bfcfa4015856924e94076a179?service=WFS&request=GetCapabilities","https://geoserver.lvmgeo.lv/wmsvector62531a9bfcfa4015856924e94076a179?service=WMS&request=GetCapabilities","https://lvmgeoserver.lvm.lv/geoserver/publicwfs/ows?service=WFS&request=GetCapabilities"]:
