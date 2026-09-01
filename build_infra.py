@@ -29,6 +29,12 @@ def load_usik():
         u=gpd.GeoDataFrame(pd.concat(gs,ignore_index=True),crs=4326);u.sindex;print("ŪSIK ūdensteces",len(u),"kategorijas:",u.cat.value_counts().head(8).to_dict(),flush=True);return u
     except Exception as e:print("ŪSIK neizdevās:",e,flush=True);return None
 
+def nn(v):
+    """NaN/None -> None, lai JSON ir derīgs"""
+    try:
+        return None if v is None or (isinstance(v,float) and v!=v) else v
+    except Exception:return None
+
 def main():
     print("lejupielādē",URL,flush=True);b=requests.get(URL,timeout=1800).content;tmp=tempfile.mkdtemp()
     with zipfile.ZipFile(io.BytesIO(b)) as z:z.extractall(tmp)
@@ -56,10 +62,10 @@ def main():
                 for p in g.geoms:out+=lines(p)
             return [[list(c)[:2] for c in ln] for ln in out if len(ln)>1]
         out={"pagasts":pg,"updated":datetime.date.today().isoformat(),"src":"OpenStreetMap (Geofabrik)",
-             "roads":[{"t":x.fclass,"surface":getattr(x,"surface",None) or None,"name":x.name or None,"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in r.itertuples() if lines(x.geometry.intersection(bb))],
-             "water":[{"t":x.fclass,"name":x.name or None,"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in w.itertuples() if lines(x.geometry.intersection(bb))],
-             "usik":[{"t":"river","cat":x.cat,"name":x.name or None,"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in us.itertuples() if lines(x.geometry.intersection(bb))] if us is not None else [],
-             "watera":[{"t":x.fclass,"name":x.name or None,"ha":round(x.ha,2),"geom":[[round(a,6),round(b_,6)] for a,b_ in (mapping(x.geometry.intersection(bb))["coordinates"][0] if mapping(x.geometry.intersection(bb))["type"]=="Polygon" else max(mapping(x.geometry.intersection(bb))["coordinates"],key=lambda c:len(c[0]))[0])]} for x in wa.itertuples() if not x.geometry.intersection(bb).is_empty and mapping(x.geometry.intersection(bb))["type"] in ("Polygon","MultiPolygon")]}
+             "roads":[{"t":x.fclass,"surface":nn(getattr(x,"surface",None)),"name":nn(x.name),"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in r.itertuples() if lines(x.geometry.intersection(bb))],
+             "water":[{"t":x.fclass,"name":nn(x.name),"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in w.itertuples() if lines(x.geometry.intersection(bb))],
+             "usik":[{"t":"river","cat":nn(x.cat),"name":nn(x.name),"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in us.itertuples() if lines(x.geometry.intersection(bb))] if us is not None else [],
+             "watera":[{"t":x.fclass,"name":nn(x.name),"ha":round(x.ha,2),"geom":[[round(a,6),round(b_,6)] for a,b_ in (mapping(x.geometry.intersection(bb))["coordinates"][0] if mapping(x.geometry.intersection(bb))["type"]=="Polygon" else max(mapping(x.geometry.intersection(bb))["coordinates"],key=lambda c:len(c[0]))[0])]} for x in wa.itertuples() if not x.geometry.intersection(bb).is_empty and mapping(x.geometry.intersection(bb))["type"] in ("Polygon","MultiPolygon")]}
         with gzip.open(f"infra/{pg}.json.gz","wt",encoding="utf-8") as h:json.dump(out,h,ensure_ascii=False,separators=(",",":"))
         n+=1
     print("gatavs:",n,"pagastu infra faili,",round(sum(os.path.getsize(x) for x in glob.glob('infra/*.json.gz'))/1e6),"MB",flush=True)
