@@ -9,5 +9,5 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: "22"}
-      - run: npm i -g jsdom @turf/turf xlsx
+      - run: npm init -y >/dev/null && npm i jsdom @turf/turf xlsx
       - run: node tests/regress.js
