@@ -10,6 +10,20 @@ for q in Q:
         print(f" - {d['name']} | {d.get('title','')[:70]} | org={d.get('organization',{}).get('name')} | freq={d.get('frequency','')}")
         for res in d.get("resources",[])[:6]:
             print(f"     · {res.get('format','')} {res.get('url','')[:110]}")
+# DAP Ozols: ArcGIS REST "Dabas vērtību ģeotelpiskie dati" (ikdienas)
+try:
+    j=requests.get("https://data.gov.lv/dati/api/3/action/package_search",params={"q":"Dabas vērtību ģeotelpiskie dati","rows":3},timeout=60).json()
+    for x in j["result"]["results"]:
+        print("\n== DAP:",x["name"],x.get("title","")[:60])
+        for res in x.get("resources",[]):print("   ·",res.get("format"),res.get("url","")[:140])
+        for res in x.get("resources",[]):
+            u=res.get("url","")
+            if "rest/services" in u or "arcgis" in u.lower():
+                try:
+                    r=requests.get(u,params={"f":"json"},timeout=30);print("   REST",r.status_code,u[:100]);jj=r.json()
+                    print("   folders:",jj.get("folders"),"services:",[s["name"] for s in jj.get("services",[])][:20],"layers:",[l.get("name") for l in jj.get("layers",[])][:30])
+                except Exception as e:print("   X REST",u[:80],type(e).__name__)
+except Exception as e:print("DAP meklēšana neizdevās:",e)
 # ĢeoLatvija / LĢIA: INSPIRE hidrogrāfija, reljefa modelis, topo 1:50k, LAD bloki
 for u in ["https://geo-dpps.viss.gov.lv/api/DPPSPackage/client/Pakalpojum_292_OZr5ZQ/fbc1515c-c78c-4642-a1cb-14ef0f899f60",
           "https://geo-dpps.viss.gov.lv/api/DPPSPackage/client/Latvijas_m_259_AxFwk2/27d156d8-e181-4e6b-8695-647bf731a0b2",
