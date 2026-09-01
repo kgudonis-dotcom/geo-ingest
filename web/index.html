@@ -1,0 +1,16 @@
+<!doctype html><html lang="lv"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Meža vērtības kalkulators</title>
+<link rel="stylesheet" href="kalkulators.css">
+<style>body{font-family:system-ui,sans-serif;margin:0;background:#faf9f6}.wrap{max-width:1100px;margin:60px auto;padding:0 20px}.eyebrow{font-size:.7rem;letter-spacing:.2em;color:#6b7369;font-weight:700}h1{font-size:2rem;margin:6px 0 10px}.lead{color:#333;max-width:720px;line-height:1.5}</style></head>
+<body><div class="wrap"><div class="eyebrow">RĪKS</div><h1>Meža vērtības kalkulators</h1>
+<p class="lead">Ievadiet zemes vienības kadastra apzīmējumu, un mēs nolasīsim jūsu meža datus no Valsts meža dienesta atvērtajiem datiem: platības, sugas, atļautās cirtes un orientējošo cirsmu vērtību.</p>
+<div id="mk"></div>
+<p class="mk-muted" style="margin-top:14px">Aprēķins balstīts VMD atvērtajos datos un vidējās tirgus cenās, tas ir orientējošs un neaizstāj novērtējumu dabā. Galīgo piedāvājumu sagatavojam 48 stundu laikā pēc apsekošanas.</p></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+<script src="kalkulators.js"></script>
+<script>
+MezaKalkulators.mount(document.getElementById("mk"),{
+  dataBase:"https://raw.githubusercontent.com/kgudonis-dotcom/geo-ingest/data",
+  contactUrl:"",          // piem. https://formspree.io/f/xxxx vai savs endpoint (POST FormData: vards, talrunis, epasts, kadastrs, aprēķins)
+  showValue:false          // true = rāda vērtības diapazonu; false = "Uzzināt summu" -> kontaktforma
+});
+</script></body></html>
