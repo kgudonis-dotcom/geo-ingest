@@ -489,7 +489,7 @@ function vf(k,val,man){const p=P();valOf(p);if(man)p.val[man]=true;
  const path=k.split(".");let o=p.val;while(path.length>1)o=o[path.shift()];o[path[0]]=val;save(S.cur);}
 function vha(k,val){const p=P();valOf(p);p.val.haMan[k]=true;p.val.ha[k]=num(val);save(S.cur);}
 function vhaAuto(k){const p=P();valOf(p);delete p.val.haMan[k];save(S.cur);}
-function vVal(){const p=P();const v=valOf(p);const c=valCalc(p);
+function vVal(){const p=P();const v=valOf(p);const c=valCalc(p);const t=calcProp(p);
  let h=objSwitch();
  h+=`<div class="card"><h2>Īpašuma novērtējums: ${esc(p.name||p.kadastrs)}<span class="sp"></span><button class="btn sm" onclick="openReport()">Vērtējuma atskaite</button></h2><div class="row"><div><label>Reģistrētā platība (Zemesgrāmata), ha</label><input type="number" inputmode="decimal" step="0.01" value="${v.regHa||""}" onchange="vf('regHa',num(this.value))"></div><div><label>Pirkuma cenas koef. (no pārdošanas)</label><input type="number" inputmode="decimal" step="0.05" value="${v.buyKoef}" onchange="vf('buyKoef',num(this.value))"></div></div></div>`;
  h+=`<div class="card scroll"><h2>Cirsmu vērtējums (no sadaļas Cirsmas)</h2>${p.cirsmas.length?`<table><tr><th>Cirsma</th><th>ha</th><th>m³</th><th>Ieņēmumi €</th><th>Izmaksas €</th><th>Marža %</th><th>Max cena €</th></tr>${p.cirsmas.map(cc=>{const rr=calcCirsma(cc);return `<tr><td style="text-align:left">${esc(cc.tips)} kv.${esc(cc.kvartals)} nog. ${esc(cc.nogabali.replace(/;/g,", "))}</td><td>${fmt(num(cc.platiba),2)}</td><td>${fmt(rr.m3)}</td><td>${fmt(rr.rev)}</td><td>${fmt(rr.cost)}</td><td>${Math.round(num(cc.marza)*100)}</td><td>${fmt(rr.max)}</td></tr>`;}).join("")}<tr class="tot"><td>KOPĀ</td><td>${fmt(t.ha,2)}</td><td>${fmt(t.m3)}</td><td>${fmt(t.rev)}</td><td>${fmt(t.cost)}</td><td></td><td>${fmt(t.max)}</td></tr></table><div class="kv"><span>Max cena = ieņēmumi − izstrāde − marža; tā ir cirsmas iegādes cenas noklusējums</span><b>${fmt(t.max)} €</b></div>`:'<div class="muted">Cirsmu vēl nav. Izveido tās sadaļā Cirsmas.</div>'}</div>`;
@@ -1367,7 +1367,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.33.1";
+const APP_VERSION="0.33.2";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
