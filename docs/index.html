@@ -527,8 +527,8 @@ async function cachedFetch(url){try{const c=await caches.open("geo-v1");const hi
   try{const r=await fetch(url,{cache:"no-cache"});if(r.ok){c.put(url,r.clone());return r;}if(hit)return hit;return r;}catch(e){if(hit)return hit;throw e;}}
  catch(e){return fetch(url);}}
 async function gunzipJson(resp){const buf=await resp.arrayBuffer();
- if(typeof DecompressionStream!=="undefined"){const ds=new DecompressionStream("gzip");const txt=await new Response(new Blob([buf]).stream().pipeThrough(ds)).text();return JSON.parse(txt);}
- if(window.pako)return JSON.parse(pako.ungzip(new Uint8Array(buf),{to:"string"}));
+ if(typeof DecompressionStream!=="undefined"){const ds=new DecompressionStream("gzip");const txt=await new Response(new Blob([buf]).stream().pipeThrough(ds)).text();return JSON.parse(txt.replace(/:\s*NaN/g,":null"));}
+ if(window.pako)return JSON.parse(pako.ungzip(new Uint8Array(buf),{to:"string"}).replace(/:\s*NaN/g,":null"));
  throw new Error("Pārlūks neatbalsta gzip atspiešanu");}
 async function loadPagasts(code){const r=await cachedFetch(`${geoBase()}/pagasti/${code}.json.gz`);if(!r.ok)throw new Error("HTTP "+r.status);return gunzipJson(r);}
 function pagastsToExtra(kad,zvd){const st=zvd.stands;const key=x=>String(x.kv??"")+"-"+String(x.nog??"")+((x.anog&&String(x.anog)!=="0")?"."+x.anog:"");
@@ -1367,7 +1367,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.31";
+const APP_VERSION="0.31.1";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
