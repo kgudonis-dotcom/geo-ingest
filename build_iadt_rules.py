@@ -22,7 +22,7 @@ def extract(text):
     """Sadala pa zonu nodaļām un meklē mežsaimniecības formulējumus."""
     rules={};text=text.replace("\xa0"," ")
     # sadalīšana: nodaļu virsraksti "III. Dabas lieguma zona" u.tml.
-    parts=re.split(r"(?:^|\s)(?:[IVX]+\.\s*|\d+\.\s*(?=[A-ZĀČĒĢĪĶĻŅŠŪŽ]))((?:Regulējamā režīma|Dabas rezervāta|Dabas lieguma|Dabas parka|Ainavu aizsardzības|Kultūrvēsturiskā|Neitrālā)[^\n]{0,20}zona|Vispārīgie aprobežojumi[^\n]{0,60})",text)
+    parts=re.split(r"(?:^|\s)(?:[IVX]+\.\s*|\d+\.\s*(?=[A-ZĀČĒĢĪĶĻŅŠŪŽ]))((?:Regulējamā režīma|Dabas rezervāta|Dabas lieguma|Dabas parka|Ainavu aizsardzības|Kultūrvēsturiskā|Neitrālā)[^\n]{0,20}zona|Vispārīgie aprobežojumi[^\d]{0,60})",text)
     chunks=[("visā",parts[0])]
     for i in range(1,len(parts)-1,2):chunks.append((parts[i].strip().lower(),parts[i+1]))
     for zone,body in chunks:
