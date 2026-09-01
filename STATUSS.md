@@ -1,5 +1,5 @@
 # FF Forest meža sistēma: vienošanās, izpilde un rinda
-Atjaunots: 2026-09-01. Šis fails ir vienīgā patiesība par to, kas norunāts, kas gatavs un kas nav. Glabājas repo `kgudonis-dotcom/geo-ingest` (STATUSS.md) un tiek atjaunots pēc katra darba.
+Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts, kas gatavs un kas nav. Glabājas repo `kgudonis-dotcom/geo-ingest` (STATUSS.md) un tiek atjaunots pēc katra darba.
 
 ## 1. Principi, par ko esam vienojušies
 - Objekts sākas ar ZV kadastra numuru; viss pārējais (VMD dati, cirsmas, NĪ vērtība, skices, karodziņi) rodas automātiski. Imports un manuālā ievade tikai svaigai inventarizācijai un dabas apskates labojumiem.
@@ -16,9 +16,10 @@ Atjaunots: 2026-09-01. Šis fails ir vienīgā patiesība par to, kas norunāts,
 - Sentinel-2 lieto tikai saviem objektiem un kaimiņiem (Copernicus bezmaksas kvota), ne visai Latvijai.
 
 ## 2. Izpildīts
-### Lietotne cirsma-app (v0.21)
+### Lietotne cirsma-app (v0.24)
 - Cirsmu vērtēšana: sugas × sortimenti pēc caurmēra, cenas, izmaksas, marža, max cena; Vigodas Excel reproducēts līdz centam.
 - MK935 pilnās tabulas (Gmin/Gkrit, koku skaits H<12, galvenās cirtes caurmērs P/E/B), KKC Gkrit+2, aizliegtās sugas, 3 g pēc kopšanas, jauktā cirsma, eko koki, ĪADT zonas, kaimiņu svaigie izcirtumi (MK935 19./20.p.).
+- Lietotne ir gatava publiskai izmantošanai GitHub Pages / vienas dienas priekšskatījumam, ar bezsaistes kešošanu pagastu failiem un CRM plūsmu objektam.
 - Buferjoslas: maināms platums (90 → 50), īsti poligoni, atliktie m³, robežu plāns ar svītrojumu.
 - Objekts no kadastra numura (pagastu faili vai Supabase): nogabali, taksācija, sastāvs, krāja, ģeometrija, kaimiņi, DAP slāņi (ĪADT, zonas, mikroliegumi, biotopi, atradnes, koki, pieminekļi), robežnieki, kaimiņu izcirtumi.
 - Imports: Kadastra atskaite xlsx, VMD PDF (2 veidi), dastojums (Mežvērte PDF, MK935 10. piel. xls, tabulas) ar Liepas tilpuma formulu; KML skices ģenerators (Python).
@@ -33,7 +34,7 @@ Atjaunots: 2026-09-01. Šis fails ir vienīgā patiesība par to, kas norunāts,
 ### Datu ķēde geo-ingest (publisks repo)
 - Pagastu faili visai Latvijai: 485 + Vidzeme (kopā ~590 pagasti, ~230 tūkst. meža ZV) ar kaimiņiem un DAP; paralēla būve, inkrementāla apvienošana, drošinātājs pret tukšu publicēšanu, sacensības labojums.
 - Mērķa eksports pēc kadastra (Ezermuiža pierādīts), skices no VMD ģeometrijas.
-- Sentinel-2 vainaga zuduma darbs strādā (tests 78680040067).
+- Sentinel-2 vainaga zuduma darbs strādā (tests 78680040067) un ir gatavs kā atsevišķs datu avots, bet automātiska iestrāde objektu sarakstos vēl nav pabeigta.
 - Izlūkošana: sasniedzamība un datu avoti dokumentēti logos.
 - Supabase shēma un ielāde (rezerve), 876 ĪADT + 2517 zonas datubāzē.
 
