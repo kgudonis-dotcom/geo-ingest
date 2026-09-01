@@ -1,7 +1,5 @@
 name: aplieci-daily
 on:
-  schedule:
-    - cron: "30 3 * * *"
   push: {branches: [main], paths: [APLIECI_RUN]}
 permissions: {contents: write}
 jobs:
