@@ -3,19 +3,22 @@ Avots: likuma "Par īpaši aizsargājamām dabas teritorijām" saistīto dokumen
 Ekstrakcija ar regulārām izteiksmēm pēc standarta formulējumiem; katram ierakstam 'verify': true, kamēr nav pārbaudīts ar roku."""
 import re, json, os, time, html, requests, datetime
 H={"User-Agent":"Mozilla/5.0 (ff-forest geo-ingest)"}
-LIST="https://m.likumi.lv/saistitie.php?id=59994"
+LIST="https://m.likumi.lv/saistitie.php?id=59994&saistitie_id=rev-933"
 def get(u):
     r=requests.get(u,headers=H,timeout=60);r.raise_for_status();return r.text
 def clean(t):
     t=re.sub(r"<script.*?</script>|<style.*?</style>","",t,flags=re.S);t=re.sub(r"<[^>]+>"," ",t);t=html.unescape(t);return re.sub(r"[ \t\r]+"," ",t)
 def links():
     out={}
-    for page in range(1,8):
+    for page in range(1,12):
         try:t=get(LIST+f"&page={page}")
         except Exception:break
-        found=re.findall(r'href="(?:https://m\.likumi\.lv)?/ta/id/(\d+)-([a-z0-9\-]*individualie-aizsardzibas-un-izmantosanas-noteikumi)"',t)
+        found=re.findall(r'/ta/id/(\d+)-([a-z0-9\-]*individualie-aizsardzibas-un-izmantosanas-noteikumi)',t)
+        if page==1:print("  saraksta lapa: garums",len(t),"saites",len(found),flush=True)
         if not found:break
+        n=len(out)
         for i,slug in found:out[i]=slug
+        if len(out)==n:break
     return out
 ZONES=["regulējamā režīma zona","dabas rezervāta","dabas lieguma zona","dabas parka zona","ainavu aizsardzības zona","kultūrvēsturiskā zona","neitrālā zona","dabas lieguma teritorijā","dabas parka teritorijā","ainavu apvidus teritorijā","visā"]
 def extract(text):
