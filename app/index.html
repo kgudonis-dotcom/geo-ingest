@@ -609,7 +609,7 @@ function iadtRulesFor(p){ // atrod noteikumu komplektu pēc DAP datiem (nosaukum
  const out=[];if(!p.dapList)return out;
  const zone=(p.dapList.find(x=>x.kind==="zona")||{}).zone||"";const zn=zone.toLowerCase();
  for(const d of p.dapList.filter(x=>x.kind==="iadt")){let key=Object.keys(IADT_RULES).find(k=>!k.startsWith("_")&&d.name&&d.name.toLowerCase().includes(k.toLowerCase().replace(" nacionālais parks","")));
-  if(!key){const cat=(d.zone||"").toLowerCase();key=/parks/.test(cat)&&!/nacion/.test(cat)?"_dabas parks":/liegum/.test(cat)?"_dabas liegums":/ainav/.test(cat)?"_aizsargājamo ainavu apvidus":null;}
+  if(!key){const cat=(d.zone||"").toLowerCase();key=(/dabas parks|^dp$/.test(cat))?"_dabas parks":(/liegum|^dl$/.test(cat))?"_dabas liegums":(/ainav|^aaa$/.test(cat))?"_aizsargājamo ainavu apvidus":null;}
   if(!key)continue;const R=IADT_RULES[key];const zkey=Object.keys(R).find(z=>z!=="src"&&z!=="*"&&zn&&zn.includes(z.replace(" zona","").toLowerCase()));
   const r=Object.assign({},R["*"]||{},zkey?R[zkey]:{});r.notes=[...(R["*"]&&R["*"].notes||[]),...(zkey&&R[zkey].notes||[])];
   out.push({iadt:d.name,key,zone:zkey||zone||"zona nav noteikta",src:R.src,r});}
@@ -1354,7 +1354,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.28";
+const APP_VERSION="0.28.1";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
