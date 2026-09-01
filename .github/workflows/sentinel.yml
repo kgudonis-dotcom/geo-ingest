@@ -11,7 +11,12 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install requests
-      - run: git fetch --force origin data:data && git --work-tree=. checkout data -- pagasti sentinel 2>/dev/null; git checkout main -- . 2>/dev/null || true
+      - run: |
+          git fetch --force origin data:data || true
+          git --work-tree=. checkout data -- pagasti || true
+          git --work-tree=. checkout data -- sentinel || true
+          git checkout main -- . || true
+          ls pagasti | head -3
       - run: python -u sentinel.py $(cat SENTINEL_RUN) 2>&1 | tee run.log
         env: {CDSE_ID: "${{ secrets.CDSE_ID }}", CDSE_SECRET: "${{ secrets.CDSE_SECRET }}"}
       - if: always()
