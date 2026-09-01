@@ -548,7 +548,7 @@ async function loadInfra(p){const kad=String(p.kadastrs||"").replace(/\D/g,"");i
  // paņem tikai to, kas ir īpašuma aptvērumā + 600 m
  const pts=p.mer.filter(m=>m.geom).flatMap(m=>m.geom);const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]);const dx=0.01,dy=0.006;const bb=[Math.min(...xs)-dx,Math.min(...ys)-dy,Math.max(...xs)+dx,Math.max(...ys)+dy];
  const inBB=g=>g.some(([x,y])=>x>=bb[0]&&x<=bb[2]&&y>=bb[1]&&y<=bb[3]);
- p.infra={updated:d.updated,roads:(d.roads||[]).filter(r=>r.geom.some(inBB)),water:(d.water||[]).filter(w=>w.geom.some(inBB)),watera:(d.watera||[]).filter(w=>inBB(w.geom))};
+ p.infra={updated:d.updated,roads:(d.roads||[]).filter(r=>r.geom.some(inBB)),water:(d.water||[]).filter(w=>w.geom.some(inBB)),usik:(d.usik||[]).filter(w=>w.geom.some(inBB)),watera:(d.watera||[]).filter(w=>inBB(w.geom))};
  p.mer.forEach(m=>{});for(const c of p.cirsmas)rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));save(S.cur);}
 /* ---------- CIRŠANAS APLIECINĀJUMI ---------- */
 function lksTiles(p){const t=new Set();for(const m of p.mer)if(m.geom)for(const [lo,la] of m.geom){const [x,y]=wgsToLks(lo,la);t.add(`${Math.floor(x/10000)}_${Math.floor(y/10000)}`);}return [...t];}
@@ -643,7 +643,12 @@ function zoneFeatures(p){ // atgriež {kc:[Feature], main:[Feature], krautuve:[F
  const add=(f,zoneW,label)=>{try{const fullZ=turf.buffer(f,km(zoneW),{units:"kilometers"});fullZ.properties={label,w:zoneW};full.push(fullZ);
    const kcZ=zoneW<=A.kcBand?fullZ:turf.buffer(f,km(A.kcBand),{units:"kilometers"});kcZ.properties={label,w:Math.min(zoneW,A.kcBand)};kc.push(kcZ);
    const mZ=turf.buffer(f,km(A.mainBand),{units:"kilometers"});mZ.properties={label,w:A.mainBand};main.push(mZ);}catch(e){}};
- for(const w of inf.water||[]){if(["ditch","drain"].includes(w.t))continue;const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};
+ // Oficiālās ūdensteces >10 km ar garuma kategoriju (MK 397 / VARAM klasifikators): platums tieši pēc kategorijas
+ const usikNames=new Set();
+ for(const w of inf.usik||[]){const c=String(w.cat||"");const zw=/100/.test(c)&&/[>l]|virs|100\s*-|100\+/.test(c)&&!/25/.test(c)?A.riverBig:/25/.test(c)&&/100/.test(c)?A.lake100:/10/.test(c)&&/25/.test(c)?A.river:A.river;
+  const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};if(w.name)usikNames.add(w.name.toLowerCase());add(f,zw,"upe "+(w.name||"")+" ("+c+" km)");}
+ for(const w of inf.water||[]){if(["ditch","drain"].includes(w.t))continue;if(w.name&&usikNames.has(w.name.toLowerCase()))continue; // jau no ŪSIK
+  const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};
   const big=w.name&&BIG_RIVERS.test(w.name.trim());const zw=w.t==="river"?(big?A.riverBig:A.river):w.t==="canal"?A.canal:A.stream;add(f,zw,(w.t==="river"?"upe":w.t==="canal"?"kanāls":"strauts")+(w.name?" "+w.name:""));}
  for(const w of inf.watera||[]){const f={type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[w.geom]}};let zw,label;
   if(w.t==="wetland"){if(w.ha<10)continue;zw=w.ha>100?A.bogBig:A.bog100;label="purvs "+w.ha+" ha";}
