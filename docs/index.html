@@ -567,121 +567,17 @@ async function loadAplieci(p){if(typeof turf==="undefined")return 0;const tiles=
  p.aplieciChecked=new Date().toISOString().slice(0,10);return p.aplieci.length;}
 
 
-function neighboursCard(p){if(!(p.kaimZV&&p.kaimZV.length)&&!(p.lielie&&p.lielie.length))return "";
- const big=(p.lielie||[]).map(x=>`<div class="kv"><span>${esc(x.owner)}</span><b>${x.hops===1?"robežojas":x.hops?x.hops+". īpašums pa ķēdi":"pāri laukiem"}${x.dist_m!=null?" · "+fmt(x.dist_m)+" m":""}${x.kad?" · "+esc(x.kad):""}</b></div>`).join("");
- const nb=(p.kaimZV||[]).slice(0,12).map(x=>`<div class="kv"><span>${esc(x.kad)}${x.owner?" · "+esc(x.owner):""}</span><b>${fmt(x.len_m)} m robeža</b></div>`).join("");
- return `<div class="card"><h2>Robežnieki un lielie meža īpašnieki</h2>${p.ownersOwn&&p.ownersOwn.length?`<div class="muted">Šī zemes vienība pati pārklājas ar: ${esc(p.ownersOwn.map(o=>o.owner+" "+o.ha+" ha").join(", "))}</div>`:""}
- ${big?`<h3 style="margin:8px 0 2px;font-size:.95rem">Lielie īpašnieki līdz 3 īpašumu attālumā</h3>${big}`:'<div class="muted">Lielo īpašnieku tuvumā nav (1 km).</div>'}
- ${nb?`<h3 style="margin:10px 0 2px;font-size:.95rem">Tieši robežojošās meža zemes vienības</h3>${nb}`:""}
- <div class="muted">Avots: LVM atvērtie dati (30 lielo īpašnieku nogabali, atjaunoti reizi nedēļā) un VMD meža zemes vienības. Ķēde iet tikai caur meža zemes vienībām; pāri laukiem rāda attālumu metros.</div></div>`;}
-
-
-
-
-/* ---------- ĪADT INDIVIDUĀLIE NOTEIKUMI (pēc likumi.lv, 2026-09-01) ----------
-   Atslēga: ĪADT nosaukums (kā DAP datos) -> zona (kā zonējuma NAME) -> noteikumi. "*" = visās zonās / bez zonējuma.
-   Lauki: kcMax (ha, null = KC aizliegta), kcWet (ha slapjiem tipiem), galvena (false = galvenā cirte aizliegta), kopsanaAge {suga:gadi} (KKC aizliegta virs),
-   season "15.03-31.07" (mežsaimnieciskā darbība aizliegta), bigD (cm, kokus resnākus par to necērt), eco (eko koki/ha), izlase (galvenā cirte tikai izlases veidā), notes[] */
-const IADT_RULES={
- "Rāznas nacionālais parks":{src:"MK 447 (2007, red. 2024)",
-  "dabas lieguma zona":{kcMax:null,galvena:false,kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Apse:30},season:"15.04-31.07",notes:["sausos kokus un kritalas >25 cm neizvāc","sanitārajā cirtē necērt augtspējīgus","atjaunošana stādot tikai ar DAP atļauju"]},
-  "dabas parka zona":{kcMax:1,kcWet:1,kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Apse:30},notes:["rekonstruktīvā cirte aizliegta","kopšanā necērt valdaudzes kokus virs vecuma limita","sanitārajā cirtē necērt augtspējīgus"]},
-  "neitrālā zona":{notes:["vispārējie MK935 noteikumi"]}},
- "Gaujas nacionālais parks":{src:"MK 317 (2012); jauni noteikumi projektā (VARAM), gaidāma stingrāka dabas lieguma zona",
-  "*":{bigD:{Ozols:50,Priede:65,Egle:70,Osis:60,Goba:60,Vīksna:60,Liepa:30,Melnalksnis:45,Vītols:60,Bērzs:60,Apse:65},eco:10,notes:["galvenā cirte pēc caurmēra un rekonstruktīvā aizliegta visā parkā (9.22)","mežsaimnieciskā darbība aizliegta dumbrājā, liekņā, palienēs, nogāzēs >25°, ozolu/ošu/liepu/kļavu audzēs >40 % un >60 g (9.26)","celmus atstāj mežaudzē; pievešanas ceļi ne taisnās līnijās (9.25)","sausus kokus >50 cm un kritalas >50 cm neizvāc"]},
-  "dabas lieguma zona":{kcMax:null,izlase:true,season:"15.03-31.07",notes:["galvenā cirte tikai izlases veidā ≤25 % krājas paņēmienā, nākamais pēc 10 g (24.p.); baltalksnim ≤50 % un 4 g","meža apsaimniekošanas plāns obligāts","kopšanā šķērslaukums ne zem: P80g 28, E60g 34, B60g 22, Ma60g 28 (20.22)","vismaz 20 m³/ha mirušās koksnes >25 cm"]},
-  "kultūrvēsturiskā zona":{kcMax:0.2,izlase:true,season:"15.03-31.07",notes:["kailcirte ≤0,2 ha, min. attālums starp KC 90 m, piegulošās = izcirtumi līdz 3 g","galvenā cirte izlases veidā ≤25 % paņēmienā"]},
-  "ainavu aizsardzības zona":{kcMax:2,kcWet:1,notes:["jaukta cirsma ar slapjiem tipiem ≤1 ha kopā (41.p.)","atlikums ≤0,1 ha iekļaujams (43.p.)","min. attālums starp KC 90 m (45.p.); gar ainaviskiem ceļiem 10/5 g (46.p.)","KC aizliegta valsts un pašvaldību mežos"]},
-  "neitrālā zona":{kcMax:2,kcWet:1,notes:["jaukta ≤1 ha (49.p.), atlikums ≤0,1 ha (51.p.), 90 m starp KC (53.p.)"]}},
- "Daugavas loki":{src:"nav individuālo noteikumu: MK 264 dabas parki (6. nod.); atrodas AAA Augšdaugava",
-  "*":{kcMax:null,season:"15.03-31.07",bigD:{"*":60},eco:15,notes:["kailcirte un rekonstruktīvā cirte aizliegta (27.2)","galvenajā cirtē 1. stāva biezību ne zem 0,4 un atvērumi ≤0,1 ha (27.3)","20 m³/ha mirušās koksnes >25 cm saglabā","celmus un bīstamos kokus atstāj"]}},
- "Veclaicene":{src:"MK 62 (2021)",
-  "*":{bigD:{"*":60},season:"15.03-31.07",notes:["rekonstruktīvā cirte aizliegta (izņemot egļu tīraudžu dabiskošanu) (14.3)","dobumainus kokus un kokus ar ligzdām >50 cm necērt (12.18)","gar ainaviskiem ceļiem piegulošo audzi cērt pēc 10/5 g (17.p.)"]},
-  "regulējamā režīma zona":{kcMax:null,galvena:false,kopsanaAge:{"*":0},notes:["saimnieciskā darbība aizliegta (20.p.)"]},
-  "dabas lieguma zona":{kcMax:null,galvena:false,kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Liepa:50,Apse:30},eco:15,notes:["atjaunošana stādot aizliegta; jauni meža ceļi aizliegti (24.4, 24.5)","sausos kokus un kritalas >25 cm neizvāc, ja <20 m³/ha","sanitārā cirte tikai ar VMD atzinumu, augtspējīgos necērt"]},
-  "dabas parka zona":{kcMax:null,eco:15,notes:["kailcirte aizliegta (31.1); galvenajā cirtē šķērslaukums ne zem Gkrit×1,5, atvērumi ≤0,2 ha priedei / ≤0,1 ha citām (31.2)"]},
-  "ainavu aizsardzības zona":{kcMax:2,eco:10,notes:["cirsmu veido asimetrisku un neregulāru (38.p.); eko kokus grupās (39.p.)"]},
-  "neitrālā zona":{notes:["vispārējie MK935 noteikumi"]}},
- // vispārējie pēc kategorijas, ja ĪADT nav savu noteikumu (MK 264)
- "_dabas parks":{src:"MK 264 6. nod.","*":{kcMax:null,season:"15.03-31.07",bigD:{"*":60},eco:15,notes:["kailcirte aizliegta; galvenajā cirtē biezība ≥0,4, atvērumi ≤0,1 ha"]}},
- "_dabas liegums":{src:"MK 264 5. nod.","*":{kcMax:null,galvena:false,season:"15.03-31.07",kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Liepa:50,Apse:30},bigD:{"*":60},eco:15,notes:["galvenā un rekonstruktīvā cirte aizliegta; atjaunošana stādot aizliegta"]}},
- "_aizsargājamo ainavu apvidus":{src:"MK 264 7. nod.","*":{kcMax:3,season:"15.03-31.07",notes:["KC aizliegta dumbrājā/liekņā egļu un melnalkšņu audzēs un visās ozolu/ošu audzēs (33.3)","rekonstruktīvā aizliegta (33.2)","gar ainaviskiem ceļiem 10/5 g (35.p.)"]}},
-};
-let IADT_AUTO=null; // automātiski no likumi.lv (iadt/rules.json datu zarā), 114 noteikumi
-async function loadIadtAuto(){if(IADT_AUTO)return IADT_AUTO;try{const r=await cachedFetch(`${geoBase()}/iadt/rules.json`);if(r.ok){IADT_AUTO=await r.json();render();}}catch(e){}return IADT_AUTO;}
-function norm(x){return String(x||"").toLowerCase().replace(/["„”“]/g,"").replace(/\s+/g," ").trim();}
-function iadtRulesFor(p){ // atrod noteikumu komplektu pēc DAP datiem (nosaukums + zona): 1) ar roku pārbaudītie, 2) automātiskie no likumi.lv, 3) MK 264 pēc kategorijas
- const out=[];if(!p||!p.dapList)return out;if(!IADT_AUTO)loadIadtAuto();
- const zone=(p.dapList.find(x=>x.kind==="zona")||{}).zone||"";const zn=zone.toLowerCase();
- for(const d of p.dapList.filter(x=>x.kind==="iadt")){let key=Object.keys(IADT_RULES).find(k=>!k.startsWith("_")&&d.name&&d.name.toLowerCase().includes(k.toLowerCase().replace(" nacionālais parks","")));
-  if(!key&&IADT_AUTO){const nm=norm(d.name);const hit=Object.values(IADT_AUTO.items||{}).find(x=>x["spēkā"]&&x.rules&&Object.keys(x.rules).length&&(norm(x.name)===nm||nm.includes(norm(x.name))||norm(x.name).includes(nm)));
-   if(hit){const R={src:"automātiski no "+hit.url+" (pārbaudīt)"};for(const [z,r] of Object.entries(hit.rules)){const rr=Object.assign({},r);rr.notes=[`auto: ${Object.entries(r).map(([k,v])=>k+"="+JSON.stringify(v)).join(", ")}`];R[z]=rr;}
-    const zkey=Object.keys(R).find(z=>z!=="src"&&z!=="*"&&zn&&zn.includes(z.replace(/ zona$/,"").toLowerCase()));const r=Object.assign({},R["*"]||{},zkey?R[zkey]:{});r.notes=[...(R["*"]&&R["*"].notes||[]),...(zkey&&R[zkey].notes||[])];
-    out.push({iadt:d.name,key:"auto",zone:zkey||zone||"zona nav noteikta",src:R.src,r,auto:true});continue;}}
-  if(!key){const cat=(d.zone||"").toLowerCase();key=(/dabas parks|^dp$/.test(cat))?"_dabas parks":(/liegum|^dl$/.test(cat))?"_dabas liegums":(/ainav|^aaa$/.test(cat))?"_aizsargājamo ainavu apvidus":null;}
-  if(!key)continue;const R=IADT_RULES[key];const zkey=Object.keys(R).find(z=>z!=="src"&&z!=="*"&&zn&&zn.includes(z.replace(" zona","").toLowerCase()));
-  const r=Object.assign({},R["*"]||{},zkey?R[zkey]:{});r.notes=[...(R["*"]&&R["*"].notes||[]),...(zkey&&R[zkey].notes||[])];
-  out.push({iadt:d.name,key,zone:zkey||zone||"zona nav noteikta",src:R.src,r});}
- return out;}
-function iadtChecks(p,out){const sets=iadtRulesFor(p);out.iadtRules=sets;if(!sets.length)return;
- for(const st of sets){const r=st.r;out.global.push(`ĪADT "${st.iadt}", ${st.zone} (${st.src}): ${r.notes.slice(0,4).join("; ")}${r.season?"; mežsaimnieciskā darbība aizliegta "+r.season:""}`);
-  for(const x of out.nog){const m=x.m;const ha=num(m.platMezs||m.platKop);
-   if(m.cirsmaKods==="KC"){if(r.kcMax===null)x.f.push({t:"bloks",s:`${st.iadt} ${st.zone}: kailcirte aizliegta`});
-    else if(r.kcMax&&ha>r.kcMax+REMNANT_HA)x.f.push({t:"ier",s:`${st.iadt}: KC limits ${r.kcMax} ha${r.kcWet?" (slapjos "+r.kcWet+")":""}, nogabals ${fmt(ha,2)} ha jādala`});
-    if(r.izlase)x.f.push({t:"ier",s:`${st.iadt}: galvenā cirte tikai izlases veidā vairākos paņēmienos`});}
-   if(r.galvena===false&&(m.cirsmaKods==="KC"||m.cirsmaKods==="Izlase"))x.f.push({t:"bloks",s:`${st.iadt} ${st.zone}: galvenā cirte aizliegta`});
-   if(m.cirsmaKods==="KKC"&&r.kopsanaAge){const lim=r.kopsanaAge[m.suga]??r.kopsanaAge["*"];if(lim!=null&&num(m.vecums)>lim)x.f.push({t:"bloks",s:`${st.iadt} ${st.zone}: kopšanas cirte aizliegta, ${m.suga} ${m.vecums} g > ${lim} g`});}
-   if(r.bigD&&num(m.D)){const lim=r.bigD[m.suga]??r.bigD["*"];if(lim&&num(m.D)>=lim)x.f.push({t:"ier",s:`${st.iadt}: kokus resnākus par ${lim} cm necērt (vid. D ${m.D})`});}}
-  if(r.eco)out.global.push(`${st.iadt}: ekoloģiskie koki vismaz ${r.eco}/ha (lieto ${r.eco} MK935 8 vietā).`);}}
-
-/* ---------- AIZSARGJOSLAS (Aizsargjoslu likums, red. 03.07.2026) ---------- */
-// Joslu platumi (7. un 7.1 pants) un aprobežojumi (37. pants): KC aizliegta 50 m joslā (vai visā joslā, ja šaurāka), galvenā cirte aizliegta 10 m joslā,
-// kokmateriālu glabātavas aizliegtas visā joslā. Grāvji (ūdens novadīšanai) joslu neveido. Purvi 10–100 ha 20 m, >100 ha 50 m (100 m uz slapjām kūdras augsnēm).
-const AJ_DEFAULT={stream:10,river:50,riverBig:300,canal:10,lake10:10,lake25:50,lake100:100,lake1000:300,lakeBig:500,bog100:20,bogBig:50,bogBigPeat:100,kcBand:50,mainBand:10,roadState:30};
-function aj(){return Object.assign({},AJ_DEFAULT,S.settings.aj||{});}
-const BIG_RIVERS=/^(Daugava|Gauja|Lielupe|Venta|Aiviekste|Ogre|Salaca|Abava|Bārta|Dubna|Rēzekne|Pededze|Mēmele|Mūsa|Iecava|Misa|Amata|Brasla|Tebra|Saka|Durbe|Užava|Rīva|Irbe|Stende|Roja|Svēte|Bērze|Auce|Tērvete|Zaņa|Ciecere|Imula|Amula|Vēdzele|Slocene|Rauna|Tirza|Vaidava|Mustjegi|Kūja|Sarja|Rītupe|Malta|Feimanka|Ilūkste|Laucesa|Neretiņa|Susēja)$/i;
-function zoneFeatures(p){ // atgriež {kc:[Feature], main:[Feature], krautuve:[Feature]} WGS84
- const inf=p.infra;if(!inf||typeof turf==="undefined")return null;const A=aj();const kc=[],main=[],full=[];const km=m=>m/1000;
- const add=(f,zoneW,label)=>{try{const fullZ=turf.buffer(f,km(zoneW),{units:"kilometers"});fullZ.properties={label,w:zoneW};full.push(fullZ);
-   const kcZ=zoneW<=A.kcBand?fullZ:turf.buffer(f,km(A.kcBand),{units:"kilometers"});kcZ.properties={label,w:Math.min(zoneW,A.kcBand)};kc.push(kcZ);
-   const mZ=turf.buffer(f,km(A.mainBand),{units:"kilometers"});mZ.properties={label,w:A.mainBand};main.push(mZ);}catch(e){}};
- // Oficiālās ūdensteces >10 km ar garuma kategoriju (MK 397 / VARAM klasifikators): platums tieši pēc kategorijas
- const usikNames=new Set();
- for(const w of inf.usik||[]){const c=String(w.cat||"");const zw=/100/.test(c)&&/[>l]|virs|100\s*-|100\+/.test(c)&&!/25/.test(c)?A.riverBig:/25/.test(c)&&/100/.test(c)?A.lake100:/10/.test(c)&&/25/.test(c)?A.river:A.river;
-  const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};if(w.name)usikNames.add(w.name.toLowerCase());add(f,zw,"upe "+(w.name||"")+" ("+c+" km)");}
- for(const w of inf.water||[]){if(["ditch","drain"].includes(w.t))continue;if(w.name&&usikNames.has(w.name.toLowerCase()))continue; // jau no ŪSIK
-  const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};
-  const big=w.name&&BIG_RIVERS.test(w.name.trim());const zw=w.t==="river"?(big?A.riverBig:A.river):w.t==="canal"?A.canal:A.stream;add(f,zw,(w.t==="river"?"upe":w.t==="canal"?"kanāls":"strauts")+(w.name?" "+w.name:""));}
- for(const w of inf.watera||[]){const f={type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[w.geom]}};let zw,label;
-  if(w.t==="wetland"){if(w.ha<10)continue;zw=w.ha>100?A.bogBig:A.bog100;label="purvs "+w.ha+" ha";}
-  else{zw=w.ha>1000?A.lakeBig:w.ha>100?A.lake1000:w.ha>25?A.lake100:w.ha>10?A.lake25:A.lake10;label=(w.t==="reservoir"?"ūdenskrātuve ":"ezers ")+(w.name||"")+" "+w.ha+" ha";}
-  add(f,zw,label);}
- return {kc,main,full};}
-function stripHaOf(m,feats){if(!m.geom||!feats.length)return {ha:0,geoms:[],labels:[]};const mf=merFeature(m);let ha=0;const geoms=[],labels=new Set();
- for(const z of feats){try{if(!turf.booleanIntersects(mf,z))continue;const i=turf.intersect(turf.featureCollection([mf,z]));if(i){ha+=turf.area(i)/10000;geoms.push(i.geometry);labels.add(z.properties.label);}}catch(e){}}
- return {ha:+Math.min(ha,num(m.platMezs||m.platKop)).toFixed(2),geoms,labels:[...labels]};}
-function zoneChecks(p,out){const Z=zoneFeatures(p);if(!Z)return;out.zones=Z;out.zoneByNog={};
- for(const x of out.nog){const m=x.m;if(!m.geom)continue;const k=stripHaOf(m,Z.kc),mm=stripHaOf(m,Z.main);if(!k.ha&&!mm.ha)continue;out.zoneByNog[m.id]={kc:k,main:mm};
-  const alder=m.suga==="Baltalksnis";
-  if(m.cirsmaKods==="KC"&&k.ha>0.005)x.f.push({t:alder?"ier":"bloks",s:`aizsargjosla (${k.labels.join(", ")}): kailcirte aizliegta ${fmt(k.ha,2)} ha joslā līdz ${aj().kcBand} m no ūdens (Aizsargjoslu lik. 37.p.)${alder?"; baltalksnim atļauta ≤ 1 ha, ne 1.04–30.06, saglabājot ozolus, liepas, priedes u.c.":""}`});
-  if(m.cirsmaKods&&mm.ha>0.005)x.f.push({t:"ier",s:`10 m josla gar ūdeni ${fmt(mm.ha,2)} ha: galvenā cirte un pievešanas koridori aizliegti (37.p. 5)`});
-  if(!m.cirsmaKods&&k.ha>0.05)x.f.push({t:"ier",s:`aizsargjosla ${k.labels.join(", ")}: ${fmt(k.ha,2)} ha ar KC aizliegumu`});}
- // krautuves aizsargjoslā (visā joslas platumā aizliegtas kokmateriālu glabātavas)
- for(const c of p.cirsmas)if(c.krautuve&&/josl|upe|ezer|krast/i.test(c.krautuve))out.global.push(`Cirsma ${c.tips} ${c.nogabali}: krautuves vieta "${c.krautuve}" izklausās pēc ūdens tuvuma; kokmateriālu glabātavas aizsargjoslā ir aizliegtas (37.p. 1).`);}
-
-/* ---------- KAIMIŅU SVAIGIE IZCIRTUMI (no pagasta faila) ---------- */
-function neighbourCuts(data,kad,p){if(typeof turf==="undefined")return [];const own=p.mer.filter(m=>m.geom).map(m=>merFeature(m));if(!own.length)return [];
- let hull;try{hull=turf.buffer(turf.union(turf.featureCollection(own))||own[0],0.02,{units:"kilometers"});}catch(e){return [];}
- const bb=turf.bbox(hull);const yr=new Date().getFullYear();const out=[];
- for(const [k,zv] of Object.entries(data.zv||{})){if(k===kad)continue;
-  for(const st of zv.stands||[]){const g=st.geom;if(!g||!g.length)continue;
-   let inside=false;for(const [x,y] of g){if(x>=bb[0]&&x<=bb[2]&&y>=bb[1]&&y<=bb[3]){inside=true;break;}}if(!inside)continue;
-   const cy=num(st.p_cirg),age=num(st.a10);const fresh=(cy&&yr-cy<=3)||(age&&age<=3&&(st.p_cirp||st.atj_gads));if(!fresh)continue;
-   const f={type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[g]}};try{if(!turf.booleanIntersects(f,hull))continue;}catch(e){continue;}
-   const touching=p.mer.filter(m=>m.geom).filter(m=>{try{return turf.booleanIntersects(f,turf.buffer(merFeature(m),0.005,{units:"kilometers"}));}catch(e){return false;}}).map(m=>m.nogabals);
-   out.push({kad:k,kv:st.kv,nog:st.nog,cirte:st.p_cirp||"",gads:cy||"",age,atj:st.atj_gads||"",ha:num(st.plat),nog_own:touching,geom:f.geometry});}}
- return out;}
-
+const OWNER_ALIASES={"IRI":"IKEA (IRI Asset / Ingka)","IRI_Asset":"IKEA (IRI Asset / Ingka)","IRI Asset":"IKEA (IRI Asset / Ingka)","LVM":"AS Latvijas valsts meži","SODRA":"Södra","SIA LATVIJAS FINIERIS MEZS":"Latvijas Finieris","STIGA RM":"Stiga RM","MOFO MEZA IPASUMI":"MOFO Mežs","SUSAB":"SUSAB","LASKANA MEZS":"Laskana Mežs","GREYTON":"Greyton","MPKS MEZSAIMNIEKS":"MPKS Mežsaimnieks"};
+function ownerName(o){if(!o)return "";const k=Object.keys(OWNER_ALIASES).find(a=>o.toUpperCase().replace(/_/g," ").includes(a.toUpperCase().replace(/_/g," ")));return k?OWNER_ALIASES[k]:o;}
+function neighbourOwners(p){ // vārdi: no LVM datiem (kad būs) un manuālie ieraksti
+ const man=p.kaimOwners||{};const list=[];const seen=new Set();
+ for(const x of p.kaimZV||[]){const nm=man[x.kad]||ownerName(x.owner);if(nm&&!seen.has(nm)){seen.add(nm);list.push({name:nm,kad:x.kad,src:man[x.kad]?"manuāli":"LVM dati",len:x.len_m});}}
+ for(const x of p.lielie||[]){const nm=ownerName(x.owner);if(nm&&!seen.has(nm)){seen.add(nm);list.push({name:nm,kad:x.kad,src:x.hops===1?"robežojas":x.hops?x.hops+". īpašums":"pāri laukiem "+fmt(x.dist_m)+" m",len:null});}}
+ return list;}
+function neighboursCard(p){if(!(p.kaimZV&&p.kaimZV.length)&&!(p.lielie&&p.lielie.length))return "";const own=neighbourOwners(p);
+ return `<div class="card"><h2>Robežnieki</h2>${own.length?own.map(o=>`<div class="kv"><span><b>${esc(o.name)}</b> <span class="muted">${esc(o.src)}${o.kad?" · "+esc(o.kad):""}</span></span></div>`).join(""):'<div class="muted">Īpašnieku vārdi vēl nav zināmi: LVM lielo īpašnieku dati pagaidām nav pieejami. Ieraksti, ko zini.</div>'}
+ <details style="margin-top:8px"><summary class="muted">Kaimiņu zemes vienības (${(p.kaimZV||[]).length}) un īpašnieka ievade</summary>${(p.kaimZV||[]).map(x=>`<div class="row" style="grid-template-columns:1fr 2fr;align-items:center"><span class="muted">${esc(x.kad)} · ${fmt(x.len_m)} m</span><input placeholder="īpašnieks (piem. IKEA, Sodra, fiziska persona)" value="${esc((p.kaimOwners||{})[x.kad]||ownerName(x.owner)||"")}" onchange="(P().kaimOwners=P().kaimOwners||{})['${x.kad}']=this.value;save(S.cur)"></div>`).join("")}</details>
+ ${p.ownersOwn&&p.ownersOwn.length?`<div class="muted">Pati zemes vienība pārklājas ar: ${esc(p.ownersOwn.map(o=>ownerName(o.owner)+" "+o.ha+" ha").join(", "))}</div>`:""}</div>`;}
 /* ---------- VMD OBJEKTS PĒC KADASTRA ---------- */
 const MT_CODES={1:"Sils",2:"Mētrājs",3:"Lāns",4:"Damaksnis",5:"Vēris",6:"Gārša",7:"Grīnis",8:"Slapjais mētrājs",9:"Slapjais damaksnis",10:"Slapjais vēris",11:"Slapjā gārša",12:"Purvājs",14:"Niedrājs",17:"Dumbrājs",18:"Liekņa",21:"Viršu ārenis",22:"Mētru ārenis",23:"Šaurlapju ārenis",24:"Platlapju ārenis",31:"Viršu kūdrenis",32:"Mētru kūdrenis",33:"Šaurlapju kūdrenis",34:"Platlapju kūdrenis"};
 const SP_CODES={1:"Priede",3:"Egle",4:"Bērzs",6:"Melnalksnis",8:"Apse",9:"Baltalksnis",10:"Ozols",11:"Osis",12:"Citas sugas",13:"Citas sugas",14:"Citas sugas",15:"Citas sugas",16:"Citas sugas",17:"Citas sugas",18:"Citas sugas",19:"Citas sugas",20:"Citas sugas",22:"Citas sugas",50:"Citas sugas"};
@@ -795,7 +691,7 @@ function reportHtml(p){const t=calcProp(p);const r=runChecks(p);const v=valOf(p)
  const bl=r.nog.filter(x=>x.f.length);if(bl.length)h+=`<h2>3. Likumdošanas pārbaude un piezīmes (MK 935)</h2><table><tr><th>Nogabals</th><th>Piezīme</th></tr>${bl.map(x=>`<tr>${td("kv."+esc(x.m.kvartals)+" nog."+esc(x.m.nogabals))}<td style="text-align:left">${x.f.map(f=>esc(f.s)).join("; ")}</td></tr>`).join("")}</table>`;
  h+=`<h2>4. Nekustamā īpašuma vērtība (zeme un augošā biomasa)</h2><table><tr><th>Kategorija</th><th>ha</th><th>Pārdošanas €/ha</th><th>Pārdošanas €</th><th>Pirkuma €/ha</th><th>Pirkuma €</th></tr>${c.rows.filter(x=>x.ha).map(x=>`<tr>${td(esc(x.l))}${td(fmt(x.ha,2))}${td(fmt(x.sale))}${td(fmt(x.saleSum))}${td(fmt(x.buy))}${td(fmt(x.buySum))}</tr>`).join("")}<tr class="tot">${td("KOPĀ")}${td(fmt(c.blokHa,2))}${td("")}${td(fmt(c.mezsSale+c.lizSale+c.krumSale))}${td("")}${td(fmt(c.buySum))}</tr></table>
  <div class="muted">Reģistrētā platība ${fmt(num(v.regHa),2)} ha · taksācija ${fmt(c.taksHa,2)} ha · iegāde kopā ${fmt(c.iegade)} € (cirsma ${fmt(c.cirsmaPrice)} + zeme ${fmt(c.landPrice)} + valsts nodeva ${fmt(c.nodevas,2)} + citas izmaksas ${fmt(c.iegade-c.pirkuma-c.nodevas)})</div>`;
- if(p.lielie&&p.lielie.length)h+=`<h2>4a. Robežnieki un lielie meža īpašnieki</h2><table><tr><th>Īpašnieks</th><th>Attiecība</th><th>Attālums m</th><th>Zemes vienība</th></tr>${p.lielie.map(x=>`<tr>${td(esc(x.owner))}${td(x.hops===1?"robežojas":x.hops?x.hops+". īpašums pa ķēdi":"pāri laukiem")}${td(fmt(x.dist_m))}${td(esc(x.kad||""))}</tr>`).join("")}</table>`;
+ {const own=neighbourOwners(p);if(own.length)h+=`<h2>4a. Robežnieki</h2><table><tr><th>Īpašnieks</th><th>Attiecība</th><th>Zemes vienība</th></tr>${own.map(x=>`<tr>${td(esc(x.name))}${td(esc(x.src))}${td(esc(x.kad||""))}</tr>`).join("")}</table>`;}
  h+=`<h2>5. Kopsavilkums</h2><div class="grid"><div class="box"><div class="muted">Realizācija kopā</div><div class="big">${fmt(c.rev+c.zemeSale+c.lizAll)} €</div><div class="muted">koksne ${fmt(c.rev)} (izstrāde ${fmt(c.cost)}) · meža zeme ${fmt(c.mezsSale)} · LIZ ${fmt(c.lizSale)} · krūmāji ${fmt(c.krumSale)}</div></div><div class="box"><div class="muted">Bruto peļņa</div><div class="big">${fmt(c.bruto)} € (${fmt(c.brutoPct*100)} %)</div></div><div class="box"><div class="muted">IRR</div><div class="big">${c.irr==null?"–":fmt(c.irr*100)+" %"}</div></div></div>
  <p class="muted" style="margin-top:16px">Dati: VMD Meža valsts reģistra atvērtie dati un/vai Kadastra atskaite, lauka labojumi Mērījumos. Aprēķini pēc MK 935 (red. 21.08.2026). Preliminārs vērtējums, nav sertificēta vērtētāja atzinums.</p><button onclick="print()">Drukāt / PDF</button></body></html>`;return h;}
 
@@ -1368,7 +1264,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.32";
+const APP_VERSION="0.33";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
