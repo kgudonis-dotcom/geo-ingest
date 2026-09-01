@@ -605,10 +605,17 @@ const IADT_RULES={
  "_dabas liegums":{src:"MK 264 5. nod.","*":{kcMax:null,galvena:false,season:"15.03-31.07",kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Liepa:50,Apse:30},bigD:{"*":60},eco:15,notes:["galvenā un rekonstruktīvā cirte aizliegta; atjaunošana stādot aizliegta"]}},
  "_aizsargājamo ainavu apvidus":{src:"MK 264 7. nod.","*":{kcMax:3,season:"15.03-31.07",notes:["KC aizliegta dumbrājā/liekņā egļu un melnalkšņu audzēs un visās ozolu/ošu audzēs (33.3)","rekonstruktīvā aizliegta (33.2)","gar ainaviskiem ceļiem 10/5 g (35.p.)"]}},
 };
-function iadtRulesFor(p){ // atrod noteikumu komplektu pēc DAP datiem (nosaukums + zona)
- const out=[];if(!p.dapList)return out;
+let IADT_AUTO=null; // automātiski no likumi.lv (iadt/rules.json datu zarā), 114 noteikumi
+async function loadIadtAuto(){if(IADT_AUTO)return IADT_AUTO;try{const r=await cachedFetch(`${geoBase()}/iadt/rules.json`);if(r.ok){IADT_AUTO=await r.json();render();}}catch(e){}return IADT_AUTO;}
+function norm(x){return String(x||"").toLowerCase().replace(/["„”“]/g,"").replace(/\s+/g," ").trim();}
+function iadtRulesFor(p){ // atrod noteikumu komplektu pēc DAP datiem (nosaukums + zona): 1) ar roku pārbaudītie, 2) automātiskie no likumi.lv, 3) MK 264 pēc kategorijas
+ const out=[];if(!p.dapList)return out;if(!IADT_AUTO)loadIadtAuto();
  const zone=(p.dapList.find(x=>x.kind==="zona")||{}).zone||"";const zn=zone.toLowerCase();
  for(const d of p.dapList.filter(x=>x.kind==="iadt")){let key=Object.keys(IADT_RULES).find(k=>!k.startsWith("_")&&d.name&&d.name.toLowerCase().includes(k.toLowerCase().replace(" nacionālais parks","")));
+  if(!key&&IADT_AUTO){const nm=norm(d.name);const hit=Object.values(IADT_AUTO.items||{}).find(x=>x["spēkā"]&&x.rules&&Object.keys(x.rules).length&&(norm(x.name)===nm||nm.includes(norm(x.name))||norm(x.name).includes(nm)));
+   if(hit){const R={src:"automātiski no "+hit.url+" (pārbaudīt)"};for(const [z,r] of Object.entries(hit.rules)){const rr=Object.assign({},r);rr.notes=[`auto: ${Object.entries(r).map(([k,v])=>k+"="+JSON.stringify(v)).join(", ")}`];R[z]=rr;}
+    const zkey=Object.keys(R).find(z=>z!=="src"&&z!=="*"&&zn&&zn.includes(z.replace(/ zona$/,"").toLowerCase()));const r=Object.assign({},R["*"]||{},zkey?R[zkey]:{});r.notes=[...(R["*"]&&R["*"].notes||[]),...(zkey&&R[zkey].notes||[])];
+    out.push({iadt:d.name,key:"auto",zone:zkey||zone||"zona nav noteikta",src:R.src,r,auto:true});continue;}}
   if(!key){const cat=(d.zone||"").toLowerCase();key=(/dabas parks|^dp$/.test(cat))?"_dabas parks":(/liegum|^dl$/.test(cat))?"_dabas liegums":(/ainav|^aaa$/.test(cat))?"_aizsargājamo ainavu apvidus":null;}
   if(!key)continue;const R=IADT_RULES[key];const zkey=Object.keys(R).find(z=>z!=="src"&&z!=="*"&&zn&&zn.includes(z.replace(" zona","").toLowerCase()));
   const r=Object.assign({},R["*"]||{},zkey?R[zkey]:{});r.notes=[...(R["*"]&&R["*"].notes||[]),...(zkey&&R[zkey].notes||[])];
@@ -1354,7 +1361,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.28.1";
+const APP_VERSION="0.29";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
