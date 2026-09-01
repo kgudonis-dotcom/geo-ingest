@@ -1,6 +1,8 @@
 // Regresijas tests: lietotne pret reāliem objektiem ar zināmu patiesību. Palaiž: node tests/regress.js (vajag jsdom, @turf/turf, xlsx)
-const {JSDOM}=require("jsdom");const fs=require("fs");const zlib=require("zlib");const https=require("https");
-const root=require("child_process").execSync("npm root -g").toString().trim();
+const fs=require("fs");const zlib=require("zlib");const https=require("https");const path=require("path");
+// moduļi: lokālie node_modules (GitHub darbplūsma) vai globālie (izstrāde)
+const root=fs.existsSync(path.join(process.cwd(),"node_modules","jsdom"))?path.join(process.cwd(),"node_modules"):require("child_process").execSync("npm root -g").toString().trim();
+const {JSDOM}=require(root+"/jsdom");
 const html=fs.readFileSync("app/index.html","utf8").replace(/<script src="https:[^"]+"><\/script>/g,"").replace(/<link rel="stylesheet" href="https:[^"]+">/g,"");
 const get=u=>new Promise((res,rej)=>https.get(u,r=>{const b=[];r.on("data",d=>b.push(d));r.on("end",()=>res(Buffer.concat(b)));}).on("error",rej));
 const BASE="https://raw.githubusercontent.com/kgudonis-dotcom/geo-ingest/data";
