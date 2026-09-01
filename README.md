@@ -1,15 +1,17 @@
-# geo-ingest: viena vieta ģeodatiem (nogabali + kadastrs + ĪADT), bez paroles
+# geo-ingest: FF Forest meža sistēma
+Lietotne: https://kgudonis-dotcom.github.io/geo-ingest/ · Kalkulators: https://kgudonis-dotcom.github.io/geo-ingest/web/
+Dokumentācija: [DOKUMENTACIJA.md](DOKUMENTACIJA.md) · Kopsavilkums un principi: [STATUSS.md](STATUSS.md) · Darbu dēlis: [Issues](../../issues)
 
-## Soļi
-1. **Supabase**: supabase.com → New project (bezmaksas). Settings → Database → Connection string (URI) = DATABASE_URL. Settings → API → Project URL un `anon` key (publiska).
-2. **Shēma**: SQL Editor → ielīmē `schema.sql` → Run.
-3. **GitHub**: jauns privāts repo, ielieciet šos failus. Settings → Secrets → Actions → `DATABASE_URL`.
-4. **Pirmā palaišana**: Actions → geo-ingest → Run workflow. Vai lokāli: `DATABASE_URL=... python ingest.py --dry` (tikai izdrukā laukus, neraksta), tad bez `--dry`.
-5. **Pārbaude**: 
-   `curl "https://<projekts>.supabase.co/rest/v1/rpc/geo_by_kadastrs" -H "apikey: <anon>" -H "Content-Type: application/json" -d '{"k":"70420080041"}'`
-6. **Rīks**: Iestatījumos ieraksta Supabase URL un anon key; poga "Ielādēt ģeometriju" sauc šo RPC.
-
-## Pēc pirmās palaišanas
-`--dry` izdrukā katra SHP lauku nosaukumus. Ja kadastrs/kvartāls/nogabals nav atpazīti, papildini `COLMAP` ingest.py. DAP datu kopas id (`protected`) jāprecizē pēc data.gov.lv.
-
-Ceturkšņa cron pārraksta stands un protected pilnībā, parcels atjauno pēc kadastra numura.
+| Mape / fails | Kas |
+|---|---|
+| `app/` | lietotnes avots (index.html, sw.js, manifest.json) |
+| `docs/` | publicētā kopija (GitHub Pages) + `docs/web/` kalkulators |
+| `web/` | mājaslapas kalkulatora avots |
+| `mirror/` | LVM/VMD spoguļa skripts datoram Latvijā |
+| `build_pagasti.py`, `merge_pagasti.py` | VMD + DAP + īpašnieki → `pagasti/PPPP.json.gz` (data zars) |
+| `build_infra.py` | OSM ceļi un grāvji → `infra/` |
+| `sentinel.py` | Sentinel-2 vainaga zudums → `sentinel/` |
+| `export_geo.py`, `ingest.py`, `schema.sql`, `discover.py`, `build_aplieci.py` | eksports, Supabase rezerve, izlūkošana |
+| `.github/workflows/` | darbplūsmas (palaiž, izmainot trigera failus: PAGASTI_ARGS, INFRA_RUN, SENTINEL_RUN, EXPORT_REQ, DISCOVER, RUN_ARGS, REMERGE) |
+| `logs/` | katra darba izdruka |
+| zars `data` | gatavie dati, ko lasa lietotne |
