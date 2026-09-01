@@ -715,6 +715,7 @@ function buildFromGeo(kad,items,extra){const p=newProp();p.kadastrs=kad;p.name="
   m.jakopj=!!(a.jakopj&&String(a.jakopj)!=="0");m.jaatjauno=!!(a.jaatjauno&&String(a.jaatjauno)!=="0");
   if(a.p_cirp||a.p_cirg)m.pedCirte=[a.p_cirp,a.p_cirg].filter(Boolean).join(" ");
   if(a.p_darbv||a.p_darbg)m.pedDarb=[a.p_darbv,a.p_darbg].filter(Boolean).join(" ");
+  if(a.dv&&a.dv.length){m.dv=a.dv;m.ierob=(m.ierob?m.ierob+"; ":"")+a.dv.map(x=>x.kind+(x.name?" "+x.name:"")+" "+x.ha+" ha").join("; ");}
   if(a.saimn_d_ie&&String(a.saimn_d_ie)!=="0")m.ierob="Saimn. darbības ierobežojums (APROB kods "+a.saimn_d_ie+"), pārbaudīt";
   m.cirsmaKods=cirtmetsKC(m.suga,m.vecums,"");const dc=MK935.dCirte(m.suga,"");
   if(it.geom)m.geom=geoRing(it.geom); // WGS [lon,lat] gredzens
@@ -1260,7 +1261,7 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
  if(!zone.kc)out.global.push("ĪADT zona: kailcirte aizliegta, plāns jāraksta kā izlases/kopšanas programma.");
  if(p.iadt)out.global.push("ĪADT sezona: darbi aizliegti 15.03 līdz 31.07, reāli viens ziemas logs. Atjaunošanā nedrīkst citzemju sugas.");
  if(p.dapList)for(const d of p.dapList){const k=d.kind;if(k==="mikroliegums")out.global.push(`Mikroliegums "${d.name}" ${d.ha} ha: koku ciršana aizliegta vai ierobežota, buferzona; pārbaudīt Ozolā.`);
-  else if(k==="biotops")out.global.push(`ES nozīmes biotops ${d.name}${d.zone?" ("+d.zone+")":""} ${d.ha} ha: kailcirte praktiski izslēgta, cenā jāņem vērā.`);
+  else if(k==="biotops")out.global.push(`Kartēts ES nozīmes biotops ${d.name||""} ${d.ha} ha (DAP dati): ārpus ĪADT un bez mikrolieguma tas cirti neaizliedz, bet ir mikrolieguma risks un kompensāciju pamats; pārbaudīt Ozolā, uz kuriem nogabaliem, un vai VMD izsniedz apliecinājumu.`);
   else if(k==="sugas atradne")out.global.push(`Aizsargājamas sugas atradne ${d.name} ${d.ha} ha: iespējams mikroliegums nākotnē.`);
   else if(k==="aizsargājams koks"||k==="dabas piemineklis")out.global.push(`${k[0].toUpperCase()+k.slice(1)} ${d.name}: 10 m aizsargzona, nedrīkst cirst un bojāt.`);}
  for(const m of p.mer){const f=[];const kr=krajaMer(m);const ha=num(m.platMezs||m.platKop);const krha=ha?kr/ha:0;const mo=moistureOf(m.mezaTips);
@@ -1366,7 +1367,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.30";
+const APP_VERSION="0.31";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
