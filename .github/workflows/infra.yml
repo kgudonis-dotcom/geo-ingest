@@ -1,0 +1,26 @@
+name: build-infra
+on:
+  schedule:
+    - cron: "0 5 7 * *"
+  push: {branches: [main], paths: [INFRA_RUN]}
+permissions: {contents: write}
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt
+      - run: git fetch origin data:data && git --work-tree=. checkout data -- pagasti && git checkout main -- . 2>/dev/null || true
+      - run: python -u build_infra.py 2>&1 | tee run.log
+      - if: always()
+        run: |
+          git config user.name bot; git config user.email b@l
+          mkdir -p logs; cp run.log "logs/infra_$(date -u +%F_%H%M).md"; git add logs; git commit -m "infra log" && git pull --rebase origin main && git push || true
+          ls infra/*.json.gz >/dev/null 2>&1 || exit 0
+          git checkout --orphan data-new; git rm -rf --cached . >/dev/null 2>&1 || true
+          git checkout data -- pagasti aplieci 2>/dev/null || true
+          git add -f pagasti infra; git add -f aplieci 2>/dev/null || true
+          git commit -m "infra $(date -u +%F)" && git push -f origin data-new:data
