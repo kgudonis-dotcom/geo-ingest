@@ -96,6 +96,18 @@ def process_shp(shp,iadt,store,owners=None,zvgeo=None):
             st["geom"]=[[round(x,6),round(y,6)] for x,y in ring]
             stands.append(st)
         geoms=[g if g.is_valid else g.buffer(0) for g in geoms]
+        if iadt is not None:
+            for st,gm in zip(stands,geoms):
+                dv=[]
+                try:
+                    for i in iadt.sindex.query(gm,predicate="intersects"):
+                        t=iadt.iloc[i]
+                        if t["kind"] in ("biotops","mikroliegums","sugas atradne","zona","aizsargājams koks","dabas piemineklis"):
+                            try:a=t.geometry.intersection(gm).area/10000
+                            except Exception:continue
+                            if a>0.005:dv.append({"kind":t["kind"],"name":str(t["name"])[:60],"ha":round(a,2)})
+                except Exception:pass
+                if dv:st["dv"]=dv
         adj=[]
         for i in range(len(geoms)):
             for j in range(i+1,len(geoms)):
