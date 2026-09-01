@@ -285,7 +285,7 @@ function vCirs(){const p=P();const t=calcProp(p);
  let h=objSwitch()+`<div class="card"><div class="row"><div><label>Īpašums</label><input value="${esc(p.name)}" onchange="fld('name',this.value)"></div><div><label>Kadastrs</label><input inputmode="numeric" value="${esc(p.kadastrs)}" onchange="fld('kadastrs',this.value)"></div><div><label>Novads</label><input value="${esc(p.novads)}" onchange="fld('novads',this.value)"></div>
  <div><label>ĪADT zona (Ozols, pēc kadastra nr.)</label><select onchange="fld('iadt',this.value)">${Object.entries(RULES.iadt).map(([k,v])=>`<option value="${k}" ${k===(p.iadt||"")?"selected":""}>${v.label}</option>`).join("")}</select></div>
  <div><label>Statuss</label><select onchange="setStatus(P(),this.value)">${STATUSES.map(x=>`<option ${x===(p.status||"Vērtēšanā")?"selected":""}>${x}</option>`).join("")}</select></div><div><label>Darījuma datums</label><input type="date" value="${esc(p.dealDate||"")}" onchange="fld('dealDate',this.value)"></div><div><label>Samaksātā / prasītā cena €</label><input type="number" inputmode="decimal" value="${p.dealPrice||""}" onchange="fld('dealPrice',num(this.value))"></div><div><label>Īpašuma nosaukums (iesniegumam)</label><input value="${esc(p.ipasumaNos||"")}" onchange="fld('ipasumaNos',this.value)"></div><div><label>Inventarizācijas Nr.</label><input value="${esc(p.invNr||"")}" onchange="fld('invNr',this.value)"></div><div><label>Robežojošie nogabali (pāri: 8-20; 24-25)</label><input value="${esc(p.kaimini||"")}" placeholder="8-20; 24-25" onchange="fld('kaimini',this.value)"></div></div>
- <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" onclick="addCirsma()">+ Cirsma</button><button class="btn sm sec" onclick="exportXlsx()">Excel</button><button class="btn sm sec" onclick="exportProp()">CSV</button>${armBtn("p"+p.id,"Dzēst objektu",`delProp('${p.id}')`)}</div></div>`;
+ <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" onclick="addCirsma()">+ Cirsma</button>${p.mer.some(m=>m.geom)?"":`<button class="btn sm amber" onclick="attachGeometry('${p.id}')">Pievienot ģeometriju no VMD</button>`}<button class="btn sm sec" onclick="exportXlsx()">Excel</button><button class="btn sm sec" onclick="exportProp()">CSV</button>${armBtn("p"+p.id,"Dzēst objektu",`delProp('${p.id}')`)}</div></div>`;
  h+=summaryTable(p,t);
  h+=speciesSummary(p,t);
  h+=legalBlocks(p);
@@ -901,16 +901,35 @@ function mountFundMap(){const el=document.getElementById("map");if(!el||typeof L
 function exportFundXlsx(){const st=fundStats(S.props);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Objekts","Kadastrs","Statuss","ha","Mežs ha","Krāja m³","Cērtamais m³","Cirsmu vērtība €","NĪ vērtība €","IRR %","Cena €","Darījuma datums"],...st.objs.map(o=>[o.p.name,o.p.kadastrs,o.status,+o.ha.toFixed(2),+o.mez.toFixed(2),Math.round(o.kr),Math.round(o.cut),Math.round(o.max),Math.round(o.ni),o.irr==null?"":+(o.irr*100).toFixed(1),o.price||"",o.p.dealDate||""])]),"Fonds");XLSX.writeFile(wb,"NI_fonds.xlsx");}
 
 
+
+/* ---------- ĢEOMETRIJAS PIEVIENOŠANA ESOŠAM OBJEKTAM ---------- */
+async function attachGeometry(pid){const p=S.props.find(x=>x.id===pid)||P();const kad=String(p.kadastrs||"").replace(/\D/g,"");if(kad.length!==11)return toast("Objektam nav 11 ciparu kadastra numura (ievadi objekta kartītē)");
+ toast("Ielādē ģeometriju no VMD...");let data;try{data=await loadPagasts(kad.slice(0,4));}catch(e){return toast("Pagasta fails nav pieejams: "+e.message);}
+ const zvd=data.zv&&data.zv[kad];if(!zvd)return toast("Kadastrs "+kad+" atvērtajos datos nav atrasts");
+ const key=x=>String(x.kv??"")+"|"+String(x.nog??"")+((x.anog&&String(x.anog)!=="0")?"."+x.anog:"");
+ const byKey={};for(const st of zvd.stands)byKey[key(st)]=st;
+ const one=new Set(zvd.stands.map(x=>String(x.kv))).size===1;let hit=0,miss=[];
+ for(const m of p.mer){const k1=String(m.kvartals||"")+"|"+String(m.nogabals||"");let st=byKey[k1];
+  if(!st&&one){st=zvd.stands.find(x=>String(x.nog)+((x.anog&&String(x.anog)!=="0")?"."+x.anog:"")===String(m.nogabals));}
+  if(st){m.geom=st.geom;hit++;if(!m.mezaTips&&st.mt)m.mezaTips=MT_CODES[num(st.mt)]||m.mezaTips;}else miss.push(m.nogabals);}
+ const {extra}=pagastsToExtra(kad,zvd);
+ if(extra.adjacency.length){p.kaimini=extra.adjacency.map(x=>{const f=t=>one?t.split("-").slice(1).join("."):t.replace("-","/");return f(x.a)+"-"+f(x.b)+":"+x.len_m;}).join("; ");}
+ p.kaimZV=extra.kaimZV;p.lielie=extra.lielie;p.ownersOwn=extra.owners;
+ if(extra.protected.length){p.dapList=extra.protected.map(x=>({kind:x.kind,name:x.name,zone:x.zone,ha:x.overlap_ha}));p.iadtInfo=p.dapList.map(x=>x.kind+": "+x.name+(x.zone?" ("+x.zone+")":"")+" "+x.ha+" ha").join("; ");}
+ try{p.kaimCuts=neighbourCuts(data,kad,p);}catch(e){}
+ p.geoUpdated=data.updated;logIt(p,`ģeometrija pievienota: ${hit} nogabali${miss.length?", nav atrasti: "+miss.join(", "):""}`);save(S.cur);
+ toast(`Ģeometrija: ${hit} nogabali${miss.length?", nav atrasti "+miss.length+" ("+miss.slice(0,6).join(", ")+")":""}`);}
+
 /* ---------- DOKUMENTI ---------- */
 function showDoc(html,title){let ov=document.getElementById("docov");if(!ov){ov=document.createElement("div");ov.id="docov";ov.style.cssText="position:fixed;inset:0;background:#fff;z-index:50;display:flex;flex-direction:column";document.body.appendChild(ov);}
  ov.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:8px 12px;background:var(--green);color:#fff"><b style="flex:1">${esc(title||"Dokuments")}</b><button class="btn sm sec" onclick="document.getElementById('docfr').contentWindow.print()">Drukāt / PDF</button><button class="btn sm sec" onclick="(function(){const w=window.open('about:blank');if(w){w.document.write(document.getElementById('docfr').srcdoc);w.document.close();}else toast('Pārlūks bloķē jaunu logu, lieto Drukāt')})()">Jaunā logā</button><button class="btn sm sec" onclick="document.getElementById('docov').remove()">Aizvērt</button></div><iframe id="docfr" style="flex:1;border:0;width:100%"></iframe>`;
  document.getElementById("docfr").srcdoc=html;}
-function openSkice(cid){const c=C(cid);const h=skiceHtml(c);if(!h)return toast("Cirsmas nogabaliem nav ģeometrijas (izveido objektu no kadastra numura)");showDoc(h,"Skice: "+c.tips+" "+c.nogabali.replace(/;/g,", "));}
+function openSkice(cid){const c=C(cid);const h=skiceHtml(c);if(!h){toast("Nav ģeometrijas: spied \"Pievienot ģeometriju no VMD\" sadaļā Dokumenti");S.view="docs";render();return;}showDoc(h,"Skice: "+c.tips+" "+c.nogabali.replace(/;/g,", "));}
 function openReport(){showDoc(reportHtml(P()),"Vērtējuma atskaite");}
 function openIesniegums(){const p=P();if(!p.cirsmas.length)return toast("Nav cirsmu");showDoc(iesniegumsHtml(p),"Iesniegums koku ciršanai");}
 function izvietojumsHtml(p){if(!p.mer.some(m=>m.geom))return null;return `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;margin:20px}h2{text-align:center;font-size:15px}@media print{button{display:none}}</style></head><body><h2>Z/V kadastra numurs: ${esc(p.kadastrs)} · "${esc(p.name||"")}" cirsmu izvietojums</h2>${planSvg(p,{w:1000})}<p style="font-size:11px;color:#666">Krāsas = cirsmas, svītrotais = joslas. Pamats: VMD Meža valsts reģistra atvērtie dati.</p></body></html>`;}
 function vDocs(){const p=P();const geo=p.mer.some(m=>m.geom);let h=objSwitch();
- h+=`<div class="card"><h2>Dokumenti: ${esc(p.name||p.kadastrs)}</h2><div class="muted">Katrs dokuments atveras šeit pat ar pogu "Drukāt / PDF". ${geo?"":"Skicēm un izvietojuma kartei vajag ģeometriju: izveido objektu no kadastra numura."}</div></div>`;
+ h+=`<div class="card"><h2>Dokumenti: ${esc(p.name||p.kadastrs)}</h2><div class="muted">Katrs dokuments atveras šeit pat ar pogu "Drukāt / PDF". ${geo?"":`Skicēm un izvietojuma kartei vajag nogabalu kontūras. <button class="btn sm amber" onclick="attachGeometry('${p.id}')">Pievienot ģeometriju no VMD</button> (pēc kadastra numura ${esc(p.kadastrs||"– ievadi objekta kartītē")})`}</div></div>`;
  h+=`<div class="card"><h3>Vērtēšana</h3><div class="kv"><span>Vērtējuma atskaite (cirsmas, sortimenti, plāns, buferi, MK935, NĪ vērtība, IRR)</span><b><button class="btn sm" onclick="openReport()">Atvērt</button></b></div><div class="kv"><span>Excel (Kopsavilkums, Cirsmas, Sortimenti, Nogabali, Dastojums, Novērtējums, Buferjoslas)</span><b><button class="btn sm sec" onclick="exportXlsx()">Lejupielādēt</button></b></div><div class="kv"><span>CSV</span><b><button class="btn sm sec" onclick="exportProp()">Lejupielādēt</button></b></div></div>`;
  h+=`<div class="card"><h3>VMD: ciršanas apliecinājums</h3><div class="kv"><span>Iesniegums koku ciršanai (veidlapa ar visām cirsmām + izvietojuma karte + skices)</span><b><button class="btn sm" ${p.cirsmas.length?"":"disabled"} onclick="openIesniegums()">Atvērt</button></b></div><div class="kv"><span>Cirsmu izvietojuma karte</span><b><button class="btn sm sec" ${geo?"":"disabled"} onclick="showDoc(izvietojumsHtml(P()),'Cirsmu izvietojums')">Atvērt</button></b></div>${p.cirsmas.map(c=>`<div class="kv"><span>Skice: ${esc(c.tips)} kv.${esc(c.kvartals)} nog. ${esc(c.nogabali.replace(/;/g,", "))} (${fmt(num(c.platiba),2)} ha)</span><b><button class="btn sm sec" ${geo?"":"disabled"} onclick="openSkice('${c.id}')">Atvērt</button></b></div>`).join("")||'<div class="muted">Nav cirsmu.</div>'}<div class="muted">Īpašnieka rekvizīti iesniegumam: Iestatījumi → Īpašnieks. Īpašuma nosaukums un inventarizācijas Nr.: objekta kartīte sadaļā Cirsmas.</div></div>`;
  h+=`<div class="card"><h3>Drīzumā</h3><div class="muted">Līgumi no tavām veidnēm (cirsma uz celma, NĪ pirkums, abi, pilnvara), PVZ, grāmatvedības eksports (Jumis / Moneo).</div></div>`;
@@ -1207,7 +1226,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.22";
+const APP_VERSION="0.23";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
