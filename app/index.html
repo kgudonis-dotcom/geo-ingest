@@ -1250,7 +1250,7 @@ const RULES={
 const isDry=t=>RULES.dryTypes.includes(String(t||"").trim());
 function moistureOf(t){t=String(t||"").trim();if(!t)return "?";return isDry(t)?"sausie":"slapjie";}
 function kcLimitFor(p,m){const z=RULES.iadt[p.iadt||""];if(z&&z.limit!==null)return z.limit;return RULES.kcLimitHa[moistureOf(m.mezaTips)==="sausie"?"sausie":"slapjie"];}
-function bufM(){return num(S.settings.buferM)||20;}   // atdalošās joslas platums (lietotāja prakse: 20 m)
+function bufM(){if(S.settings.buferM===90&&!S.settings.bufMigrated){S.settings.buferM=20;S.settings.bufMigrated=true;}return num(S.settings.buferM)||20;}   // atdalošās joslas platums (lietotāja prakse: 20 m)
 const ADJ_MIN_M=50;      // MK935: piegulošā = kopējā robeža garāka par 50 m
 const SEP_MIN_HA=0.1;    // atdalošā josla vismaz 0,1 ha
 const PIECE_MIN_HA=0.1;  // jauna KC daļa vismaz 0,1 ha (ekonomiski)
@@ -1366,7 +1366,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.29";
+const APP_VERSION="0.30";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
@@ -1374,7 +1374,7 @@ function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const 
  S.cur=cur;S.migrated=APP_VERSION;localStorage.setItem(KEY,JSON.stringify(S));}
 migrate();
 /* boot */
-if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").then(r=>{r.update();r.addEventListener("updatefound",()=>{const w=r.installing;w&&w.addEventListener("statechange",()=>{if(w.state==="activated"&&navigator.serviceWorker.controller)location.reload();});});}).catch(()=>{});
 document.getElementById("ver").textContent="v"+APP_VERSION;
 render();
 </script>
