@@ -106,6 +106,19 @@ tr.tot td{font-weight:700;border-top:2px solid var(--ink)}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script>
+/* =====================================================================
+   FF Forest cirsma-app: viens fails, bez ietvariem.
+   Kā lasīt kodu: meklē sadaļu virsrakstus "/* ---------- NOSAUKUMS ---------- */".
+   Pilns apraksts: DOKUMENTACIJA.md (repo saknē), sadaļa 4.
+
+   Datu plūsma īsumā:
+     kadastrs -> loadPagasts() (GitHub data zars, gzip) -> pagastsToExtra() -> buildFromGeo()
+     -> objekts p {mer: nogabali, cirsmas, val, tasks...} localStorage
+     -> calcCirsma()/calcProp() nauda, runChecks() likums un buferi, valCalc() IRR
+     -> skati vDash/vCirs/vMer/vVal/vDocs/vFund, dokumenti reportHtml/skiceHtml/iesniegumsHtml/exportXlsx
+   Krāsas: .man (dzeltens) = labots ar roku, .auto (zils) = labots automātiski, .pctbad (sarkans) = aizliegums.
+   Nekas neiet uz serveri; S.settings.geoBase ir vienīgā ārējā adrese (datu zars).
+   ===================================================================== */
 /* ---------- DEFAULTS (from Vigodas vērtējums) ---------- */
 const SPECIES=["Priede","Egle","Bērzs","Apse","Melnalksnis","Osis","Ozols","Baltalksnis","Citas sugas"];
 const SPECIES_CODE={Priede:"P",Egle:"E",Bērzs:"B",Apse:"Ap",Melnalksnis:"Ma",Osis:"Os",Ozols:"Oz",Baltalksnis:"Ba","Citas sugas":"C"};
