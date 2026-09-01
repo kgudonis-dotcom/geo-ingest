@@ -52,6 +52,7 @@ def load_iadt():
                     g=g[g.geometry.notna()]
                     if buf and len(g) and g.geometry.iloc[0].geom_type in ("Point","MultiPoint"):g["geometry"]=g.geometry.buffer(buf)
                     g=g[g.geometry.geom_type.isin(["Polygon","MultiPolygon"])]
+                    g["geometry"]=g.geometry.buffer(0)
                     kind=kind0 or ("zona" if re.search("zonejum",shp,re.I) else "iadt")
                     keep=[c for c in g.columns if c.upper() in NAME_COLS]
                     lab=g[keep[0]].astype(str) if keep else pd.Series([""]*len(g),index=g.index)
@@ -86,6 +87,7 @@ def process_shp(shp,iadt,store,owners=None,zvgeo=None):
             mp=mapping(gw);ring=max(mp["coordinates"],key=lambda c:len(c[0]))[0] if mp["type"]=="MultiPolygon" else mp["coordinates"][0]
             st["geom"]=[[round(x,6),round(y,6)] for x,y in ring]
             stands.append(st)
+        geoms=[g if g.is_valid else g.buffer(0) for g in geoms]
         adj=[]
         for i in range(len(geoms)):
             for j in range(i+1,len(geoms)):
@@ -96,7 +98,12 @@ def process_shp(shp,iadt,store,owners=None,zvgeo=None):
         if iadt is not None:
             hit=iadt.iloc[list(iadt.sindex.query(u,predicate='intersects'))]
             for _,t in hit.iterrows():
-                ha=t.geometry.intersection(u).area/10000
+                try:ha=t.geometry.intersection(u).area/10000
+                except Exception:
+                    try:
+                        from shapely.validation import make_valid
+                        ha=make_valid(t.geometry).intersection(make_valid(u)).area/10000
+                    except Exception:continue
                 if ha>0.005:ia.append({"kind":t["kind"],"name":str(t["name"]),"zone":str(t["zone"]),"ha":round(ha,2)})
         rec={"stands":stands,"adj":adj,"iadt":ia}
         if owners is not None:
