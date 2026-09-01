@@ -11,6 +11,12 @@ for q in Q:
         for res in d.get("resources",[])[:6]:
             print(f"     · {res.get('format','')} {res.get('url','')[:110]}")
 # sasniedzamības pārbaude no GitHub skrējēja
+# jaunais LVM ģeoserveris: WFS iespējas un slāņi
+for u in ["https://geoserver.lvmgeo.lv/wmsvector62531a9bfcfa4015856924e94076a179?service=WFS&request=GetCapabilities","https://geoserver.lvmgeo.lv/wmsvector62531a9bfcfa4015856924e94076a179?service=WMS&request=GetCapabilities","https://lvmgeoserver.lvm.lv/geoserver/publicwfs/ows?service=WFS&request=GetCapabilities"]:
+    try:
+        r=requests.get(u,timeout=30);t=r.text;print("\n== ",r.status_code,u[:80]);names=re.findall(r"<(?:wfs:)?Name>([^<]+)</(?:wfs:)?Name>|<Layer[^>]*>\s*<Name>([^<]+)</Name>",t)
+        print("   slāņi:",[a or b for a,b in names][:80]);print("   WFS:", "WFS_Capabilities" in t or "FeatureTypeList" in t)
+    except Exception as e:print("X  ",u[:80],type(e).__name__)
 for host in ["https://lvmgeo.lvm.lv/","https://gis.vmd.gov.lv/","https://gis.vmd.gov.lv/arcgis/rest/services?f=json","https://melioracija.lv/","https://geolatvija.lv/","https://karte.lad.gov.lv/","https://data.gov.lv/"]:
     try:r=requests.get(host,timeout=15);print("OK ",r.status_code,host)
     except Exception as e:print("X  ",host,type(e).__name__)
