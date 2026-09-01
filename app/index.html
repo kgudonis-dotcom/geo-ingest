@@ -88,6 +88,7 @@ tr.tot td{font-weight:700;border-top:2px solid var(--ink)}
   <button data-v="cirs">Cirsmas</button>
   <button data-v="mer">Mērījumi</button>
   <button data-v="val">Novērtējums</button>
+  <button data-v="docs">Dokumenti</button>
   <button data-v="cen">Cenas</button>
   <button data-v="set">Iestatījumi</button>
 </nav>
@@ -146,7 +147,7 @@ const ZEMES_VEIDI=["Mežaudze","Izcirtums","Lauce","Purvs","Cits"];
 /* ---------- VALODA ---------- */
 const RU={
 "Cirsmu vērtētājs":"Оценка лесосек","tiešsaistē":"онлайн","bezsaistē":"офлайн","gaida":"в очереди",
-"Objekti":"Объекты","Cirsmas":"Лесосеки","Mērījumi":"Замеры","Cenas":"Цены","Novērtējums":"Оценка","Īpašuma novērtējums:":"Оценка имения:","Zemes platību sadalījums":"Распределение площадей земли","Kategorija":"Категория","Pārdošanas €/ha":"Продажа €/га","Pirkuma €/ha":"Покупка €/га","Darījums un iegādes izmaksas":"Сделка и затраты на приобретение","Rezultāts":"Результат","Bruto peļņa":"Валовая прибыль","Prasītās cenas":"Запрашиваемые цены","Naudas plūsmas termiņi, dienas no līguma":"Сроки денежных потоков, дни от договора","Iestatījumi":"Настройки",
+"Objekti":"Объекты","Cirsmas":"Лесосеки","Mērījumi":"Замеры","Cenas":"Цены","Novērtējums":"Оценка","Dokumenti":"Документы","Īpašuma novērtējums:":"Оценка имения:","Zemes platību sadalījums":"Распределение площадей земли","Kategorija":"Категория","Pārdošanas €/ha":"Продажа €/га","Pirkuma €/ha":"Покупка €/га","Darījums un iegādes izmaksas":"Сделка и затраты на приобретение","Rezultāts":"Результат","Bruto peļņa":"Валовая прибыль","Prasītās cenas":"Запрашиваемые цены","Naudas plūsmas termiņi, dienas no līguma":"Сроки денежных потоков, дни от договора","Iestatījumi":"Настройки",
 "Apjoms":"Объём","Ieņēmumi":"Выручка","Max cena":"Макс. цена",
 "Importēt":"Импорт","+ Jauns objekts":"+ Новый объект","Nav objektu. Pievieno pirmo.":"Объектов нет. Добавьте первый.","(bez nosaukuma)":"(без названия)","cirsmas":"лесосек",
 "Īpašums":"Имение","Kadastrs":"Кадастр","Novads":"Край","ĪADT zona (Ozols, pēc kadastra nr.)":"Зона ООПТ (Ozols, по кадастровому №)","Robežojošie nogabali (pāri: 8-20; 24-25)":"Смежные выделы (пары: 8-20; 24-25)",
@@ -263,12 +264,12 @@ function renderInner(){updNet();const m=$("main");const p=P();
  if(!S.lang){m.innerHTML=vLangPick();$("totals").hidden=true;return;}document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.view));
  $("ttl").textContent=p&&S.view!=="obj"?(p.name||p.kadastrs||"Objekts"):"Cirsmu vērtētājs";
  const tot=$("totals");
- if(p&&["cirs","mer","val","dash"].includes(S.view)){const t=calcProp(p);tot.hidden=false;$("t-m3").textContent=fmt(t.m3)+" m³";$("t-rev").textContent=fmt(t.rev)+" €";$("t-max").textContent=fmt(t.max)+" €";}else tot.hidden=true;
- m.innerHTML={obj:vObj,cirs:vCirs,mer:vMer,cen:vCen,set:vSet,imp:vImp,val:vVal,dash:vDash,fund:vFund}[S.view]();
+ if(p&&["cirs","mer","val","dash","docs"].includes(S.view)){const t=calcProp(p);tot.hidden=false;$("t-m3").textContent=fmt(t.m3)+" m³";$("t-rev").textContent=fmt(t.rev)+" €";$("t-max").textContent=fmt(t.max)+" €";}else tot.hidden=true;
+ m.innerHTML={obj:vObj,cirs:vCirs,mer:vMer,cen:vCen,set:vSet,imp:vImp,val:vVal,dash:vDash,fund:vFund,docs:vDocs}[S.view]();
  if(S.view==="dash")setTimeout(mountMap,0);if(S.view==="fund")setTimeout(mountFundMap,0);
  translateNode(m);translateNode(document.getElementById("nav"));translateNode(document.getElementById("totals"));translateNode(document.querySelector("header"));
 }
-document.getElementById("nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(["dash","cirs","mer","val"].includes(b.dataset.v)&&!P()){if(!S.props.length){S.view="obj";toast("Vispirms pievieno vai importē objektu");save();return;}S.cur=S.props[0].id;}S.view=b.dataset.v;save();};
+document.getElementById("nav").onclick=e=>{const b=e.target.closest("button");if(!b)return;if(["dash","cirs","mer","val","docs"].includes(b.dataset.v)&&!P()){if(!S.props.length){S.view="obj";toast("Vispirms pievieno vai importē objektu");save();return;}S.cur=S.props[0].id;}S.view=b.dataset.v;save();};
 
 /* Objekti */
 const STATUS_COL={Jauns:"#e8eef8",Nopirkts:"#cfe8d5",Atteikts:"#f1d4d0",Pārdots:"#e3dcf5",Piedāvāts:"#fbe9c4",Vienošanās:"#f7e2c3"};
@@ -672,7 +673,7 @@ function reportHtml(p){const t=calcProp(p);const r=runChecks(p);const v=valOf(p)
  h+=`<h2>5. Kopsavilkums</h2><div class="grid"><div class="box"><div class="muted">Realizācija kopā</div><div class="big">${fmt(c.koksne+c.mezsSale+c.lizSale+c.krumSale)} €</div><div class="muted">koksne (max cena) ${fmt(c.koksne)} · meža zeme ${fmt(c.mezsSale)} · LIZ ${fmt(c.lizSale)} · krūmāji ${fmt(c.krumSale)}</div></div><div class="box"><div class="muted">Bruto peļņa</div><div class="big">${fmt(c.bruto)} € (${fmt(c.brutoPct*100)} %)</div></div><div class="box"><div class="muted">IRR</div><div class="big">${c.irr==null?"–":fmt(c.irr*100)+" %"}</div></div></div>
  <table style="margin-top:10px"><tr><th>Prasītā cena</th><th>Uzcenojums</th><th>€</th></tr><tr>${td("Cirsma (max cena)")}${td(Math.round(v.uzc.cirsma*100)+"%")}${td(fmt(c.prasCirsma))}</tr><tr>${td("NĪ (zeme un augošā biomasa)")}${td(Math.round(v.uzc.ni*100)+"%")}${td(fmt(c.prasNI))}</tr><tr class="tot">${td("NĪ + Cirsma")}${td(Math.round(v.uzc.kopa*100)+"%")}${td(fmt(c.prasKopa))}</tr></table>
  <p class="muted" style="margin-top:16px">Dati: VMD Meža valsts reģistra atvērtie dati un/vai Kadastra atskaite, lauka labojumi Mērījumos. Aprēķini pēc MK 935 (red. 21.08.2026). Preliminārs vērtējums, nav sertificēta vērtētāja atzinums.</p><button onclick="print()">Drukāt / PDF</button></body></html>`;return h;}
-function openReport(){const h=reportHtml(P());const w=window.open("about:blank");w.document.write(h);w.document.close();}
+
 
 
 /* ---------- PĀRSKATS (dashboard) ---------- */
@@ -821,7 +822,7 @@ function iesniegumsHtml(p){const o=S.settings.owner||{};const r=runChecks(p);con
  if(p.mer.some(m=>m.geom)){h+=`<div class="pb"><h1>Z/V kadastra numurs: ${esc(p.kadastrs)} · cirsmu izvietojums</h1>${planSvg(p,{w:900})}</div>`;
   p.cirsmas.forEach(c=>{const sk=skiceHtml(c);if(sk){const body=sk.replace(/^[\s\S]*<body>/,"").replace(/<button[\s\S]*$/,"").replace(/<\/body>[\s\S]*$/,"");h+=`<div class="pb">${body}</div>`;}});}
  return h+`<button onclick="print()">Drukāt / PDF</button></body></html>`;}
-function openIesniegums(){const p=P();if(!p.cirsmas.length)return toast("Nav cirsmu");const w=window.open("about:blank");w.document.write(iesniegumsHtml(p));w.document.close();}
+
 
 
 
@@ -899,6 +900,22 @@ function mountFundMap(){const el=document.getElementById("map");if(!el||typeof L
  MAP=L.map(el);L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri"}).addTo(MAP);fg.addTo(MAP);MAP.fitBounds(fg.getBounds(),{padding:[20,20]});}
 function exportFundXlsx(){const st=fundStats(S.props);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Objekts","Kadastrs","Statuss","ha","Mežs ha","Krāja m³","Cērtamais m³","Cirsmu vērtība €","NĪ vērtība €","IRR %","Cena €","Darījuma datums"],...st.objs.map(o=>[o.p.name,o.p.kadastrs,o.status,+o.ha.toFixed(2),+o.mez.toFixed(2),Math.round(o.kr),Math.round(o.cut),Math.round(o.max),Math.round(o.ni),o.irr==null?"":+(o.irr*100).toFixed(1),o.price||"",o.p.dealDate||""])]),"Fonds");XLSX.writeFile(wb,"NI_fonds.xlsx");}
 
+
+/* ---------- DOKUMENTI ---------- */
+function showDoc(html,title){let ov=document.getElementById("docov");if(!ov){ov=document.createElement("div");ov.id="docov";ov.style.cssText="position:fixed;inset:0;background:#fff;z-index:50;display:flex;flex-direction:column";document.body.appendChild(ov);}
+ ov.innerHTML=`<div style="display:flex;gap:8px;align-items:center;padding:8px 12px;background:var(--green);color:#fff"><b style="flex:1">${esc(title||"Dokuments")}</b><button class="btn sm sec" onclick="document.getElementById('docfr').contentWindow.print()">Drukāt / PDF</button><button class="btn sm sec" onclick="(function(){const w=window.open('about:blank');if(w){w.document.write(document.getElementById('docfr').srcdoc);w.document.close();}else toast('Pārlūks bloķē jaunu logu, lieto Drukāt')})()">Jaunā logā</button><button class="btn sm sec" onclick="document.getElementById('docov').remove()">Aizvērt</button></div><iframe id="docfr" style="flex:1;border:0;width:100%"></iframe>`;
+ document.getElementById("docfr").srcdoc=html;}
+function openSkice(cid){const c=C(cid);const h=skiceHtml(c);if(!h)return toast("Cirsmas nogabaliem nav ģeometrijas (izveido objektu no kadastra numura)");showDoc(h,"Skice: "+c.tips+" "+c.nogabali.replace(/;/g,", "));}
+function openReport(){showDoc(reportHtml(P()),"Vērtējuma atskaite");}
+function openIesniegums(){const p=P();if(!p.cirsmas.length)return toast("Nav cirsmu");showDoc(iesniegumsHtml(p),"Iesniegums koku ciršanai");}
+function izvietojumsHtml(p){if(!p.mer.some(m=>m.geom))return null;return `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:sans-serif;margin:20px}h2{text-align:center;font-size:15px}@media print{button{display:none}}</style></head><body><h2>Z/V kadastra numurs: ${esc(p.kadastrs)} · "${esc(p.name||"")}" cirsmu izvietojums</h2>${planSvg(p,{w:1000})}<p style="font-size:11px;color:#666">Krāsas = cirsmas, svītrotais = joslas. Pamats: VMD Meža valsts reģistra atvērtie dati.</p></body></html>`;}
+function vDocs(){const p=P();const geo=p.mer.some(m=>m.geom);let h=objSwitch();
+ h+=`<div class="card"><h2>Dokumenti: ${esc(p.name||p.kadastrs)}</h2><div class="muted">Katrs dokuments atveras šeit pat ar pogu "Drukāt / PDF". ${geo?"":"Skicēm un izvietojuma kartei vajag ģeometriju: izveido objektu no kadastra numura."}</div></div>`;
+ h+=`<div class="card"><h3>Vērtēšana</h3><div class="kv"><span>Vērtējuma atskaite (cirsmas, sortimenti, plāns, buferi, MK935, NĪ vērtība, IRR)</span><b><button class="btn sm" onclick="openReport()">Atvērt</button></b></div><div class="kv"><span>Excel (Kopsavilkums, Cirsmas, Sortimenti, Nogabali, Dastojums, Novērtējums, Buferjoslas)</span><b><button class="btn sm sec" onclick="exportXlsx()">Lejupielādēt</button></b></div><div class="kv"><span>CSV</span><b><button class="btn sm sec" onclick="exportProp()">Lejupielādēt</button></b></div></div>`;
+ h+=`<div class="card"><h3>VMD: ciršanas apliecinājums</h3><div class="kv"><span>Iesniegums koku ciršanai (veidlapa ar visām cirsmām + izvietojuma karte + skices)</span><b><button class="btn sm" ${p.cirsmas.length?"":"disabled"} onclick="openIesniegums()">Atvērt</button></b></div><div class="kv"><span>Cirsmu izvietojuma karte</span><b><button class="btn sm sec" ${geo?"":"disabled"} onclick="showDoc(izvietojumsHtml(P()),'Cirsmu izvietojums')">Atvērt</button></b></div>${p.cirsmas.map(c=>`<div class="kv"><span>Skice: ${esc(c.tips)} kv.${esc(c.kvartals)} nog. ${esc(c.nogabali.replace(/;/g,", "))} (${fmt(num(c.platiba),2)} ha)</span><b><button class="btn sm sec" ${geo?"":"disabled"} onclick="openSkice('${c.id}')">Atvērt</button></b></div>`).join("")||'<div class="muted">Nav cirsmu.</div>'}<div class="muted">Īpašnieka rekvizīti iesniegumam: Iestatījumi → Īpašnieks. Īpašuma nosaukums un inventarizācijas Nr.: objekta kartīte sadaļā Cirsmas.</div></div>`;
+ h+=`<div class="card"><h3>Drīzumā</h3><div class="muted">Līgumi no tavām veidnēm (cirsma uz celma, NĪ pirkums, abi, pilnvara), PVZ, grāmatvedības eksports (Jumis / Moneo).</div></div>`;
+ return h;}
+
 /* ---------- SKICES ---------- */
 function unionRings(mers){ // apvieno nogabalu ģeometrijas ar turf, atgriež LKS-92 gredzenu(s)
  const feats=mers.filter(m=>m.geom).map(m=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[m.geom]}}));
@@ -929,8 +946,7 @@ function skiceHtml(c){const p=P();const linked=p.mer.filter(m=>m.cirsma===c.id&&
  <p>Piezīmes: robežas no VMD Meža valsts reģistra atvērtajiem datiem. LKS-92 Latvia TM koordinātu sistēmā.<br>Cirtes veids: ${c.tips==="Kc"?"kailcirte":c.tips==="KKC"?"kopšanas cirte":esc(c.tips)}</p>
  <p>Apliecinu, ka cirsmas robeža apvidū ir zināma un zemes vienības robežzīmes un robežstigas apvidū ir ierīkotas un uzturētas atbilstoši normatīvajiem aktiem par zemes kadastrālo uzmērīšanu.</p>
  <p>Meža īpašnieks: ______________________________</p><button onclick="print()">Drukāt / PDF</button></body></html>`;}
-function openSkice(cid){const c=C(cid);const h=skiceHtml(c);if(!h)return toast("Cirsmas nogabaliem nav ģeometrijas (izveido objektu no kadastra numura)");
- const w=window.open("about:blank");w.document.write(h);w.document.close();}
+
 
 /* ---------- IMPORTS (Kadastra atskaite xlsx/csv vai inventarizācijas PDF) ---------- */
 const FIELDS=[["kadastrs","Kadastrs"],["kvartals","Kvartāls"],["nogabals","Nogabals"],["platiba","Platība ha"],["veids","Zemes veids"],["mezaTips","Meža tips"],["suga","Valdošā suga"],["sastavs","Sastāva formula"],["vecums","Vecums"],["D","Caurmērs D"],["H","Augstums H"],["G","Šķērslaukums G"],["kraja","Krāja m³"],["krajaHa","Krāja m³/ha"],["certamais","Cērtamais m³"],["sugukraja","Krāja pa sugām"],["cirsma","Cirsma (KC/KKC)"],["ierob","Ierobežojumi"],["invGads","Inv. gads"],["bon","Bonitāte"],["pedCirte","Pēd. cirte"],["pedCirteG","Pēd. cirtes gads"],["pedDarb","Pēd. darbība"],["pedDarbG","Pēd. darbības gads"]];
@@ -1191,7 +1207,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.21";
+const APP_VERSION="0.22";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
