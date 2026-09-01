@@ -14,9 +14,17 @@ def load_owners():
     """Lielo īpašnieku nogabali -> GeoDataFrame(owner, geometry) EPSG:3059 ar sindex. Nosaukums no resursa nosaukuma."""
     gs=[]
     try:
-        try:requests.head("https://lvmgeo.lvm.lv/",timeout=15)
-        except Exception as e:print("  lvmgeo.lvm.lv nav sasniedzams no šejienes, īpašniekus izlaiž:",e,flush=True);return None
-        for name,url in resources(OWNERS_DS):
+        # avots: Release "mirror" (spogulis no Latvijas); ja tā nav, mēģina lvmgeo tieši
+        srcs=[]
+        try:
+            rel=requests.get("https://api.github.com/repos/kgudonis-dotcom/geo-ingest/releases/tags/mirror",timeout=30).json()
+            srcs=[(a["name"].replace("_NOGABALI.zip","").replace("_"," "),a["browser_download_url"]) for a in rel.get("assets",[]) if a["name"].endswith("_NOGABALI.zip")]
+            print(f"  spogulis: {len(srcs)} īpašnieku faili",flush=True)
+        except Exception as e:print("  spogulis nav pieejams:",e,flush=True)
+        if not srcs:
+            try:requests.head("https://lvmgeo.lvm.lv/",timeout=15);srcs=resources(OWNERS_DS)
+            except Exception as e:print("  lvmgeo.lvm.lv nav sasniedzams, īpašniekus izlaiž",flush=True);return None
+        for name,url in srcs:
             owner=re.sub(r"\s*(meža\s+)?nogabali.*$","",name,flags=re.I).strip().strip('"“”')
             try:
                 for shp in load_zip(url):
