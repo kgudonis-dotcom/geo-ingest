@@ -29,5 +29,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // 4. Nodeva MK1250
  w.eval("valOf(P());P().val.pircejs='jur';P().val.pirkumaMan=true;P().val.pirkuma=111358;P().val.kadVert=0");
  ok(w.eval("valCalc(P()).nodevaVal")===2227.16,"Nodeva 2 % no 111 358 = 2227,16");
+ // 5. Koda sadaļu integritāte
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  console.log(fails?`\n${fails} FAIL`:"\nVISI TESTI OK");process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});
