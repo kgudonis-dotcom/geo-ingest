@@ -38,6 +38,10 @@ jobs:
         with: {python-version: "3.12"}
       - uses: actions/download-artifact@v4
         with: {path: artifacts}
+      - name: Esošie pagastu faili no data zara (papildina, nevis pārraksta)
+        run: |
+          git fetch origin data:data 2>/dev/null && mkdir -p artifacts/existing && git --work-tree=artifacts/existing checkout data -- pagasti 2>/dev/null || true
+          git checkout main -- . 2>/dev/null || true
       - run: |
           python merge_pagasti.py 2>&1 | tee -a merged.log
           ls pagasti/*.json.gz >/dev/null 2>&1 || { echo "TUKŠS REZULTĀTS, datu zaru neaiztiek" | tee -a merged.log; echo "SKIP=1" >> $GITHUB_ENV; }
