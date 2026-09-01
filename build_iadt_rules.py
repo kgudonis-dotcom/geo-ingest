@@ -5,7 +5,7 @@ import re, json, os, time, html, requests, datetime
 H={"User-Agent":"Mozilla/5.0 (ff-forest geo-ingest)"}
 LIST="https://m.likumi.lv/saistitie.php?id=59994&saistitie_id=rev-933"
 def get(u):
-    r=requests.get(u,headers=H,timeout=60);r.raise_for_status();return r.text
+    r=requests.get(u,headers=H,timeout=60);r.raise_for_status();r.encoding="utf-8";return r.text
 def clean(t):
     t=re.sub(r"<script.*?</script>|<style.*?</style>","",t,flags=re.S);t=re.sub(r"<[^>]+>"," ",t);t=html.unescape(t);return re.sub(r"[ \t\r]+"," ",t)
 def links():
