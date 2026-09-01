@@ -261,6 +261,7 @@ setInterval(sync,60000);
 const $=id=>document.getElementById(id);
 function render(){try{renderInner();}catch(e){console.error(e);$("main").innerHTML=`<div class="card"><b class="pctbad">Kļūda attēlojot sadaļu:</b> ${esc(e.message)}<div style="margin-top:8px"><button class="btn sm sec" onclick="S.view='obj';S.cur=null;save()">Uz objektiem</button> <button class="btn sm sec" onclick="exportJSON()">Saglabāt datu kopiju</button></div></div>`;}}
 function renderInner(){updNet();const m=$("main");const p=P();
+ if(p&&!p.geoTried&&!p.mer.some(x=>x.geom)&&p.mer.length&&String(p.kadastrs||"").replace(/\D/g,"").length===11&&navigator.onLine){p.geoTried=true;setTimeout(()=>attachGeometry(p.id).catch(e=>console.warn(e)),100);}
  if(!S.lang){m.innerHTML=vLangPick();$("totals").hidden=true;return;}document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.v===S.view));
  $("ttl").textContent=p&&S.view!=="obj"?(p.name||p.kadastrs||"Objekts"):"Cirsmu vērtētājs";
  const tot=$("totals");
@@ -619,6 +620,7 @@ function buildFromGeo(kad,items,extra){const p=newProp();p.kadastrs=kad;p.name="
   if(!groups[key]){const c=newCirsma();c.tips=code;c.kvartals=m.kvartals;c.nogabali="";groups[key]=c;}
   groups[key].nogabali+=(groups[key].nogabali?";":"")+m.nogabals;m.cirsma=groups[key].id;}
  p.cirsmas=Object.values(groups);S.props.unshift(p);S.cur=p.id;for(const c of p.cirsmas)rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));
+ if(String(p.kadastrs||"").replace(/\D/g,"").length===11)setTimeout(()=>attachGeometry(p.id).catch(e=>console.warn(e)),50);
  p.priceSnap={date:new Date().toISOString().slice(0,10),prices:JSON.parse(JSON.stringify(S.prices)),costM3:S.settings.costM3};logIt(p,"izveidots no VMD datiem ("+p.mer.length+" nogabali)");S.cur=p.id;setStatus(p,"Jauns");
  S.view="dash";save(p.id);toast(`${p.mer.length} nogabali no VMD, ${p.cirsmas.length} cirsmas`);}
 
@@ -1226,7 +1228,7 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
-const APP_VERSION="0.23";
+const APP_VERSION="0.24";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
   const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
