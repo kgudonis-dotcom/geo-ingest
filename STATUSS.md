@@ -42,9 +42,10 @@ Atjaunots: 2026-09-02 (LAD bloki rindā, talons atjaunots). Šis fails ir vienī
 - VZD eksplikācijas datu kopa Supabase ķēdē (ingest.py) mainīja formātu no CSV uz XML un datu kopas ID; labots atsevišķi (parses parcel.zip, filtrē pārējos šīs datu kopas resursus).
 
 ## 3. Rit / gaida
-- OSM ceļi un grāvji pa pagastiem (build-infra): kļūda labota, jāpalaiž vēlreiz (pirmajā reizē 79 pagasti).
+- data zara publicēšana (#43): kopīgs publicētājs ieviests, iadt/infra/pagasti nu ir vienlaikus data zarā. Atlicis: publicēšana atsevišķā job, lai būves neblokē cita citu.
+- Pagastu pilnā pārbūve ar LAD un VZD expl laukiem (#41, #18): smoke tests OK (228 pagasti svaigi), pilnā būve palaista 02.09.
 - LVM īpašnieki un ceļi: LVM dati nav atjaunoti kiberuzbrukuma dēļ; būve ņem no Release "mirror", kad būs faili (spoguļa skripts gatavs, vai ar roku no LVM GEO platformas).
-- VZD eksplikācija: skripts gatavs, jāpalaiž atkārtoti.
+
 - Aizsargjoslas (#39): dzinējs un platumi ar 37.p. atsaucēm gatavi, MK 397 kategorijas reģistrētajām ūdenstecēm. Atlicis: neregistrētām ūdenstecēm nomainīt regex uz minimālo likuma kategoriju + brīdinājums, regresijas tests ar zināmiem datiem, ATIS, LĢIA hidrogrāfija, purvu klasifikācija.
 - ĪADT individuālie noteikumi (#40, #42): Rāzna, GNP, Daugavas loki, Veclaicene ir rokas noteikumos ar MK numuru (Rāznas divām zonām trūkst tiešas panta atsauces piezīmēs — atsevišķs, nelabots datu trūkums). #42 izmeklēts un labots: iadt.yml savs publicēšanas solis 01.09. faktiski nostrādāja (git push apstiprināts logā), bet 21 min vēlāk infra.yml (un tāpat aplieci.yml/remerge.yml) pārraksta visu data zaru ar orphan force-push, kuru checkout saraksts neietver iadt/ — tāpēc tas pazuda; šis ir starp-workflow trūkums, ko nevar pilnībā novērst tikai iadt.yml (nepieciešams papildināt pārējo publicētāju checkout sarakstus, ārpus #42 robežām). iadt.yml tagad beidzas ar kļūdu, ja rules.json nav izveidots/tukšs vai push/publicēšana neizdodas; build_iadt_rules.py publicē tikai spēkā esošos noteikumus (zaudējušos izraksta logā atsevišķi); tests/regress.js 4c pārbauda iadtRulesFor (rokas, auto, zaudējis).
 
