@@ -1,8 +1,10 @@
-"""Sagriež VMD nogabalus pa pagastiem (kadastra apz. pirmie 4 cipari) statiskos failos ar iepriekš izrēķinātiem kaimiņiem un ĪADT.
-Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","zv":{kadastrs:{"stands":[...],"adj":[[i,j,len_m]],"iadt":[...]}}}"""
-import os, io, re, json, gzip, zipfile, tempfile, argparse, requests, datetime
+"""Sagriež VMD nogabalus pa pagastiem (kadastra apz. pirmie 4 cipari) statiskos failos ar iepriekš izrēķinātiem kaimiņiem, ĪADT, LAD lauku blokiem un VZD eksplikāciju.
+Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","ladSig":{"n","maxdate"},"zv":{kadastrs:{"stands":[...],"adj":[[i,j,len_m]],"iadt":[...],"lad":{"ha","blocks":[...]},"expl":{"liz","krum","mezs",...}}}}"""
+import os, io, re, json, gzip, zipfile, tempfile, argparse, requests, datetime, time
+import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 import geopandas as gpd, pandas as pd
-from shapely.geometry import mapping
+from shapely.geometry import mapping, shape
 from shapely.ops import unary_union
 
 CKAN="https://data.gov.lv/dati/api/3/action/package_show?id="
@@ -72,7 +74,88 @@ def load_iadt():
     if not gs:return None
     out=gpd.GeoDataFrame(pd.concat(gs,ignore_index=True),crs=3059);out.sindex;return out
 
-def process_shp(shp,iadt,store,owners=None,zvgeo=None):
+# LAD lauku bloki: karte.lad.gov.lv ArcGIS REST (STATUSS.md 6. sadaļa: sasniedzams no GitHub runneriem). Nav atbalsttiesīgās platības lauka, tikai BLOCK_AREA/BLOCK_NUMBER.
+LAD_QUERY="https://karte.lad.gov.lv/arcgis/rest/services/lauku_bloki/MapServer/0/query"
+def lad_get(params,tries=3):
+    for i in range(tries):
+        try:
+            r=requests.get(LAD_QUERY,params=params,timeout=(15,90))
+            if r.ok:return r.json()
+        except Exception:
+            if i==tries-1:raise
+        time.sleep(2*(i+1))
+    raise RuntimeError("LAD karte.lad.gov.lv nesasniedzama")
+def lad_bbox(geoms):
+    xs=[g.bounds for g in geoms.values()]
+    return "%.1f,%.1f,%.1f,%.1f"%(min(x[0] for x in xs)-50,min(x[1] for x in xs)-50,max(x[2] for x in xs)+50,max(x[3] for x in xs)+50)
+def lad_signature(bbox):
+    """Lēts paraksts (bloku skaits + jaunākais VALID_FROM) pagasta bbox'am, lai atpazītu, ka LAD dati nav mainījušies kopš pēdējās būves."""
+    d=lad_get({"where":"1=1","geometry":bbox,"geometryType":"esriGeometryEnvelope","inSR":3059,"spatialRel":"esriSpatialRelIntersects",
+               "outStatistics":json.dumps([{"statisticType":"count","onStatisticField":"OBJECTID","outStatisticFieldName":"n"},
+                                            {"statisticType":"max","onStatisticField":"VALID_FROM","outStatisticFieldName":"maxdate"}]),"f":"json"})
+    a={k.lower():v for k,v in (d.get("features") or [{}])[0].get("attributes",{}).items()}
+    return {"n":a.get("n",0),"maxdate":a.get("maxdate")}
+def lad_fetch(bbox):
+    """Visi LAD lauku bloki bbox'am (lapots pa 2000, resultOffset), GeoDataFrame EPSG:3059 ar block,geometry."""
+    feats=[];offset=0
+    while True:
+        d=lad_get({"where":"1=1","geometry":bbox,"geometryType":"esriGeometryEnvelope","inSR":3059,"outSR":3059,
+                   "spatialRel":"esriSpatialRelIntersects","outFields":"BLOCK_NUMBER","resultOffset":offset,
+                   "resultRecordCount":2000,"returnGeometry":"true","f":"geojson"})
+        fs=d.get("features",[]);feats+=fs
+        if len(fs)<2000:break
+        offset+=len(fs)
+    if not feats:return None
+    g=gpd.GeoDataFrame({"block":[f["properties"]["BLOCK_NUMBER"] for f in feats]},
+                        geometry=[shape(f["geometry"]) for f in feats],crs=3059)
+    g["geometry"]=g.geometry.buffer(0);g.sindex;return g
+def lad_for_pagasts(geoms,oldSig):
+    """LAD bloku ∩ ZV pagastam -> (paraksts,{kadastrs:{ha,blocks}},vai_atjaunots). Ja paraksts sakrīt ar iepriekšējo, ģeometrijas vaicājumu izlaiž (nemainīts, nepārbūvē)."""
+    bbox=lad_bbox(geoms);sig=lad_signature(bbox)
+    if oldSig and sig==oldSig:return sig,{},False
+    blocks=lad_fetch(bbox);per_zv={}
+    if blocks is not None and len(blocks):
+        for kad,g in geoms.items():
+            ha=0;bl=set()
+            for i in blocks.sindex.query(g,predicate="intersects"):
+                t=blocks.iloc[i]
+                try:a=t.geometry.intersection(g).area/10000
+                except Exception:continue
+                if a>0.005:ha+=a;bl.add(t.block)
+            if ha>0.005:per_zv[kad]={"ha":round(ha,2),"blocks":sorted(bl)}
+    return sig,per_zv,True
+
+# VZD zemes vienību lietošanas mērķu eksplikācija (m2 -> ha), datu kopa "kadastra-informacijas-sistemas-atvertie-dati", resurss parcel.zip (XML)
+EXPL_NS="{http://ivis.eps.gov.lv/XMLSchemas/100007/CadastreRegistry/v1-0}"
+EXPL_FIELDS=[("AgricultTotal","liz"),("Bushes","krum"),("Forest","mezs"),("Swamp","purvs"),("UnderWaterTotal","udens"),
+             ("UnderBuildings","ekas"),("UnderRoads","celi"),("OtherLand","cita"),("Drained","meliorets")]
+def load_expl():
+    """{kadastrs:{liz,krum,mezs,purvs,udens,ekas,celi,cita,meliorets}} ha, summēts pa visiem ZV lietošanas mērķiem."""
+    out={}
+    try:
+        for name,url in resources("kadastra-informacijas-sistemas-atvertie-dati"):
+            if not url.lower().endswith("parcel.zip"):continue
+            print("  lejupielādē",url,flush=True)
+            b=requests.get(url,timeout=(20,1800)).content
+            with zipfile.ZipFile(io.BytesIO(b)) as z:
+                for n in [n for n in z.namelist() if n.lower().endswith(".xml")]:
+                    with z.open(n) as f:
+                        for _,el in ET.iterparse(f,events=("end",)):
+                            if el.tag==EXPL_NS+"ParcelItemData":
+                                kad=(el.findtext(EXPL_NS+"ParcelBasicData/"+EXPL_NS+"ParcelCadastreNr") or "").strip()
+                                if len(kad)==11:
+                                    agg={}
+                                    for lp in el.iter(EXPL_NS+"LandPurposeExplicationData"):
+                                        for tag,key in EXPL_FIELDS:
+                                            v=lp.findtext(EXPL_NS+tag)
+                                            if v:agg[key]=agg.get(key,0)+float(v)/10000
+                                    if agg:out[kad]={k:round(v,2) for k,v in agg.items()}
+                                el.clear()
+                    print(f"  {n.split('/')[-1]}: kopā {len(out)} ZV ar eksplikāciju",flush=True)
+    except Exception as e:print("VZD eksplikācija neizdevās:",e,flush=True)
+    return out
+
+def process_shp(shp,iadt,store,owners=None,zvgeo=None,expl=None):
     g=gpd.read_file(shp);g=g.set_crs(3059) if g.crs is None else g.to_crs(3059)
     cols={c.lower():c for c in g.columns};g=g[g.geometry.notna()]
     g["geometry"]=g.geometry.simplify(1.0,preserve_topology=True).buffer(0)
@@ -126,6 +209,7 @@ def process_shp(shp,iadt,store,owners=None,zvgeo=None):
                     except Exception:continue
                 if ha>0.005:ia.append({"kind":t["kind"],"name":str(t["name"]),"zone":str(t["zone"]),"ha":round(ha,2)})
         rec={"stands":stands,"adj":adj,"iadt":ia}
+        if expl is not None and kad in expl:rec["expl"]=expl[kad]
         if owners is not None:
             own=[]
             for i in owners.sindex.query(u,predicate="intersects"):
@@ -178,24 +262,49 @@ def neighbours(zv,zvgeo,owners):
                 if o not in found or d<found[o]["dist_m"]:found.setdefault(o,{"owner":o,"hops":None,"kad":None,"dist_m":d})["dist_m"]=min(d,found[o]["dist_m"]) if o in found else d
         rec["lielie"]=sorted(found.values(),key=lambda x:(x["hops"] or 9,x["dist_m"]))
 
-def flush(store,zvgeo=None,owners=None):
+def flush(store,zvgeo=None,owners=None,lad=True):
     os.makedirs(OUT,exist_ok=True)
     if zvgeo:
         for pg,zv in store.items():neighbours(zv,zvgeo.get(pg,{}),owners)
-    for pg,zv in store.items():
-        path=f"{OUT}/{pg}.json.gz";old={}
+    old={};oldSig={}
+    for pg in store:
+        path=f"{OUT}/{pg}.json.gz"
         if os.path.exists(path):
-            with gzip.open(path,"rt",encoding="utf-8") as f:old=json.load(f).get("zv",{})
+            with gzip.open(path,"rt",encoding="utf-8") as f:d=json.load(f)
+            old[pg]=d.get("zv",{});oldSig[pg]=d.get("ladSig")
+        else:old[pg]={};oldSig[pg]=None
+    newSig={}
+    if lad and zvgeo:
+        with ThreadPoolExecutor(max_workers=4) as ex:
+            futs={pg:ex.submit(lad_for_pagasts,zvgeo[pg],oldSig.get(pg)) for pg in store if zvgeo.get(pg)}
+            for pg,fut in futs.items():
+                try:
+                    sig,per_zv,changed=fut.result();newSig[pg]=sig
+                    if changed:
+                        for k,v in per_zv.items():
+                            if k in store[pg]:store[pg][k]["lad"]=v
+                except Exception as e:print("  LAD bloki neizdevās",pg,e,flush=True)
+    for pg,zv in store.items():
+        o=old.get(pg,{})
         for k,v in zv.items():
-            if k in old and "lielie" in old[k] and "lielie" not in v:v["lielie"]=old[k]["lielie"];v["kaimini"]=old[k].get("kaimini",[])
-        old.update(zv)
-        with gzip.open(path,"wt",encoding="utf-8") as f:json.dump({"pagasts":pg,"updated":datetime.date.today().isoformat(),"zv":old},f,ensure_ascii=False,separators=(",",":"))
+            if k in o and "lielie" in o[k] and "lielie" not in v:v["lielie"]=o[k]["lielie"];v["kaimini"]=o[k].get("kaimini",[])
+            if k in o and "lad" in o[k] and "lad" not in v:v["lad"]=o[k]["lad"]
+        o.update(zv)
+        path=f"{OUT}/{pg}.json.gz"
+        payload={"pagasts":pg,"updated":datetime.date.today().isoformat(),"zv":o}
+        sig=newSig.get(pg,oldSig.get(pg))
+        if sig:payload["ladSig"]=sig
+        with gzip.open(path,"wt",encoding="utf-8") as f:json.dump(payload,f,ensure_ascii=False,separators=(",",":"))
     store.clear()
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true");ap.add_argument("--no-iadt",action="store_true");ap.add_argument("--no-owners",action="store_true");ap.add_argument("--index",type=int,default=-1);a=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true")
+    ap.add_argument("--no-iadt",action="store_true");ap.add_argument("--no-owners",action="store_true")
+    ap.add_argument("--no-lad",action="store_true");ap.add_argument("--no-expl",action="store_true")
+    ap.add_argument("--index",type=int,default=-1);a=ap.parse_args()
     iadt=None if a.no_iadt else load_iadt()
     owners=None if a.no_owners else load_owners()
+    expl=None if a.no_expl else load_expl()
     res=resources("meza-valsts-registra-meza-dati")
     if a.index>=0:
         if a.index>=len(res):print("index ārpus saraksta, nav darba");return
@@ -204,7 +313,7 @@ def main():
         if a.filter and a.filter.lower() not in (name+url).lower():continue
         store={};zvgeo={}
         for shp in load_zip(url):
-            process_shp(shp,iadt,store,owners,zvgeo);flush(store,zvgeo,owners);zvgeo={}
+            process_shp(shp,iadt,store,owners,zvgeo,expl);flush(store,zvgeo,owners,not a.no_lad);zvgeo={}
         if a.first:break
     n=len(os.listdir(OUT));sz=sum(os.path.getsize(f"{OUT}/{f}") for f in os.listdir(OUT))/1e6
     print(f"gatavs: {n} pagastu faili, {sz:.0f} MB",flush=True)

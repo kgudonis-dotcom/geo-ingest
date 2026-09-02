@@ -43,6 +43,14 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(w.eval("priceSnapNow().land.buy.kcW")===2450&&w.eval("priceSnapStale({prices:S.prices,land:priceSnapNow().land})")===false&&w.eval("priceSnapStale({prices:S.prices,land:{koef:.65,sale:{},buy:{}}})")===true&&w.eval("priceSnapStale({prices:S.prices})")===false,"Cenu momentuzņēmums ietver zemes cenas un atpazīst to izmaiņas");
  w.eval("setLandPrice('kcW','buy','1900');setLandPrice('kcW','sale','');setLandPrice(null,'koef',null)");
  ok(w.eval("S.valBuy.kcW")===1900&&w.eval("S.valSale.kcW")===undefined&&w.eval("S.valKoef")===undefined&&w.eval("landPrices().by.kcW.sale")===3500&&w.eval("landPrices().by.jPEBs.buy")===2730,"setLandPrice: teksts → skaitlis; tukšs lauks → noklusējums / auto (kcW 3500, jPEBs 4200 × 0,65 = 2730)");
+ // 4b. LAD lauku bloki (liz_block_ha) un VZD eksplikācija -> auto "LIZ blokā"/"LIZ parasts" (v0.36)
+ ok(w.eval("P().lad")===null&&w.eval("P().expl")===null,"70420080041: pašreizējā pagastu failā vēl nav LAD/expl (vecs fails, bez kļūdas)");
+ ok(w.eval("valCalc(P()).rows.find(r=>r.k==='lizB').ha")===0&&w.eval("valCalc(P()).rows.find(r=>r.k==='lizP').ha")===0,"LIZ blokā/parasts = 0 (tukšs), kamēr avota datu nav; Novērtējuma zemes summa nemainās");
+ w.eval("P().lad={ha:8.5,blocks:['61234-11111','61234-22222']};P().expl={liz:12,mezs:20}");
+ const liz=w.eval("JSON.stringify({b:valCalc(P()).rows.find(r=>r.k==='lizB'),p:valCalc(P()).rows.find(r=>r.k==='lizP')})");
+ ok(liz==='{"b":{"k":"lizB","l":"LIZ blokā","ha":8.5,"sale":2500,"buy":1625,"saleSum":21250,"buySum":13813},"p":{"k":"lizP","l":"LIZ parasts","ha":3.5,"sale":2000,"buy":1300,"saleSum":7000,"buySum":4550}}',"LIZ blokā 8,5 ha (LAD) + LIZ parasts 3,5 ha (VZD LIZ 12 − 8,5) (got "+liz+")");
+ w.eval("P().lad={ha:20,blocks:['x']};P().expl={liz:12}");
+ ok(w.eval("valCalc(P()).rows.find(r=>r.k==='lizB').ha")===20&&w.eval("valCalc(P()).rows.find(r=>r.k==='lizP').ha")===0,"LIZ parasts nekad negatīvs: bloks 20 ha > VZD LIZ 12 ha -> lizB=20, lizP=0");
  // 5. Koda sadaļu integritāte
  const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");

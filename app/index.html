@@ -161,6 +161,7 @@ const ZEMES_VEIDI=["Mežaudze","Izcirtums","Lauce","Purvs","Cits"];
 /* ---------- VALODA ---------- */
 const RU={
 "Cirsmu vērtētājs":"Оценка лесосек","tiešsaistē":"онлайн","bezsaistē":"офлайн","gaida":"в очереди",
+"LAD bloki":"Блоки LAD",
 "Objekti":"Объекты","Cirsmas":"Лесосеки","Mērījumi":"Замеры","Cenas":"Цены","Novērtējums":"Оценка","Dokumenti":"Документы","Īpašuma novērtējums:":"Оценка имения:","Zemes platību sadalījums":"Распределение площадей земли","Kategorija":"Категория","Pārdošanas €/ha":"Продажа €/га","Pirkuma €/ha":"Покупка €/га","Zemes cenas €/ha (kopīgas visiem objektiem)":"Цены земли €/га (общие для всех объектов)","Peļņa %":"Прибыль %","Zemes platību sadalījums (eksplikācija)":"Распределение площадей земли (экспликация)","sadaļā Cenas":"в разделе Цены","Darījums un iegādes izmaksas":"Сделка и затраты на приобретение","Rezultāts":"Результат","Bruto peļņa":"Валовая прибыль","Prasītās cenas":"Запрашиваемые цены","Naudas plūsmas termiņi, dienas no līguma":"Сроки денежных потоков, дни от договора","Iestatījumi":"Настройки",
 "Apjoms":"Объём","Ieņēmumi":"Выручка","Max cena":"Макс. цена",
 "Importēt":"Импорт","+ Jauns objekts":"+ Новый объект","Nav objektu. Pievieno pirmo.":"Объектов нет. Добавьте первый.","(bez nosaukuma)":"(без названия)","cirsmas":"лесосек",
@@ -196,6 +197,7 @@ const RU_LONG={
 "Pārdošanas un pirkuma cenas €/ha un peļņa % ir kopīgas visiem objektiem:":"Цены продажи и покупки €/га и прибыль % общие для всех объектов:",
 "Pirkuma €/ha = pārdošanas €/ha × (1 − peļņa %). Pirkuma cenu var arī pārrakstīt tabulā (dzeltens = labots ar roku, \"auto\" vai tukšs lauks atgriež). Platības (ha) katram objektam ir sadaļā Novērtējums.":"Покупка €/га = продажа €/га × (1 − прибыль %). Цену покупки можно также переписать в таблице (жёлтый = изменено вручную, «auto» или пустое поле возвращает). Площади (га) каждого объекта — в разделе Оценка.",
 "Zemes pirkuma summa (Darījums)":"Сумма покупки земли (Сделка)","pārdošanas summa (Realizācija)":"сумма продажи (Реализация)",
+"ha aizpildās no nogabaliem (Jaunaudze / KC / Nākotnes × sauss / slapjš, PEB = P, E, B; Nevērtīgā = purvāji, lauces, bebru appludinājumi u.c.). Labotie lauki (dzelteni) netiek pārrakstīti, \"auto\" atgriež. LIZ blokā = LAD lauku bloku pārklājums, LIZ parasts = VZD LIZ kopā mīnus LIZ blokā; ja avota dati trūkst (vecs pagastu fails), rindas paliek tukšas — ievadi ar roku.":"Га заполняются из выделов (молодняк / KC / будущий лес × сухие / влажные, PEB = сосна, ель, берёза; малоценные = болота, поляны, затопления бобрами и т.д.). Отредактированные вручную поля (жёлтые) не перезаписываются, «auto» возвращает автоматическое значение. ЛИЗ в блоке = покрытие блоками LAD, ЛИЗ обычная = ЛИЗ по ВЗД всего минус ЛИЗ в блоке; если исходных данных нет (старый файл пагаста), строки остаются пустыми — вводи вручную.",
 "ĪADT / Natura 2000 statuss un funkcionālā zona Ozolā pēc kadastra nr. Ja ĪADT, individuālie MK noteikumi aizstāj vispārējos limitus.":"Статус ООПТ / Natura 2000 и функциональная зона в Ozols по кадастровому №. Если ООПТ, индивидуальные правила КМ заменяют общие лимиты.",
 "Inventarizācija visos nogabalos jaunāka par 20 gadiem.":"Инвентаризация во всех выделах моложе 20 лет.",
 "Platības limits un joslas attiecas uz savām cirsmām vienā zemes vienībā; kaimiņu īpašnieku izcirtumi un savas blakus zemes vienības limitu neietekmē. Blakus savai atjaunotajai audzei jābūt vismaz 3 g vecai (MK935 20.p.); jūras joslā un atsevišķās ĪADT 10 g skujkokiem / 5 g lapkokiem.":"Ландшафтные дороги в терплане края: прилегающие выделы можно рубить только через 10 лет (хвойные) / 5 лет (лиственные) после предыдущей СР и после возобновления.",
@@ -463,6 +465,8 @@ function valAutoHa(p){const out=Object.fromEntries(VAL_ROWS.map(r=>[r[0],0]));
   if(m.cirsmaKods==="KKC"){out[wet?"naW":"naS"]+=ha;continue;}
   if(!m.suga&&!num(m.krajaImp)){out.nev+=ha;continue;}
   const peb=PEB.includes(m.suga);out[peb?(wet?"jPEBw":"jPEBs"):(wet?"jPARw":"jPARs")]+=ha;}
+ if(p.lad)out.lizB=num(p.lad.ha); // LAD lauku bloku ∩ ZV
+ if(p.expl)out.lizP=Math.max(0,num(p.expl.liz)-out.lizB); // VZD LIZ kopā mīnus LIZ blokā
  for(const k in out)out[k]=+out[k].toFixed(2);return out;}
 function valOf(p){if(!p.val)p.val=newVal();const v=p.val;const auto=valAutoHa(p);
  for(const [k] of VAL_ROWS)if(!v.haMan[k])v.ha[k]=auto[k];
@@ -512,7 +516,7 @@ function vVal(){const p=P();const v=valOf(p);const c=valCalc(p);const t=calcProp
  for(const r of c.rows){const man=v.haMan[r.k];
   h+=`<tr><td style="text-align:left">${esc(r.l)}</td><td><input type="number" inputmode="decimal" step="0.01" value="${r.ha||""}" onchange="vha('${r.k}',this.value)" style="${man?"border-color:var(--amber)":""}"></td><td>${man?`<button class="btn sm sec" onclick="vhaAuto('${r.k}')">auto</button>`:""}</td></tr>`;}
  h+=`<tr class="tot"><td>KOPĀ</td><td>${fmt(c.blokHa,2)}</td><td></td></tr></table>
- <div class="muted">ha aizpildās no nogabaliem (Jaunaudze / KC / Nākotnes × sauss / slapjš, PEB = P, E, B; Nevērtīgā = purvāji, lauces, bebru appludinājumi u.c.). Labotie lauki (dzelteni) netiek pārrakstīti, "auto" atgriež. <b>LIZ un Krūmāji</b>: ievadi no VZD reģistrētajām platībām (kadastrs.lv vai LVM GEO "Reģistrētā LIZ platība"), kamēr VZD eksplikācija nav automātiska.</div>
+ <div class="muted">ha aizpildās no nogabaliem (Jaunaudze / KC / Nākotnes × sauss / slapjš, PEB = P, E, B; Nevērtīgā = purvāji, lauces, bebru appludinājumi u.c.). Labotie lauki (dzelteni) netiek pārrakstīti, "auto" atgriež. LIZ blokā = LAD lauku bloku pārklājums, LIZ parasts = VZD LIZ kopā mīnus LIZ blokā; ja avota dati trūkst (vecs pagastu fails), rindas paliek tukšas — ievadi ar roku.</div>
  <div class="muted">Pārdošanas un pirkuma cenas €/ha un peļņa % ir kopīgas visiem objektiem: <a href="#" onclick="S.view='cen';save();return false">sadaļā Cenas</a>. <span>Zemes pirkuma summa (Darījums)</span> <b>${fmt(c.buySum)} €</b>, <span>pārdošanas summa (Realizācija)</span> <b>${fmt(c.mezsSale+c.lizSale+c.krumSale)} €</b>.</div>
  <div class="kv"><span>Pārbaude: taksācija kopā</span><b>${fmt(c.taksHa,2)} ha</b></div><div class="kv"><span>Mežs + Nevērtīgā</span><b>${fmt(c.mezsHa,2)} + ${fmt(c.nevHa,2)} ha</b></div><div class="kv"><span>Zemes bloks / Reģistrētā</span><b class="${v.regHa&&Math.abs(c.blokHa-v.regHa)>0.1?"pctbad":""}">${fmt(c.blokHa,2)} / ${fmt(num(v.regHa),2)} ha ${v.regHa?(Math.abs(c.blokHa-v.regHa)>0.1?"neatpazīts "+fmt(v.regHa-c.blokHa,2)+" ha":"✓"):""}</b></div></div>`;
  const m3=c.m3||0;
@@ -551,7 +555,7 @@ function pagastsToExtra(kad,zvd){const st=zvd.stands;const key=x=>String(x.kv??"
  const items=st.map(x=>{const props={kvartals:x.kv,nogabals:x.nog,anog:x.anog,platiba_ha:x.plat};for(const k in x)if(!["kv","nog","anog","plat","geom"].includes(k))props[k]=x[k];return {props,geom:{type:"Polygon",coordinates:[x.geom]}};});
  const adjacency=(zvd.adj||[]).map(([i,j,L])=>({a:key(st[i]),b:key(st[j]),len_m:L}));
  const protectedL=(zvd.iadt||[]).map(x=>({kind:x.kind,name:x.name,zone:x.zone,overlap_ha:x.ha}));
- return {items,extra:{adjacency,protected:protectedL,expl:zvd.expl||[],kaimZV:zvd.kaimini||[],lielie:zvd.lielie||[],owners:zvd.owners||[]}};}
+ return {items,extra:{adjacency,protected:protectedL,lad:zvd.lad||null,expl:zvd.expl||null,kaimZV:zvd.kaimini||[],lielie:zvd.lielie||[],owners:zvd.owners||[]}};}
 async function createFromPagasts(kad){toast("Ielādē pagasta "+kad.slice(0,4)+" datus...");
  const data=await loadPagasts(kad.slice(0,4));const zvd=data.zv&&data.zv[kad];
  if(!zvd)throw new Error("Kadastrs "+kad+" pagasta failā nav (fails: "+(data.updated||"?")+")");
@@ -739,12 +743,7 @@ function buildFromGeo(kad,items,extra){const p=newProp();p.kadastrs=kad;p.name="
  if(extra&&extra.adjacency&&extra.adjacency.length){const one=new Set(p.mer.map(m=>m.kvartals)).size===1;
   p.kaimini=extra.adjacency.map(x=>{const f=t=>one?t.split("-").slice(1).join("."):t.replace("-","/");return f(x.a)+"-"+f(x.b)+":"+x.len_m;}).join("; ");}
 
- if(extra&&extra.expl&&extra.expl.length){valOf(p);const N={"01":"liz","02":"liz","03":"liz","04":"liz","05":"krum","06":"nev","07":"nev","08":"nev","09":"nev","11":"nev","13":"nev","14":"nev","15":"nev","16":"nev"};
-  let liz=0,krum=0,nevX=0;for(const e of extra.expl){const g=N[String(e.nilm).padStart(4,"0").slice(0,2)];const ha=num(e.platiba_ha);
-   if(g==="liz")liz+=ha;else if(g==="krum")krum+=ha;else if(g==="nev")nevX+=ha;}
-  p.val.ha.lizP=+liz.toFixed(2);p.val.haMan.lizP=true;p.val.ha.krum=+krum.toFixed(2);p.val.haMan.krum=true;p.val.explNev=+nevX.toFixed(2);
-  p.eksplInfo=extra.expl.map(e=>e.nilm+": "+e.platiba_ha+" ha").join("; ");}
- if(extra){p.kaimZV=extra.kaimZV||[];p.lielie=extra.lielie||[];p.ownersOwn=extra.owners||[];}
+ if(extra){p.lad=extra.lad||null;p.expl=extra.expl||null;p.kaimZV=extra.kaimZV||[];p.lielie=extra.lielie||[];p.ownersOwn=extra.owners||[];}
  if(extra&&extra.protected&&extra.protected.length){p.dapList=extra.protected.map(x=>({kind:x.kind,name:x.name,zone:x.zone,ha:x.overlap_ha}));p.iadtInfo=p.dapList.map(x=>x.kind+": "+x.name+(x.zone?" ("+x.zone+")":"")+" "+x.ha+" ha").join("; ");
   const z=p.dapList.find(x=>x.kind==="zona");if(z){const zn=(z.zone||"").toLowerCase();p.iadt=/regul/.test(zn)?"regulējamā":/liegum/.test(zn)?"lieguma":/parka/.test(zn)?"dabas parka":/ainav/.test(zn)?"ainavu":/neitr/.test(zn)?"neitrālā":p.iadt||"";}}
  // cirsmas kā importā
@@ -859,7 +858,7 @@ function vDash(){const p=P();const d=dashData(p);const yr=new Date().getFullYear
  h+=crmCard(p);
  const ua=urgentActions(p);
  h+=`<div class="row" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div class="card scroll"><h2>Steidzami veicamās darbības</h2>${ua.length?`<table><tr><th>Nog.</th><th style="text-align:left">Darbība</th></tr>${ua.map(([m,a])=>`<tr><td>${esc(m.kvartals?m.kvartals+"/":"")}${esc(m.nogabals)}</td><td style="text-align:left">${esc(a)}</td></tr>`).join("")}</table>`:'<div class="muted">Nav.</div>'}</div>
- <div class="card scroll"><h2>Dabas vērtības</h2>${(p.dapList&&p.dapList.length)?`<table><tr><th style="text-align:left">Veids</th><th style="text-align:left">Nosaukums</th><th>ha</th></tr>${p.dapList.map(x=>`<tr><td style="text-align:left">${esc(x.kind)}</td><td style="text-align:left">${esc(x.name)}${x.zone?" ("+esc(x.zone)+")":""}</td><td>${fmt(x.ha,2)}</td></tr>`).join("")}</table>`:'<div class="muted">Nav (pēc DAP Ozola datiem).</div>'}${p.mer.some(m=>/aizsargjosl|ĪADT|mikrolieg/i.test(m.ierob||""))?`<div class="muted" style="margin-top:6px">Nogabalu piezīmes: ${p.mer.filter(m=>/aizsargjosl|ĪADT|mikrolieg/i.test(m.ierob||"")).map(m=>m.nogabals).join(", ")}</div>`:""}</div></div>`;
+ <div class="card scroll"><h2>Dabas vērtības</h2>${(p.dapList&&p.dapList.length)?`<table><tr><th style="text-align:left">Veids</th><th style="text-align:left">Nosaukums</th><th>ha</th></tr>${p.dapList.map(x=>`<tr><td style="text-align:left">${esc(x.kind)}</td><td style="text-align:left">${esc(x.name)}${x.zone?" ("+esc(x.zone)+")":""}</td><td>${fmt(x.ha,2)}</td></tr>`).join("")}</table>`:'<div class="muted">Nav (pēc DAP Ozola datiem).</div>'}${p.lad?`<div class="muted" style="margin-top:6px">LAD bloki: ${fmt(p.lad.ha,2)} ha (${p.lad.blocks.length} bloki)</div>`:""}${p.mer.some(m=>/aizsargjosl|ĪADT|mikrolieg/i.test(m.ierob||""))?`<div class="muted" style="margin-top:6px">Nogabalu piezīmes: ${p.mer.filter(m=>/aizsargjosl|ĪADT|mikrolieg/i.test(m.ierob||"")).map(m=>m.nogabals).join(", ")}</div>`:""}</div></div>`;
  h+=`<div class="row" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"><div class="card"><h2>Sadalījums pa sugām</h2>${d.bars.length?svgBars(d.bars):'<div class="muted">Nav datu.</div>'}</div><div class="card"><h2>Sadalījums pa meža tipu grupām</h2>${d.pie.length?svgPie(d.pie):'<div class="muted">Nav datu.</div>'}</div></div>`;
  return h;}
 let MAP=null;
@@ -1052,7 +1051,7 @@ async function attachGeometry(pid){const p=S.props.find(x=>x.id===pid)||P();cons
   if(st){m.geom=st.geom;hit++;if(!m.mezaTips&&st.mt)m.mezaTips=MT_CODES[num(st.mt)]||m.mezaTips;}else miss.push(m.nogabals);}
  const {extra}=pagastsToExtra(kad,zvd);
  if(extra.adjacency.length){p.kaimini=extra.adjacency.map(x=>{const f=t=>one?t.split("-").slice(1).join("."):t.replace("-","/");return f(x.a)+"-"+f(x.b)+":"+x.len_m;}).join("; ");}
- p.kaimZV=extra.kaimZV;p.lielie=extra.lielie;p.ownersOwn=extra.owners;
+ p.lad=extra.lad||null;p.expl=extra.expl||null;p.kaimZV=extra.kaimZV;p.lielie=extra.lielie;p.ownersOwn=extra.owners;
  if(extra.protected.length){p.dapList=extra.protected.map(x=>({kind:x.kind,name:x.name,zone:x.zone,ha:x.overlap_ha}));p.iadtInfo=p.dapList.map(x=>x.kind+": "+x.name+(x.zone?" ("+x.zone+")":"")+" "+x.ha+" ha").join("; ");}
  try{p.kaimCuts=neighbourCuts(data,kad,p);}catch(e){}
  loadInfra(p).catch(e=>console.warn("infra",e));p.geoUpdated=data.updated;logIt(p,`ģeometrija pievienota: ${hit} nogabali${miss.length?", nav atrasti: "+miss.join(", "):""}`);save(S.cur);
