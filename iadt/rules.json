@@ -1,0 +1,1810 @@
+{
+ "updated": "2026-09-02",
+ "count": 81,
+ "items": {
+  "359355": {
+   "name": "Mežole",
+   "slug": "dabas-lieguma-mezole-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/359355",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": null,
+     "season": "15.marta-31.jūlijam",
+     "eco": 15,
+     "rekonstr": false
+    }
+   },
+   "verify": true
+  },
+  "356849": {
+   "name": "Koknese–Odziena",
+   "slug": "aizsargajamo-ainavu-apvidus-kokneseodziena-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/356849",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 70,
+      "Ozols": 70,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Egle": 60
+     },
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": 1,
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": 2,
+     "season": "1.maija-31.jūlijam",
+     "eco": 10
+    },
+    "neitrālā zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "354436": {
+   "name": "Augstroze",
+   "slug": "dabas-lieguma-augstroze-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/354436",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Apse": 30
+     },
+     "season": "1.marta-31.jūlijam"
+    },
+    "ainavu aizsardzības zona": {
+     "season": "1.marta-31.jūlijam"
+    }
+   },
+   "verify": true
+  },
+  "353076": {
+   "name": "Sātiņu dīķi",
+   "slug": "dabas-lieguma-satinu-diki-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/353076",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 50
+     },
+     "rekonstr": false
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "eco": 20
+    }
+   },
+   "verify": true
+  },
+  "345268": {
+   "name": "Bernāti",
+   "slug": "dabas-parka-bernati-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/345268",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 70,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Apse": 30
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "334694": {
+   "name": "Vidzemes akmeņainā jūrmala",
+   "slug": "dabas-lieguma-vidzemes-akmenaina-jurmala-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/334694",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Apse": 30
+     }
+    },
+    "ainavu aizsardzības zona": {
+     "kopsanaAge": {
+      "Priede": 80,
+      "Ozols": 80,
+      "Egle": 60,
+      "Bērzs": 60,
+      "Melnalksnis": 60,
+      "Osis": 60,
+      "Apse": 35
+     }
+    }
+   },
+   "verify": true
+  },
+  "333566": {
+   "name": "Garkalnes meži",
+   "slug": "dabas-lieguma-garkalnes-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/333566",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 70,
+      "Egle": 60,
+      "Bērzs": 60,
+      "Melnalksnis": 60
+     },
+     "bigD": {
+      "*": 50
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "bigD": {
+      "*": 50
+     },
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "328422": {
+   "name": "Nīcgales meži",
+   "slug": "aizsargajamo-ainavu-apvidus-nicgales-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/328422",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 70,
+      "Apse": 30
+     },
+     "eco": 15
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": 2,
+     "eco": 10
+    }
+   },
+   "verify": true
+  },
+  "327523": {
+   "name": "Piejūra",
+   "slug": "dabas-parka-piejura-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/327523",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50
+     },
+     "season": "15.marta-30.septembrim"
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "galvena": false,
+     "season": "15.marta-30.septembrim"
+    }
+   },
+   "verify": true
+  },
+  "323126": {
+   "name": "Lēdurgas dendroloģiskie stādījumi",
+   "slug": "dabas-pieminekla-ledurgas-dendrologiskie-stadijumi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/323126",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "kcMax": null,
+     "bigD": {
+      "*": 60
+     }
+    }
+   },
+   "verify": true
+  },
+  "322334": {
+   "name": "Augšzeme",
+   "slug": "aizsargajamo-ainavu-apvidus-augszeme-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/322334",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": 3,
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "320609": {
+   "name": "Ragakāpa",
+   "slug": "dabas-parka-ragakapa-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/320609",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "season": "1.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "bigD": {
+      "*": 25
+     }
+    }
+   },
+   "verify": true
+  },
+  "320605": {
+   "name": "Veclaicene",
+   "slug": "aizsargajamo-ainavu-apvidus-veclaicene-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/320605",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": 2,
+     "eco": 10
+    }
+   },
+   "verify": true
+  },
+  "311571": {
+   "name": "Buļļu kāpas",
+   "slug": "geologiska-un-geomorfologiska-dabas-pieminekla-bullu-kapas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/311571",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "311545": {
+   "name": "Zebrus un Svētes ezers",
+   "slug": "dabas-lieguma-zebrus-un-svetes-ezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/311545",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "310202": {
+   "name": "Ādaži",
+   "slug": "aizsargajamo-ainavu-apvidus-adazi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/310202",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "kcMax": 2,
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15,
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "308904": {
+   "name": "Maņģenes meži",
+   "slug": "dabas-lieguma-mangenes-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/308904",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "1.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "298636": {
+   "name": "Ovīši",
+   "slug": "dabas-lieguma-ovisi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/298636",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "season": "1.marta-31.jūlijam"
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    },
+    "neitrālā zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "298635": {
+   "name": "Ziemupe",
+   "slug": "dabas-lieguma-ziemupe-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/298635",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "season": "1.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "296797": {
+   "name": "Vecdaugava",
+   "slug": "dabas-lieguma-vecdaugava-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/296797",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "292917": {
+   "name": "Ances purvi un meži",
+   "slug": "dabas-lieguma-ances-purvi-un-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/292917",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     },
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "season": "1.marta-31.jūlijam"
+    }
+   },
+   "verify": true
+  },
+  "292916": {
+   "name": "Zvārde",
+   "slug": "dabas-lieguma-zvarde-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/292916",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Egle": 60,
+      "Ozols": 60,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "eco": 15,
+     "rekonstr": false
+    }
+   },
+   "verify": true
+  },
+  "292915": {
+   "name": "Jaunanna",
+   "slug": "dabas-lieguma-jaunanna-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/292915",
+   "spēkā": true,
+   "rules": {
+    "regulējamā režīma zona": {
+     "bigD": {
+      "*": 50
+     }
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "291531": {
+   "name": "Ukru gārša",
+   "slug": "dabas-lieguma-ukru-garsa-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/291531",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15,
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Egle": 60,
+      "Ozols": 60,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "286953": {
+   "name": "Slīteres nacionālā parka",
+   "slug": "sliteres-nacionala-parka-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/286953",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "1.marta-31.augustam"
+    },
+    "ainavu aizsardzības zona un neitrālā zona": {
+     "kcMax": null,
+     "galvena": false,
+     "kopsanaAge": {
+      "Egle": 80,
+      "Osis": 80,
+      "Liepa": 80,
+      "Bērzs": 70,
+      "Melnalksnis": 70
+     },
+     "season": "1.marta-31.augustam"
+    }
+   },
+   "verify": true
+  },
+  "284892": {
+   "name": "kemeru-nacionala-parka-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "kemeru-nacionala-parka-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/284892",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Ozols": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "1.marta-31.jūlijam",
+     "eco": 20
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": null,
+     "season": "15.marta-31.jūlijam",
+     "eco": 20
+    },
+    "neitrālā zona": {
+     "galvena": false,
+     "eco": 20
+    }
+   },
+   "verify": true
+  },
+  "277922": {
+   "name": "Eglone",
+   "slug": "dabas-lieguma-eglone-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/277922",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "268921": {
+   "name": "Ventas ieleja",
+   "slug": "dabas-lieguma-ventas-ieleja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/268921",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "season": "15.marta-31.jūlijam",
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": 2
+    }
+   },
+   "verify": true
+  },
+  "268920": {
+   "name": "Sauka",
+   "slug": "dabas-parka-sauka-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/268920",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": 3,
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": 3,
+     "season": "15.marta-31.jūlijam",
+     "rekonstr": false
+    }
+   },
+   "verify": true
+  },
+  "262217": {
+   "name": "Zušu–Staiņu sēravoti",
+   "slug": "dabas-lieguma-zusustainu-seravoti-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/262217",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "253869": {
+   "name": "Liepājas ezers",
+   "slug": "dabas-lieguma-liepajas-ezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/253869",
+   "spēkā": true,
+   "rules": {
+    "dabas parka zona": {
+     "kcMax": null,
+     "season": "15.marta-31.jūlijam"
+    }
+   },
+   "verify": true
+  },
+  "251170": {
+   "name": "Engures ezers",
+   "slug": "dabas-parka-engures-ezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/251170",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "251162": {
+   "name": "Tērvete",
+   "slug": "dabas-parka-tervete-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/251162",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "neitrālā zona": {
+     "galvena": false
+    }
+   },
+   "verify": true
+  },
+  "247900": {
+   "name": "Gaujas nacionālā parka",
+   "slug": "gaujas-nacionala-parka-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/247900",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 50
+     },
+     "eco": 10,
+     "rekonstr": false
+    },
+    "dabas lieguma zona": {
+     "season": "15.marta-31.jūlijam",
+     "eco": 25,
+     "izlase": true
+    },
+    "kultūrvēsturiskā zona": {
+     "season": "15.marta-31.jūlijam",
+     "eco": 25,
+     "izlase": true
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "244505": {
+   "name": "Jaunciems",
+   "slug": "dabas-lieguma-jaunciems-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/244505",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false
+    }
+   },
+   "verify": true
+  },
+  "242358": {
+   "name": "Ventas un Šķerveļa ieleja",
+   "slug": "dabas-lieguma-ventas-un-skervela-ieleja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/242358",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "238305": {
+   "name": "aizsargajamas-juras-teritorijas-irbes-saurums-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "aizsargajamas-juras-teritorijas-irbes-saurums-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/238305",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "236973": {
+   "name": "Doles sala",
+   "slug": "dabas-parka-doles-sala-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/236973",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50
+     },
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "season": "15.marta-31.jūlijam",
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "236676": {
+   "name": "Pape",
+   "slug": "dabas-parka-pape-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/236676",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "eco": 15,
+     "rekonstr": false
+    }
+   },
+   "verify": true
+  },
+  "234989": {
+   "name": "aizsargajamas-juras-teritorijas-rigas-lica-rietumu-piekraste-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "aizsargajamas-juras-teritorijas-rigas-lica-rietumu-piekraste-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/234989",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "234988": {
+   "name": "aizsargajamas-juras-teritorijas-nidaperkone-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "aizsargajamas-juras-teritorijas-nidaperkone-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/234988",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "231168": {
+   "name": "Babītes ezers",
+   "slug": "dabas-lieguma-babites-ezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/231168",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "230395": {
+   "name": "Dziļezers un Riebezers",
+   "slug": "dabas-lieguma-dzilezers-un-riebezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/230395",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "season": "15.marta-31.jūlijam",
+     "bigD": {
+      "*": 60
+     }
+    }
+   },
+   "verify": true
+  },
+  "229252": {
+   "name": "ziemelvidzemes-biosferas-rezervata-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "ziemelvidzemes-biosferas-rezervata-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/229252",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "225596": {
+   "name": "Stiklu purvi",
+   "slug": "dabas-lieguma-stiklu-purvi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/225596",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     },
+     "eco": 15
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "bigD": {
+      "*": 60
+     },
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "221802": {
+   "name": "Kaltenes krasta veidojumi",
+   "slug": "geologiska-un-geomorfologiska-dabas-pieminekla-kaltenes-krasta-veidojumi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/221802",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "kcMax": null,
+     "galvena": false,
+     "bigD": {
+      "*": 60
+     }
+    }
+   },
+   "verify": true
+  },
+  "209085": {
+   "name": "Pāvilostas pelēkā kāpa",
+   "slug": "dabas-lieguma-pavilostas-peleka-kapa-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/209085",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "galvena": false,
+     "bigD": {
+      "*": 60
+     }
+    }
+   },
+   "verify": true
+  },
+  "201617": {
+   "name": "Stompaku purvi",
+   "slug": "dabas-lieguma-stompaku-purvi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/201617",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 80,
+      "Egle": 60,
+      "Bērzs": 60,
+      "Melnalksnis": 60,
+      "Apse": 40
+     },
+     "bigD": {
+      "*": 60
+     }
+    }
+   },
+   "verify": true
+  },
+  "194396": {
+   "name": "dabas-lieguma-daugava-pie-kaibalas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-lieguma-daugava-pie-kaibalas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/194396",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "192672": {
+   "name": "Sedas purvs",
+   "slug": "dabas-lieguma-sedas-purvs-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/192672",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "192365": {
+   "name": "Embūte",
+   "slug": "dabas-parka-embute-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/192365",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "neitrālā zona": {
+     "bigD": {
+      "*": 25
+     }
+    }
+   },
+   "verify": true
+  },
+  "191908": {
+   "name": "Klāņu purvs",
+   "slug": "dabas-lieguma-klanu-purvs-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/191908",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Egle": 60,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "eco": 15
+    }
+   },
+   "verify": true
+  },
+  "191503": {
+   "name": "dabas-lieguma-abeli-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-lieguma-abeli-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/191503",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "ainavu aizsardzības zona": {
+     "kcMax": null,
+     "kopsanaAge": {
+      "Priede": 80,
+      "Ozols": 80,
+      "Egle": 60,
+      "Bērzs": 60,
+      "Melnalksnis": 60,
+      "Osis": 60,
+      "Liepa": 60,
+      "Apse": 35
+     }
+    }
+   },
+   "verify": true
+  },
+  "189821": {
+   "name": "dabas-lieguma-kadajs-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-lieguma-kadajs-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/189821",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "galvena": false
+    }
+   },
+   "verify": true
+  },
+  "189820": {
+   "name": "dabas-lieguma-vitrupes-ieleja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-lieguma-vitrupes-ieleja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/189820",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false
+    },
+    "neitrālā zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "189076": {
+   "name": "Salacas ieleja",
+   "slug": "dabas-parka-salacas-ieleja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/189076",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 60
+     }
+    },
+    "dabas lieguma zona": {
+     "galvena": false,
+     "season": "15.marta-31.jūlijam"
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "season": "15.marta-31.jūlijam"
+    },
+    "neitrālā zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "188931": {
+   "name": "Lubāna mitrājs",
+   "slug": "dabas-lieguma-lubana-mitrajs-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/188931",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "rekonstr": false
+    }
+   },
+   "verify": true
+  },
+  "187833": {
+   "name": "dabas-lieguma-randu-plavas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-lieguma-randu-plavas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/187833",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Melnalksnis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    }
+   },
+   "verify": true
+  },
+  "184294": {
+   "name": "Ziemeļgauja",
+   "slug": "aizsargajamo-ainavu-apvidus-ziemelgauja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/184294",
+   "spēkā": true,
+   "rules": {
+    "*": {
+     "bigD": {
+      "*": 50
+     }
+    },
+    "regulējamā režīma zona": {
+     "bigD": {
+      "*": 12
+     }
+    },
+    "dabas lieguma zona": {
+     "kcMax": null,
+     "bigD": {
+      "*": 50
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    },
+    "neitrālā zona": {
+     "kcMax": null,
+     "galvena": false
+    }
+   },
+   "verify": true
+  },
+  "182196": {
+   "name": "Bauska",
+   "slug": "dabas-parka-bauska-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/182196",
+   "spēkā": true,
+   "rules": {
+    "dabas parka zona": {
+     "kcMax": null
+    },
+    "neitrālā zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "181858": {
+   "name": "Laukezers",
+   "slug": "dabas-parka-laukezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/181858",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "175371": {
+   "name": "Lielupes palienes pļavas",
+   "slug": "dabas-lieguma-lielupes-palienes-plavas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/175371",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "174323": {
+   "name": "Mežmuižas avoti",
+   "slug": "dabas-lieguma-mezmuizas-avoti-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/174323",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "172089": {
+   "name": "Abavas senleja",
+   "slug": "dabas-parka-abavas-senleja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/172089",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    },
+    "neitrālā zona": {
+     "kcMax": null,
+     "eco": 20
+    }
+   },
+   "verify": true
+  },
+  "171999": {
+   "name": "Svētes paliene",
+   "slug": "dabas-parka-svetes-paliene-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/171999",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "169397": {
+   "name": "Raķupes ieleja",
+   "slug": "dabas-lieguma-rakupes-ieleja-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/169397",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "167193": {
+   "name": "Pinku ezers",
+   "slug": "dabas-parka-pinku-ezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/167193",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "164941": {
+   "name": "Virguļicas meži",
+   "slug": "dabas-lieguma-virgulicas-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/164941",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 80,
+      "Egle": 60,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Apse": 30
+     }
+    }
+   },
+   "verify": true
+  },
+  "164590": {
+   "name": "Driksnas sils",
+   "slug": "dabas-parka-driksnas-sils-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/164590",
+   "spēkā": true,
+   "rules": {
+    "dabas parka zona": {
+     "kcMax": null,
+     "eco": 20
+    },
+    "ainavu aizsardzības zona": {
+     "eco": 20
+    }
+   },
+   "verify": true
+  },
+  "159647": {
+   "name": "Rāznas nacionālā parka",
+   "slug": "raznas-nacionala-parka-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/159647",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "rekonstr": false
+    },
+    "neitrālā zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "157682": {
+   "name": "Numernes valnis",
+   "slug": "dabas-parka-numernes-valnis-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/157682",
+   "spēkā": true,
+   "rules": {
+    "dabas parka zona": {
+     "rekonstr": false
+    }
+   },
+   "verify": true
+  },
+  "156394": {
+   "name": "Dvietes paliene",
+   "slug": "dabas-parka-dvietes-paliene-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/156394",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "155763": {
+   "name": "Mugurves pļavas",
+   "slug": "dabas-lieguma-mugurves-plavas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/155763",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "kopsanaAge": {
+      "Priede": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    }
+   },
+   "verify": true
+  },
+  "154194": {
+   "name": "Sitas un Pededzes paliene",
+   "slug": "dabas-lieguma-sitas-un-pededzes-paliene-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/154194",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Liepa": 50,
+      "Apse": 30
+     }
+    },
+    "dabas parka zona": {
+     "kcMax": null
+    }
+   },
+   "verify": true
+  },
+  "151645": {
+   "name": "Burtnieku ezera pļavas",
+   "slug": "dabas-lieguma-burtnieku-ezera-plavas-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/151645",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false
+    },
+    "dabas parka zona": {
+     "kcMax": null,
+     "galvena": false
+    }
+   },
+   "verify": true
+  },
+  "122148": {
+   "name": "Vecumu meži",
+   "slug": "dabas-parka-vecumu-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/122148",
+   "spēkā": true,
+   "rules": {
+    "dabas lieguma zona": {
+     "galvena": false,
+     "kopsanaAge": {
+      "Priede": 60,
+      "Ozols": 60,
+      "Egle": 50,
+      "Bērzs": 50,
+      "Melnalksnis": 50,
+      "Osis": 50,
+      "Liepa": 50
+     },
+     "season": "1.marta-15.augustam"
+    },
+    "dabas parka zona": {
+     "kcMax": 3,
+     "galvena": false,
+     "eco": 15,
+     "rekonstr": false
+    }
+   },
+   "verify": true
+  },
+  "102422": {
+   "name": "dabas-parka-zvardes-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-parka-zvardes-mezi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/102422",
+   "spēkā": true,
+   "rules": {
+    "dabas parka zona": {
+     "kcMax": 3
+    }
+   },
+   "verify": true
+  },
+  "97379": {
+   "name": "dabas-parka-milzukalns-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-parka-milzukalns-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/97379",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "86505": {
+   "name": "aizsargajamo-dendrologisko-stadijumu-skriveru-sveszemju-koku-stadijumi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "aizsargajamo-dendrologisko-stadijumu-skriveru-sveszemju-koku-stadijumi-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/86505",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "84907": {
+   "name": "dabas-parka-cirisu-ezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-parka-cirisu-ezers-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/84907",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  },
+  "82283": {
+   "name": "dabas-parka-beberbeki-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "slug": "dabas-parka-beberbeki-individualie-aizsardzibas-un-izmantosanas-noteikumi",
+   "url": "https://likumi.lv/ta/id/82283",
+   "spēkā": true,
+   "rules": {},
+   "verify": true
+  }
+ }
+}
