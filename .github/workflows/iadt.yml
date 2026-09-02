@@ -9,6 +9,7 @@ jobs:
   r:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    concurrency: {group: data-publish, cancel-in-progress: false}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,20 +24,10 @@ jobs:
         run: |
           test -s iadt/rules.json || { echo "::error::iadt/rules.json neeksistē vai ir tukšs — ekstrakcija neizdevās"; exit 1; }
           python3 -c "import json,sys; d=json.load(open('iadt/rules.json',encoding='utf-8')); n=d.get('count',0); print('extracted valid rules:',n); sys.exit(0 if n>0 and len(d.get('items',{}))==n else 1)" || { echo "::error::rules.json satur 0 spēkā esošu noteikumu vai count neatbilst items skaitam"; exit 1; }
-      - name: Publicē iadt/rules.json data zarā (pārraksta zaru no jauna, saglabājot pārējos avotus)
-        run: |
-          git config user.name bot; git config user.email b@l
-          git fetch --force origin data:data
-          git branch -D data-new 2>/dev/null || true
-          git checkout --orphan data-new
-          git rm -rf --cached . >/dev/null 2>&1 || true
-          git checkout data -- pagasti aplieci infra sentinel 2>/dev/null || true
-          git add -f iadt
-          git add -f pagasti aplieci infra sentinel 2>/dev/null || true
-          git commit -m "iadt $(date -u +%F)"
-          git push -f origin data-new:data
+      - name: Publicē iadt/rules.json data zarā (kopīgais publicētājs, tikai sava apakšmape)
+        run: bash scripts/publish_data.sh iadt
       - name: Pārbauda, ka publicēšana tiešām nostrādāja (workflow beidzas ar kļūdu, ja fails nav publicēts)
         run: |
           git fetch --force origin data:data
-          git show data:iadt/rules.json > /tmp/published_rules.json || { echo "::error::iadt/rules.json push izpildījās, bet pēc tam data zarā faila nav (iespējams, cits avota workflow to jau ir pārrakstījis — sk. #42 piezīmi par citu publicētāju checkout sarakstiem)"; exit 1; }
+          git show data:iadt/rules.json > /tmp/published_rules.json || { echo "::error::iadt/rules.json push izpildījās, bet pēc tam data zarā faila nav"; exit 1; }
           python3 -c "import json,sys; d=json.load(open('/tmp/published_rules.json',encoding='utf-8')); n=d.get('count',0); print('published to data branch:',n,'valid rules'); sys.exit(0 if n>0 else 1)" || { echo "::error::publicētais iadt/rules.json ir tukšs"; exit 1; }

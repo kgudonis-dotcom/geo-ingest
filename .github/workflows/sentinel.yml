@@ -6,8 +6,10 @@ jobs:
   s:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    concurrency: {group: data-publish, cancel-in-progress: false}
     steps:
       - uses: actions/checkout@v4
+      - run: rm -rf pagasti  # #43: pagasti/ vēsturiski nejauši nokļuvis main zarā; svaigo (data zara) versiju paņem tālāk
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install requests
@@ -15,7 +17,6 @@ jobs:
           git fetch --force origin data:data || true
           git --work-tree=. checkout data -- pagasti || true
           git --work-tree=. checkout data -- sentinel || true
-          git checkout main -- . || true
           ls pagasti | head -3
       - run: python -u sentinel.py $(cat SENTINEL_RUN) 2>&1 | tee run.log
         env: {CDSE_ID: "${{ secrets.CDSE_ID }}", CDSE_SECRET: "${{ secrets.CDSE_SECRET }}"}
@@ -24,8 +25,4 @@ jobs:
           git config user.name bot; git config user.email b@l
           mkdir -p logs; cp run.log "logs/sentinel_$(date -u +%F_%H%M).md"; git add logs; git commit -m "sentinel log" && git pull --rebase origin main && git push || true
           ls sentinel/*.json.gz >/dev/null 2>&1 || exit 0
-          git fetch --force origin data:data 2>/dev/null || true
-          git checkout --orphan data-new; git rm -rf --cached . >/dev/null 2>&1 || true
-          git checkout data -- pagasti aplieci infra 2>/dev/null || true
-          git add -f pagasti sentinel; git add -f aplieci infra 2>/dev/null || true
-          git commit -m "sentinel $(date -u +%F)" && git push -f origin data-new:data
+          bash scripts/publish_data.sh sentinel

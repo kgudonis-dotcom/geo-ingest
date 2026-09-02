@@ -6,8 +6,10 @@ jobs:
   aplieci:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    concurrency: {group: data-publish, cancel-in-progress: false}
     steps:
       - uses: actions/checkout@v4
+      - run: rm -rf pagasti  # #43: pagasti/ vēsturiski nejauši nokļuvis main zarā
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install requests shapely pyproj
@@ -16,8 +18,4 @@ jobs:
         run: |
           git config user.name bot; git config user.email b@l
           mkdir -p logs; cp run.log "logs/aplieci_$(date -u +%F_%H%M).md"; git add logs; git commit -m "aplieci log" && git pull --rebase origin main && git push || true
-          git fetch origin data:data 2>/dev/null || true
-          git checkout --orphan data-new; git rm -rf --cached . >/dev/null 2>&1 || true
-          git checkout data -- pagasti 2>/dev/null || true
-          git add -f aplieci; git add -f pagasti 2>/dev/null || true
-          git commit -m "aplieci $(date -u +%F)" && git push -f origin data-new:data || true
+          bash scripts/publish_data.sh aplieci || true

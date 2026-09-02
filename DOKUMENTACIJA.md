@@ -90,7 +90,18 @@ Palaišana notiek ar "trigera failiem": izmainot failu repo, sākas darbs. Tas i
 | `ingest.yml` | `RUN_ARGS` | Supabase ielāde (rezerve) | 5. janv., apr., jūl., okt. |
 | `aplieci.yml` | `APLIECI_RUN` | VMD apliecinājumi (izslēgts grafiks) | |
 
-Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vienmēr var redzēt, kas notika. Datu publicēšana `data` zarā notiek ar "orphan" zaru un force push: zarā glabājas tikai jaunākā versija bez vēstures (lai repo nepiebriest), un pirms rakstīšanas vienmēr paņem svaigāko `data`, lai divi darbi viens otru nepārraksta (drošinātājs: tukšs rezultāts nekad nepublicējas).
+Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vienmēr var redzēt, kas notika.
+
+**Datu publicēšana `data` zarā (#43).** Visas sešas darbplūsmas, kas raksta uz `data` zaru (`pagasti.yml`, `remerge.yml`, `infra.yml`, `aplieci.yml`, `sentinel.yml`, `iadt.yml`), publicēšanai izmanto vienu kopīgu skriptu `scripts/publish_data.sh <apakšmape> [<apakšmape> ...]`, nevis katra savu kopiju. Tas:
+- aizvieto TIKAI norādīto(-ās) apakšmapi(-es) (piem. `pagasti`, `infra`, `iadt`) ar parastu commit uz `data` zaru — pārējais zara saturs (citu avotu apakšmapes) paliek neskarts;
+- ja `push` tiek noraidīts, jo kāds cits darbs starplaikā jau publicējis (divas darbplūsmas mēģina rakstīt vienlaicīgi) — fetch + rebase + push mēģina vēlreiz līdz 3 reizēm;
+- tukšas apakšmapes drošinātājs: ja norādītajā apakšmapē nav neviena faila, skripts beidzas ar kļūdu un nekas nepublicējas (nekad nepublicē tukšu rezultātu);
+- katrai darbplūsmas job, kas publicē, ir `concurrency: {group: data-publish, cancel-in-progress: false}` — publicēšanas soļi savā starpā rindojas, nevis sacenšas, tāpēc rebase-retry parasti pat nav vajadzīgs, bet paliek kā otrā aizsardzības līnija.
+- Vēstures augšanu (visbiežāk no `pagasti`, ~300 MB) ierobežo periodisks squash (`--squash "ziņa"` karogs) — reizi ceturksnī (`pagasti.yml` grafika palaidienā) zars tiek sākts no jauna ar visu pašreizējo saturu, nevis pieaugot bezgalīgi; parastā publicēšana squash neizmanto.
+
+**Jauna apakšmape (piem. jauns datu avots):** pievieno attiecīgās darbplūsmas publicēšanas solī `bash scripts/publish_data.sh <jaunā-apakšmape>` argumentu sarakstam un pievieno `concurrency: {group: data-publish, cancel-in-progress: false}` tās job līmenī, ja tā vēl nav. Neko citu pielāgot nevajag — skripts pats izlasa esošo `data` zara saturu un pieraksta tikai savu daļu.
+
+**Zināms ierobežojums:** `pagasti/` vēsturiski nejauši nokļuvis arī `main` zarā (nevis tikai `data`); katra darbplūsma, kas lasa vai raksta `pagasti/`, pēc `actions/checkout@v4` to vispirms izdzēš (`rm -rf pagasti`), lai `main` zarā iesaldētā vecā versija nesajauktos ar `data` zara svaigo saturu. Pati `main` zara piesārņojuma novēršana (izņemt `pagasti/` no `main` izsekošanas) nav šī labojuma daļa.
 
 ### 3.4. Zināmie ierobežojumi datu pusē
 - No GitHub nav sasniedzami `lvmgeo.lvm.lv` (LVM), `gis.vmd.gov.lv` (VMD ģeoportāls), `melioracija.lv`. Sasniedzami: `data.gov.lv`, `geolatvija.lv`, `karte.lad.gov.lv`, Geofabrik, Copernicus.

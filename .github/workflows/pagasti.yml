@@ -13,6 +13,7 @@ jobs:
       matrix: {idx: [0,1,2,3,4,5,6,7,8,9]}
     steps:
       - uses: actions/checkout@v4
+      - run: rm -rf pagasti  # #43: pagasti/ vēsturiski nejauši nokļuvis main zarā (izmests atsevišķi); nekad nedrīkst sajaukties ar šī darba svaigo izvadi
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - run: pip install -r requirements.txt
@@ -32,16 +33,16 @@ jobs:
     if: always()
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    concurrency: {group: data-publish, cancel-in-progress: false}
     steps:
       - uses: actions/checkout@v4
+      - run: rm -rf pagasti  # #43: skat. build joba piezīmi
       - uses: actions/setup-python@v5
         with: {python-version: "3.12"}
       - uses: actions/download-artifact@v4
         with: {path: artifacts}
       - name: Esošie pagastu faili no data zara (papildina, nevis pārraksta)
-        run: |
-          git fetch origin data:data 2>/dev/null && mkdir -p artifacts/existing && git --work-tree=artifacts/existing checkout data -- pagasti 2>/dev/null || true
-          git checkout main -- . 2>/dev/null || true
+        run: git fetch origin data:data 2>/dev/null && mkdir -p artifacts/existing && git --work-tree=artifacts/existing checkout data -- pagasti 2>/dev/null || true
       - run: |
           python merge_pagasti.py 2>&1 | tee -a merged.log
           ls pagasti/*.json.gz >/dev/null 2>&1 || { echo "TUKŠS REZULTĀTS, datu zaru neaiztiek" | tee -a merged.log; echo "SKIP=1" >> $GITHUB_ENV; }
@@ -53,9 +54,8 @@ jobs:
       - name: Publish data (data branch)
         if: env.SKIP != '1'
         run: |
-          git config user.name bot; git config user.email b@l
-          git fetch --force origin data:data 2>/dev/null || true
-          git checkout --orphan data-new; git rm -rf --cached . >/dev/null 2>&1 || true
-          git checkout data -- aplieci infra 2>/dev/null || true
-          git add -f pagasti; git add -f aplieci infra 2>/dev/null || true
-          git commit -m "pagasti $(date -u +%F)" && git push -f origin data-new:data
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            bash scripts/publish_data.sh --squash "pagasti $(date -u +%F)" pagasti
+          else
+            bash scripts/publish_data.sh pagasti
+          fi
