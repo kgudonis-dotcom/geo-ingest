@@ -31,7 +31,20 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // 4. Nodeva MK1250
  w.eval("valOf(P());P().val.pircejs='jur';P().val.pirkumaMan=true;P().val.pirkuma=111358;P().val.kadVert=0");
  ok(w.eval("valCalc(P()).nodevaVal")===2227.16,"Nodeva 2 % no 111 358 = 2227,16");
+ // 4a. Zemes cenas €/ha, peļņa % un pirkuma €/ha ir kopīgas visiem objektiem (sadaļa Cenas, v0.36); objekta vecie lauki val.sale/val.buy netiek lietoti
+ w.eval("S.valSale={kcW:3500};S.valBuy={};S.valKoef=.65;P().val.sale={kcW:1};P().val.buy={kcW:1};P().val.haMan.kcW=true;P().val.ha.kcW=6");
+ const kcW=w.eval("JSON.stringify(valCalc(P()).rows.find(r=>r.k==='kcW'))");
+ ok(kcW==='{"k":"kcW","l":"KC slapjš","ha":6,"sale":3500,"buy":2275,"saleSum":21000,"buySum":13650}',"Zemes cena no Cenām: KC slapjš 3500 × 0,65 = 2275 €/ha; 6 ha = 21 000 / 13 650 € (got "+kcW+")");
+ w.eval("S.valBuy={kcW:2000}");
+ ok(w.eval("valCalc(P()).rows.find(r=>r.k==='kcW').buy")===2000,"Pirkuma €/ha pārrakstīts Cenās = 2000");
+ w.eval("S.valBuy={};S.valKoef=.7");
+ ok(w.eval("valCalc(P()).rows.find(r=>r.k==='kcW').buy")===2450,"Peļņa 30 %: 3500 × 0,7 = 2450");
+ ok(w.eval("landPrices().rows.find(r=>r.k==='jPEBs').sale")===4200&&w.eval("newVal().sale")===undefined,"Noklusējums 4200 €/ha; objektam vairs nav savu cenu");
+ ok(w.eval("priceSnapNow().land.buy.kcW")===2450&&w.eval("priceSnapStale({prices:S.prices,land:priceSnapNow().land})")===false&&w.eval("priceSnapStale({prices:S.prices,land:{koef:.65,sale:{},buy:{}}})")===true&&w.eval("priceSnapStale({prices:S.prices})")===false,"Cenu momentuzņēmums ietver zemes cenas un atpazīst to izmaiņas");
+ w.eval("setLandPrice('kcW','buy','1900');setLandPrice('kcW','sale','');setLandPrice(null,'koef',null)");
+ ok(w.eval("S.valBuy.kcW")===1900&&w.eval("S.valSale.kcW")===undefined&&w.eval("S.valKoef")===undefined&&w.eval("landPrices().by.kcW.sale")===3500&&w.eval("landPrices().by.jPEBs.buy")===2730,"setLandPrice: teksts → skaitlis; tukšs lauks → noklusējums / auto (kcW 3500, jPEBs 4200 × 0,65 = 2730)");
  // 5. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
  console.log(fails?`\n${fails} FAIL`:"\nVISI TESTI OK");process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

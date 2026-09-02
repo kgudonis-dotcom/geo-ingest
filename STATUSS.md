@@ -16,7 +16,7 @@ Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts,
 - Sentinel-2 lieto tikai saviem objektiem un kaimiņiem (Copernicus bezmaksas kvota), ne visai Latvijai.
 
 ## 2. Izpildīts
-### Lietotne cirsma-app (v0.24)
+### Lietotne cirsma-app (v0.36)
 - Cirsmu vērtēšana: sugas × sortimenti pēc caurmēra, cenas, izmaksas, marža, max cena; Vigodas Excel reproducēts līdz centam.
 - MK935 pilnās tabulas (Gmin/Gkrit, koku skaits H<12, galvenās cirtes caurmērs P/E/B), KKC Gkrit+2, aizliegtās sugas, 3 g pēc kopšanas, jauktā cirsma, eko koki, ĪADT zonas, kaimiņu svaigie izcirtumi (MK935 19./20.p.).
 - Lietotne ir gatava publiskai izmantošanai GitHub Pages / vienas dienas priekšskatījumam, ar bezsaistes kešošanu pagastu failiem un CRM plūsmu objektam.
@@ -24,7 +24,8 @@ Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts,
 - Objekts no kadastra numura (pagastu faili vai Supabase): nogabali, taksācija, sastāvs, krāja, ģeometrija, kaimiņi, DAP slāņi (ĪADT, zonas, mikroliegumi, biotopi, atradnes, koki, pieminekļi), robežnieki, kaimiņu izcirtumi.
 - Imports: Kadastra atskaite xlsx, VMD PDF (2 veidi), dastojums (Mežvērte PDF, MK935 10. piel. xls, tabulas) ar Liepas tilpuma formulu; KML skices ģenerators (Python).
 - Pārskats (Mans mežs paraugs): KPI, satelītkarte pa kategorijām, steidzamās darbības, dabas vērtības, sugu un meža tipu grafiki.
-- Novērtējums (PAF): 12 zemes rindas auto, cenas rediģējamas + globālie noklusējumi, darījums, nodeva pēc likuma, termiņi, IRR (XIRR sakrīt ar Excel 67,0 %), bruto peļņa, prasītās cenas, "Kāpēc šie skaitļi".
+- Novērtējums (PAF): 12 zemes rindas auto (platību sadalījums jeb eksplikācija, ha labojamas, "auto" atgriež), darījums, nodeva pēc likuma, termiņi, IRR (XIRR sakrīt ar Excel 67,0 %), bruto peļņa, prasītās cenas, "Kāpēc šie skaitļi".
+- Zemes cenas (v0.36, 2026-09-02): pārdošanas €/ha, peļņa % un pirkuma €/ha (auto = pārdošanas × (1 − peļņa), pārrakstāma) ir kopīgas visiem objektiem sadaļā Cenas, tāpat kā koksnes cenas; Novērtējumā paliek tikai ha pa kategorijām. Cenu momentuzņēmums nopirktajiem objektiem ietver arī zemes cenas. Regresijas tests tests/regress.js 4a.
 - Izvades: vērtējuma atskaite PDF, Excel (7 lapas), iesniegums koku ciršanai VMD ar izvietojuma karti un skicēm, cirsmas skice (LKS-92 koordinātas).
 - Fonds: visi objekti kartē pēc statusa, KPI, sugas, vecuma grupas, zemes sadalījums, tabula, Excel; "Kas deg" 30 dienu saraksts.
 - CRM: statusi Jauns → Vērtēšanā → Piedāvāts → Vienošanās → Nopirkts/Atteikts → Pārdots; auto uzdevumi pa lomām; komanda Iestatījumos; komentāri; vēsture (audits); cirsmas statusi un "Pabeigt cirsmu" ar auto-labojumu nogabaliem; rezultāts šodien (naudas izmaksas %, mērķa bruto); cenu momentuzņēmums un pārrēķins.
@@ -54,7 +55,7 @@ Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts,
 8. Analīze: plāns pret faktu, pircēja uzmērījumu (brāķa) imports, rezultāti pa cilvēkiem (pircējs, meistars, operators, izvedējs, šoferis), naudas plūsmas prognoze fondam, investoru atskaite.
 9. Līgumu auto-ģenerēšana no tavām veidnēm; grāmatvedības eksports (Jumis/Moneo).
 10. AI pārskatītājs (teksta atzinums, ~25–35 tūkst. tokenu/vērtējums).
-11. Sīkumi: LKS-2020 skicēs (pāreja 01.10.2026), ortofoto fons skicēm, VMD klasifikatoru tabula, dabas vērtības pa nogabaliem, pircēju portāls (atlikts).
+11. Sīkumi: LKS-2020 skicēs (pāreja 01.10.2026), ortofoto fons skicēm, VMD klasifikatoru tabula, dabas vērtības pa nogabaliem, pircēju portāls (atlikts), nopirkto objektu vērtējuma iesaldēšana ar cenu momentuzņēmumu (tagad tas ir tikai informatīvs).
 12. Publicēšana: lietotne uz Netlify/Cloudflare Pages, lai strādā ārpus priekšskatījuma un telefonā.
 
 ## 5. Vajag no tevis
@@ -68,3 +69,4 @@ Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts,
 - VMD apliecinājumi vairs nav publiski; aizstāti ar kaimiņu svaigajiem izcirtumiem un manuālu ievadi.
 - Copernicus kvota: tikai saviem objektiem.
 - Lietotne Claude priekšskatījumā ir ierobežota (ārējie pieprasījumi, druka); lietot no faila vai publicēta.
+- Zemes cenas €/ha vairs nav pa objektiem: mainot tās sadaļā Cenas, uzreiz mainās visu objektu (arī nopirkto) vērtējums. Cenu momentuzņēmums (priceSnap, tagad arī ar zemes cenām) tikai fiksē, ar kādām cenām objekts pēdējoreiz vērtēts; poga "Pārrēķināt ar šodienas cenām" atjauno šo atzīmi, nevis iesaldē vērtējumu (iesaldēšana nopirktajiem ir atvērts uzdevums, sk. 4.11). Vecie objektu lauki val.sale / val.buy / val.buyKoef paliek datos, bet netiek lietoti.
