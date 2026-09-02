@@ -24,6 +24,13 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(w.eval("P().mer.length")===28,"Ezermuiža: 28 nogabali");
  ok(w.eval("P().mer.filter(m=>m.geom).length")===28,"Ezermuiža: visiem ģeometrija");
  ok(w.eval("P().cirsmas.length")>=1,"Ezermuiža: cirsmas izveidotas");
+ // 2a. Ezermuiža aizsargjoslas (#39): reāls gadījums, fiksēts 02.09.2026, pārbaudīt pret VMD
+ w.eval("loadInfra(P())");await new Promise(r=>setTimeout(r,3000));
+ const ezInfra=w.eval("P().infra?{water:P().infra.water.length,usik:P().infra.usik.length}:null");
+ ok(ezInfra&&(ezInfra.water+ezInfra.usik)>=1,"Ezermuiža: ir vismaz viena ūdenstece infra datos (got "+JSON.stringify(ezInfra)+")");
+ const ezKc=w.eval("+Object.values(runChecks(P()).zoneByNog||{}).reduce((a,z)=>a+z.kc.ha,0).toFixed(2)");
+ const ezMain=w.eval("+Object.values(runChecks(P()).zoneByNog||{}).reduce((a,z)=>a+z.main.ha,0).toFixed(2)");
+ ok(ezKc===0&&ezMain===0,"Ezermuiža: aizsargjoslas kopā KC 0,00 ha, 10 m josla 0,00 ha (fiksēts 02.09.2026, pārbaudīt pret VMD; got kc="+ezKc+" main="+ezMain+")");
  // 3. PAF 70420080041: IRR pret Excel (67,0 %)
  w=await app();await w.eval("createFromPagasts('70420080041')");await new Promise(r=>setTimeout(r,1500));
  ok(w.eval("P().mer.length")===38,"70420080041: 38 nogabali");
@@ -44,7 +51,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  w.eval("setLandPrice('kcW','buy','1900');setLandPrice('kcW','sale','');setLandPrice(null,'koef',null)");
  ok(w.eval("S.valBuy.kcW")===1900&&w.eval("S.valSale.kcW")===undefined&&w.eval("S.valKoef")===undefined&&w.eval("landPrices().by.kcW.sale")===3500&&w.eval("landPrices().by.jPEBs.buy")===2730,"setLandPrice: teksts → skaitlis; tukšs lauks → noklusējums / auto (kcW 3500, jPEBs 4200 × 0,65 = 2730)");
  // 4b. LAD lauku bloki (liz_block_ha) un VZD eksplikācija -> auto "LIZ blokā"/"LIZ parasts" (v0.36)
- ok(w.eval("P().lad")===null&&w.eval("P().expl")===null,"70420080041: pašreizējā pagastu failā vēl nav LAD/expl (vecs fails, bez kļūdas)");
+ w.eval("P().lad=null;P().expl=null"); // simulē vecu pagastu failu bez šiem laukiem (neatkarīgi no tā, vai pagastu pārbūve tos jau aizpildījusi)
  ok(w.eval("valCalc(P()).rows.find(r=>r.k==='lizB').ha")===0&&w.eval("valCalc(P()).rows.find(r=>r.k==='lizP').ha")===0,"LIZ blokā/parasts = 0 (tukšs), kamēr avota datu nav; Novērtējuma zemes summa nemainās");
  w.eval("P().lad={ha:8.5,blocks:['61234-11111','61234-22222']};P().expl={liz:12,mezs:20}");
  const liz=w.eval("JSON.stringify({b:valCalc(P()).rows.find(r=>r.k==='lizB'),p:valCalc(P()).rows.find(r=>r.k==='lizP')})");
@@ -64,8 +71,29 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  w.eval("var t3={dapList:[{kind:'iadt',name:'Testa vecais liegums',zone:'',ha:2}]}");
  const zaudejis=w.eval("JSON.stringify(iadtRulesFor(t3))");
  ok(zaudejis==="[]","iadtRulesFor: spēku zaudējis auto ieraksts (spēkā=false) neko nesamazina, cērtamais nemainās (got "+zaudejis+")");
+ // 4d. zoneChecks/zoneFeatures ar zināmiem datiem (#39): USIK garuma kategorija vs. bez USIK (minimālā + brīdinājums, BIG_RIVERS regex izņemts)
+ w=await app();
+ w.eval(`var _lon0=25.000,_lat0=57.000,_dlon=0.00521,_dlat=0.00284;
+  var _geom=[[_lon0,_lat0],[_lon0+_dlon,_lat0],[_lon0+_dlon,_lat0+_dlat],[_lon0,_lat0+_dlat],[_lon0,_lat0]];
+  var _stand={id:"s1",geom:_geom,platMezs:10,platKop:10,cirsmaKods:"KC",suga:"Priede",kvartals:"1",nogabals:"1"};
+  var _usikLine=[[_lon0-0.001,_lat0+_dlat*0.25],[_lon0+_dlon+0.001,_lat0+_dlat*0.25]];
+  var _osmLine=[[_lon0-0.001,_lat0+_dlat*0.75],[_lon0+_dlon+0.001,_lat0+_dlat*0.75]];
+  var _p={mer:[_stand],cirsmas:[],infra:{usik:[{cat:"25-100",name:"Testupe",geom:[_usikLine]}],water:[{t:"river",name:"Nezinama upite",geom:[_osmLine]}],watera:[]}};`);
+ const standHa=w.eval("+(turf.area(merFeature(_stand))/10000).toFixed(2)");
+ ok(standHa===9.96,"Fixture: nogabals ~9,96 ha (got "+standHa+")");
+ const kcFeats=w.eval("JSON.stringify(zoneFeatures(_p).kc.map(f=>({label:f.properties.label,w:f.properties.w,unconfirmed:f.properties.unconfirmed})))");
+ ok(kcFeats==='[{"label":"upe Testupe (25-100 km)","w":50,"unconfirmed":false},{"label":"upe Nezinama upite (garums nav apstiprināts)","w":10,"unconfirmed":true}]',"zoneFeatures: USIK 25-100 km -> 50 m josla (KC band), bez USIK -> minimālā 10 m ar unconfirmed karodziņu, BIG_RIVERS regex vairs netiek lietots (got "+kcFeats+")");
+ w.eval("var _out={nog:[{m:_stand,f:[]}],global:[]};zoneChecks(_p,_out);");
+ const kHa=w.eval("_out.zoneByNog.s1.kc.ha"),mHa=w.eval("_out.zoneByNog.s1.main.ha");
+ ok(kHa===3.79&&mHa===1.26,"zoneChecks: KC josla 3,79 ha, 10 m josla 1,26 ha (got kc="+kHa+" main="+mHa+")");
+ ok(kHa>=0&&kHa<=standHa&&mHa>=0&&mHa<=standHa,"joslas ha robežās starp 0 un nogabala platību");
+ const warnFind=w.eval("JSON.stringify(_out.nog[0].f.find(f=>f.t==='warn'))");
+ ok(warnFind==='{"t":"warn","s":"Ūdensteces garums nav apstiprināts (nav MK 397 klasifikatorā), pieņemta minimālā aizsargjosla (Aizsargjoslu lik. 7.p.), pārbaudīt."}',"zoneChecks: dzeltens brīdinājums par neapstiprinātu garumu (got "+warnFind+")");
+ const m3=w.eval(`Math.round(${kHa}*200)`);
+ ok(m3===758,"atliktie m³ = joslas daļa × nogabala krāja: 3,79 ha × 200 m³/ha = 758 m³ (got "+m3+")");
  // 5. Koda sadaļu integritāte
  const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
+ ok(!/BIG_RIVERS/.test(src),"BIG_RIVERS regex izņemts (#39)");
  console.log(fails?`\n${fails} FAIL`:"\nVISI TESTI OK");process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(1);});

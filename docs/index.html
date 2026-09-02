@@ -57,6 +57,7 @@ tr.tot td{font-weight:700;border-top:2px solid var(--ink)}
 .species h3{margin:0 0 6px;font-size:.95rem;display:flex;gap:8px;align-items:center}
 .species h3 .sp{flex:1}
 .pctbad{color:var(--red);font-weight:600}
+.pctwarn{color:var(--amber);font-weight:600}
 .totals{position:fixed;left:0;right:0;bottom:0;background:var(--ink);color:#fff;padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:6}
 .totals div{font-size:.7rem;color:#B9C1B9}
 .totals b{display:block;font-size:1.25rem;font-variant-numeric:tabular-nums;color:#fff}
@@ -194,6 +195,7 @@ const RU={
 };
 const RU_RX=[[/inventarizācija (\d+), jāpārtaksē, citādi apliecinājumu neizsniedz visai zemes vienībai/g,"инвентаризация $1, нужна перетаксация, иначе разрешение не выдадут на всю единицу"],[/(\d+) m³\/ha zem ekonomiskā sliekšņa (\d+), pievienot blakus cirsmai vai atstāt/g,"$1 м³/га ниже экономического порога $2, присоединить к соседней лесосеке или оставить"],[/(\S+) (\d+) g, legāli cērtams, bet ieteicams saglabāt pieaugumam/g,"$1 $2 лет, рубить можно, но лучше оставить на прирост"],[/vid\. caurmērs (\d+) cm virs (\d+), aizsargājamie koki, izstaigāt/g,"ср. диаметр $1 см выше $2, охраняемые деревья, обойти"],[/\bnog\./g,"выд."],[/\bkv\./g,"кв."],[/(\d) g\b/g,"$1 лет"],[/m³/g,"м³"],[/\bha\b/g,"га"]];
 const RU_LONG={
+"Ūdensteces garums nav apstiprināts (nav MK 397 klasifikatorā), pieņemta minimālā aizsargjosla (Aizsargjoslu lik. 7.p.), pārbaudīt.":"Длина водотока не подтверждена (нет в классификаторе МК 397), принята минимальная охранная полоса (Закон об охранных зонах, ст. 7), проверить.",
 "Pārdošanas un pirkuma cenas €/ha un peļņa % ir kopīgas visiem objektiem:":"Цены продажи и покупки €/га и прибыль % общие для всех объектов:",
 "Pirkuma €/ha = pārdošanas €/ha × (1 − peļņa %). Pirkuma cenu var arī pārrakstīt tabulā (dzeltens = labots ar roku, \"auto\" vai tukšs lauks atgriež). Platības (ha) katram objektam ir sadaļā Novērtējums.":"Покупка €/га = продажа €/га × (1 − прибыль %). Цену покупки можно также переписать в таблице (жёлтый = изменено вручную, «auto» или пустое поле возвращает). Площади (га) каждого объекта — в разделе Оценка.",
 "Zemes pirkuma summa (Darījums)":"Сумма покупки земли (Сделка)","pārdošanas summa (Realizācija)":"сумма продажи (Реализация)",
@@ -656,33 +658,35 @@ function iadtChecks(p,out){const sets=iadtRulesFor(p);out.iadtRules=sets;if(!set
 // kokmateriālu glabātavas aizliegtas visā joslā. Grāvji (ūdens novadīšanai) joslu neveido. Purvi 10–100 ha 20 m, >100 ha 50 m (100 m uz slapjām kūdras augsnēm).
 const AJ_DEFAULT={stream:10,river:50,riverBig:300,canal:10,lake10:10,lake25:50,lake100:100,lake1000:300,lakeBig:500,bog100:20,bogBig:50,bogBigPeat:100,kcBand:50,mainBand:10,roadState:30};
 function aj(){return Object.assign({},AJ_DEFAULT,S.settings.aj||{});}
-const BIG_RIVERS=/^(Daugava|Gauja|Lielupe|Venta|Aiviekste|Ogre|Salaca|Abava|Bārta|Dubna|Rēzekne|Pededze|Mēmele|Mūsa|Iecava|Misa|Amata|Brasla|Tebra|Saka|Durbe|Užava|Rīva|Irbe|Stende|Roja|Svēte|Bērze|Auce|Tērvete|Zaņa|Ciecere|Imula|Amula|Vēdzele|Slocene|Rauna|Tirza|Vaidava|Mustjegi|Kūja|Sarja|Rītupe|Malta|Feimanka|Ilūkste|Laucesa|Neretiņa|Susēja)$/i;
 function zoneFeatures(p){ // atgriež {kc:[Feature], main:[Feature], krautuve:[Feature]} WGS84
  const inf=p.infra;if(!inf||typeof turf==="undefined")return null;const A=aj();const kc=[],main=[],full=[];const km=m=>m/1000;
- const add=(f,zoneW,label)=>{try{const fullZ=turf.buffer(f,km(zoneW),{units:"kilometers"});fullZ.properties={label,w:zoneW};full.push(fullZ);
-   const kcZ=zoneW<=A.kcBand?fullZ:turf.buffer(f,km(A.kcBand),{units:"kilometers"});kcZ.properties={label,w:Math.min(zoneW,A.kcBand)};kc.push(kcZ);
-   const mZ=turf.buffer(f,km(A.mainBand),{units:"kilometers"});mZ.properties={label,w:A.mainBand};main.push(mZ);}catch(e){}};
+ const add=(f,zoneW,label,unconfirmed)=>{try{const fullZ=turf.buffer(f,km(zoneW),{units:"kilometers"});fullZ.properties={label,w:zoneW,unconfirmed:!!unconfirmed};full.push(fullZ);
+   const kcZ=zoneW<=A.kcBand?fullZ:turf.buffer(f,km(A.kcBand),{units:"kilometers"});kcZ.properties={label,w:Math.min(zoneW,A.kcBand),unconfirmed:!!unconfirmed};kc.push(kcZ);
+   const mZ=turf.buffer(f,km(A.mainBand),{units:"kilometers"});mZ.properties={label,w:A.mainBand,unconfirmed:!!unconfirmed};main.push(mZ);}catch(e){}};
  // Oficiālās ūdensteces >10 km ar garuma kategoriju (MK 397 / VARAM klasifikators): platums tieši pēc kategorijas
  const usikNames=new Set();
  for(const w of inf.usik||[]){const c=String(w.cat||"");const zw=/100/.test(c)&&/[>l]|virs|100\s*-|100\+/.test(c)&&!/25/.test(c)?A.riverBig:/25/.test(c)&&/100/.test(c)?A.lake100:/10/.test(c)&&/25/.test(c)?A.river:A.river;
   const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};if(w.name)usikNames.add(w.name.toLowerCase());add(f,zw,"upe "+(w.name||"")+" ("+c+" km)");}
+ // Ūdenstecēm bez USIK ieraksta MK 397 garuma kategorija nav zināma: lieto AJ_DEFAULT minimālo ūdensteces kategoriju (stream, 7.p.), atzīmē kā neapstiprinātu (#39)
  for(const w of inf.water||[]){if(["ditch","drain"].includes(w.t))continue;if(w.name&&usikNames.has(w.name.toLowerCase()))continue; // jau no ŪSIK
   const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};
-  const big=w.name&&BIG_RIVERS.test(w.name.trim());const zw=w.t==="river"?(big?A.riverBig:A.river):w.t==="canal"?A.canal:A.stream;add(f,zw,(w.t==="river"?"upe":w.t==="canal"?"kanāls":"strauts")+(w.name?" "+w.name:""));}
+  if(w.t==="canal"){add(f,A.canal,"kanāls"+(w.name?" "+w.name:""));continue;}
+  add(f,A.stream,(w.t==="river"?"upe":"strauts")+(w.name?" "+w.name:"")+" (garums nav apstiprināts)",true);}
  for(const w of inf.watera||[]){const f={type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[w.geom]}};let zw,label;
   if(w.t==="wetland"){if(w.ha<10)continue;zw=w.ha>100?A.bogBig:A.bog100;label="purvs "+w.ha+" ha";}
   else{zw=w.ha>1000?A.lakeBig:w.ha>100?A.lake1000:w.ha>25?A.lake100:w.ha>10?A.lake25:A.lake10;label=(w.t==="reservoir"?"ūdenskrātuve ":"ezers ")+(w.name||"")+" "+w.ha+" ha";}
   add(f,zw,label);}
  return {kc,main,full};}
-function stripHaOf(m,feats){if(!m.geom||!feats.length)return {ha:0,geoms:[],labels:[]};const mf=merFeature(m);let ha=0;const geoms=[],labels=new Set();
- for(const z of feats){try{if(!turf.booleanIntersects(mf,z))continue;const i=turf.intersect(turf.featureCollection([mf,z]));if(i){ha+=turf.area(i)/10000;geoms.push(i.geometry);labels.add(z.properties.label);}}catch(e){}}
- return {ha:+Math.min(ha,num(m.platMezs||m.platKop)).toFixed(2),geoms,labels:[...labels]};}
+function stripHaOf(m,feats){if(!m.geom||!feats.length)return {ha:0,geoms:[],labels:[],unconfirmed:false};const mf=merFeature(m);let ha=0;const geoms=[],labels=new Set();let unconfirmed=false;
+ for(const z of feats){try{if(!turf.booleanIntersects(mf,z))continue;const i=turf.intersect(turf.featureCollection([mf,z]));if(i){ha+=turf.area(i)/10000;geoms.push(i.geometry);labels.add(z.properties.label);if(z.properties.unconfirmed)unconfirmed=true;}}catch(e){}}
+ return {ha:+Math.min(ha,num(m.platMezs||m.platKop)).toFixed(2),geoms,labels:[...labels],unconfirmed};}
 function zoneChecks(p,out){const Z=zoneFeatures(p);if(!Z)return;out.zones=Z;out.zoneByNog={};
  for(const x of out.nog){const m=x.m;if(!m.geom)continue;const k=stripHaOf(m,Z.kc),mm=stripHaOf(m,Z.main);if(!k.ha&&!mm.ha)continue;out.zoneByNog[m.id]={kc:k,main:mm};
   const alder=m.suga==="Baltalksnis";
   if(m.cirsmaKods==="KC"&&k.ha>0.005)x.f.push({t:alder?"ier":"bloks",s:`aizsargjosla (${k.labels.join(", ")}): kailcirte aizliegta ${fmt(k.ha,2)} ha joslā līdz ${aj().kcBand} m no ūdens (Aizsargjoslu lik. 37.p.)${alder?"; baltalksnim atļauta ≤ 1 ha, ne 1.04–30.06, saglabājot ozolus, liepas, priedes u.c.":""}`});
   if(m.cirsmaKods&&mm.ha>0.005)x.f.push({t:"ier",s:`10 m josla gar ūdeni ${fmt(mm.ha,2)} ha: galvenā cirte un pievešanas koridori aizliegti (37.p. 5)`});
-  if(!m.cirsmaKods&&k.ha>0.05)x.f.push({t:"ier",s:`aizsargjosla ${k.labels.join(", ")}: ${fmt(k.ha,2)} ha ar KC aizliegumu`});}
+  if(!m.cirsmaKods&&k.ha>0.05)x.f.push({t:"ier",s:`aizsargjosla ${k.labels.join(", ")}: ${fmt(k.ha,2)} ha ar KC aizliegumu`});
+  if(k.unconfirmed||mm.unconfirmed)x.f.push({t:"warn",s:"Ūdensteces garums nav apstiprināts (nav MK 397 klasifikatorā), pieņemta minimālā aizsargjosla (Aizsargjoslu lik. 7.p.), pārbaudīt."});}
  // krautuves aizsargjoslā (visā joslas platumā aizliegtas kokmateriālu glabātavas)
  for(const c of p.cirsmas)if(c.krautuve&&/josl|upe|ezer|krast/i.test(c.krautuve))out.global.push(`Cirsma ${c.tips} ${c.nogabali}: krautuves vieta "${c.krautuve}" izklausās pēc ūdens tuvuma; kokmateriālu glabātavas aizsargjoslā ir aizliegtas (37.p. 1).`);}
 
@@ -1355,7 +1359,7 @@ function legalBlocks(p){if(!p.mer.length)return "";const r=runChecks(p);const zo
   h+=`</table><div class="muted">Grupēts pēc lielākās krājas, katra ≤ limits. Robežošanos rīks zina tikai no ierakstītajiem pāriem (nav ģeometrijas). Ja divas cirsmas robežojas, starp tām 90 m josla vai dabisks atdalītājs, vai viena cērtama pēc otras atjaunošanas.</div>${r.buffers.length?`<h3 style="margin:10px 0 4px">Atdalošās joslas ${bufM()} m (kopējā robeža > 50 m; cērt pēc blakus cirsmas atjaunošanas)</h3><table><tr><th>Pāris</th><th>Robeža m</th><th>Josla paliek nog.</th><th>Cirsma</th><th>ha</th><th>m³ atlikti</th></tr>${r.buffers.map(b=>`<tr><td>${esc(b.a)}-${esc(b.b)}</td><td>${b.L}${b.real?" (ģeometrija)":b.est?" (novērtēts)":""}${b.widened?" · paplašināta līdz "+b.widened+" m, lai ≥ 0,1 ha":""}</td><td>${esc(b.nog)}</td><td>${b.grp}</td><td>${fmt(b.stripHa,2)}</td><td>${fmt(b.m3)}</td></tr>`).join("")}<tr class="tot"><td>KOPĀ</td><td></td><td></td><td></td><td>${fmt(r.deferredHa,2)}</td><td>${fmt(r.deferredM3)}</td></tr></table><div class="muted">Bez garuma robežu novērtē kā mazākā nogabala kvadrāta malu (√(ha × 10 000)); precīzāk: "32-10:200". Joslu liek nogabalā ar mazāku krāju/ha. Katram nogabalam rīks ieraksta buferi % no m³ (Mērījumos labojams; manuāli ievadītu vērtību rīks nepārraksta).</div>`:""}
  <button class="btn amber" style="margin-top:8px" onclick="applySplit()">${ARM==="split"?"Aizstās esošās Kc cirsmas. Spied vēlreiz":"Pārveidot cirsmas pēc šī sadalījuma"}</button></div>`;}
  const flagged=r.nog.filter(x=>x.f.length);
- h+=`<div class="card"><h2>Nogabali ar piezīmēm (${flagged.length})</h2><div class="list">${flagged.map(x=>`<div class="item"><div class="t"><b>${x.m.kvartals?"kv."+esc(x.m.kvartals)+" ":""}nog. ${esc(x.m.nogabals)} · ${esc(x.m.mezaTips)} · ${esc(x.m.suga)} ${x.m.vecums||""}g · ${fmt(x.kr)} m³ (${fmt(x.krha)} m³/ha) ${x.m.cirsmaKods?"· "+x.m.cirsmaKods:""}</b><small>${x.f.map(f=>`<span class="${f.t==="bloks"?"pctbad":""}">${esc(f.s)}</span>`).join(" · ")}</small></div></div>`).join("")||'<div class="empty">Piezīmju nav.</div>'}</div></div>`;
+ h+=`<div class="card"><h2>Nogabali ar piezīmēm (${flagged.length})</h2><div class="list">${flagged.map(x=>`<div class="item"><div class="t"><b>${x.m.kvartals?"kv."+esc(x.m.kvartals)+" ":""}nog. ${esc(x.m.nogabals)} · ${esc(x.m.mezaTips)} · ${esc(x.m.suga)} ${x.m.vecums||""}g · ${fmt(x.kr)} m³ (${fmt(x.krha)} m³/ha) ${x.m.cirsmaKods?"· "+x.m.cirsmaKods:""}</b><small>${x.f.map(f=>`<span class="${f.t==="bloks"?"pctbad":f.t==="warn"?"pctwarn":""}">${esc(f.s)}</span>`).join(" · ")}</small></div></div>`).join("")||'<div class="empty">Piezīmju nav.</div>'}</div></div>`;
  const realistic=r.nog.filter(x=>x.m.cirsmaKods&&!x.exclude);const rm3=realistic.reduce((a,x)=>a+Math.max(x.kr-x.eco,0),0),rha=realistic.reduce((a,x)=>a+num(x.m.platMezs||x.m.platKop),0);
  h+=`<div class="card"><h2>Realistiskais apjoms</h2><div class="kv"><span>Pēc ekonomiskā filtra un bloķētāju izslēgšanas</span><b>${fmt(rha,2)} ha · ${fmt(rm3)} m³</b></div><div class="kv"><span>Visi nogabali ar cirsmas kodu</span><b>${fmt(r.nog.filter(x=>x.m.cirsmaKods).reduce((a,x)=>a+num(x.m.platMezs||x.m.platKop),0),2)} ha · ${fmt(r.nog.filter(x=>x.m.cirsmaKods).reduce((a,x)=>a+Math.max(x.kr-x.eco,0),0))} m³</b></div></div>`;
  h+=`<div class="card"><h2>Pirms iesnieguma</h2>${PRECHECK.map(t=>`<div class="kv"><span>${esc(t)}</span></div>`).join("")}</div>`;
@@ -1367,7 +1371,7 @@ function cirsmaLegal(c){const p=P();const linked=p.mer.filter(m=>m.cirsma===c.id
   if(Object.keys(groups).length>1){const wet=groups["slapjie"]||0,tot=Object.values(groups).reduce((a,b)=>a+b,0);h+=`<div class="kv"><span>Jaukta cirsma (MK935 16.p.): kopā ≤ 5 ha, slapjā daļa ≤ 2 ha</span><b class="${(tot>5||wet>2)?"pctbad":""}">${fmt(tot,2)} ha, slapjie ${fmt(wet,2)} ha ${(tot>5||wet>2)?"pārsniedz":"✓"}</b></div>`;}}
  if(c.tips==="KKC"){const kr=rows.reduce((a,x)=>a+x.kr,0),ce=rows.reduce((a,x)=>a+(x.m.certamais||0),0);if(kr&&ce)h+=`<div class="kv"><span>Kopšanas intensitāte (cērtamais / krāja)</span><b class="${ce/kr*100>=RULES.maxThinPct?"pctbad":""}">${fmt(ce/kr*100)} %</b></div>`;}
  const eco=rows.reduce((a,x)=>a+x.eco,0);h+=`<div class="kv"><span>Ekoloģiskie koki (${RULES.ecoTreesHa[c.tips==="Kc"?"KC":"KKC"]||0}/ha), atskaitīti</span><b>${fmt(eco)} m³</b></div>`;
- for(const x of rows)for(const f of x.f)h+=`<div class="kv"><span>nog. ${esc(x.m.nogabals)}</span><b class="${f.t==="bloks"?"pctbad":""}" style="text-align:right;white-space:normal;max-width:70%">${esc(f.s)}</b></div>`;
+ for(const x of rows)for(const f of x.f)h+=`<div class="kv"><span>nog. ${esc(x.m.nogabals)}</span><b class="${f.t==="bloks"?"pctbad":f.t==="warn"?"pctwarn":""}" style="text-align:right;white-space:normal;max-width:70%">${esc(f.s)}</b></div>`;
  return h+"</div>";}
 function bufferSuggest(p,r){const out={};for(const b of (r||runChecks(p)).buffers){const m=p.mer.find(x=>x.nogabals===b.nog);if(!m)continue;const ha=num(m.platMezs||m.platKop);out[m.id]=Math.min(100,Math.round((out[m.id]||0)+(ha?b.stripHa/ha*100:0)));}return out;}
 function applyBuffers(p,r){const sug=bufferSuggest(p,r);for(const m of p.mer){if(m.buferManual)continue;m.buferPct=sug[m.id]||0;}}
