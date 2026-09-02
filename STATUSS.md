@@ -46,7 +46,7 @@ Atjaunots: 2026-09-02 (LAD bloki rindā, talons atjaunots). Šis fails ir vienī
 - LVM īpašnieki un ceļi: LVM dati nav atjaunoti kiberuzbrukuma dēļ; būve ņem no Release "mirror", kad būs faili (spoguļa skripts gatavs, vai ar roku no LVM GEO platformas).
 - VZD eksplikācija: skripts gatavs, jāpalaiž atkārtoti.
 - Aizsargjoslas (#39): dzinējs un platumi ar 37.p. atsaucēm gatavi, MK 397 kategorijas reģistrētajām ūdenstecēm. Atlicis: neregistrētām ūdenstecēm nomainīt regex uz minimālo likuma kategoriju + brīdinājums, regresijas tests ar zināmiem datiem, ATIS, LĢIA hidrogrāfija, purvu klasifikācija.
-- ĪADT individuālie noteikumi (#40, #42): Rāzna, GNP, Daugavas loki, Veclaicene ir rokas noteikumos ar MK un pantu. Auto-slānis (114 noteikumi, 33 spēku zaudējuši) lietotni nesasniedz, jo iadt.yml nepublicē rules.json data zarā; jāizmeklē (#42), tikai spēkā esošie publicējami, regresijas tests.
+- ĪADT individuālie noteikumi (#40, #42): Rāzna, GNP, Daugavas loki, Veclaicene ir rokas noteikumos ar MK numuru (Rāznas divām zonām trūkst tiešas panta atsauces piezīmēs — atsevišķs, nelabots datu trūkums). #42 izmeklēts un labots: iadt.yml savs publicēšanas solis 01.09. faktiski nostrādāja (git push apstiprināts logā), bet 21 min vēlāk infra.yml (un tāpat aplieci.yml/remerge.yml) pārraksta visu data zaru ar orphan force-push, kuru checkout saraksts neietver iadt/ — tāpēc tas pazuda; šis ir starp-workflow trūkums, ko nevar pilnībā novērst tikai iadt.yml (nepieciešams papildināt pārējo publicētāju checkout sarakstus, ārpus #42 robežām). iadt.yml tagad beidzas ar kļūdu, ja rules.json nav izveidots/tukšs vai push/publicēšana neizdodas; build_iadt_rules.py publicē tikai spēkā esošos noteikumus (zaudējušos izraksta logā atsevišķi); tests/regress.js 4c pārbauda iadtRulesFor (rokas, auto, zaudējis).
 
 ## 4. Neizpildīts, rindā (secībā)
 1. Sentinel automātiski taviem objektiem + kaimiņiem (kadastru saraksts no lietotnes → nakts darbs → zils karodziņš nogabalā).
@@ -195,3 +195,69 @@ Atjaunots: 2026-09-02 (LAD bloki rindā, talons atjaunots). Šis fails ir vienī
 - Kamēr rekvizīti un skaitļi nav apstiprināti, publicēt nedrīkst.
 - Vērtēšanas formulas nav mainītas → `tests/regress.js` papildinājums nav vajadzīgs.
   Mājaslapas vārti (`site/check.py`, `site/test_build.py`) joprojām iziet: 34 lapas, 0 kļūdu.
+
+## 2026-09-02 (vēlāk) — ezermezs.lv pārbūvēta pēc dizaina lēmumiem
+
+### Kas ir pabeigts
+- Izpildīti visi trīs klienta lēmumi: (1) rekvizīti no dizaina — Dunduru iela 11, Daugavpils,
+  LV-5404, dibināts 2017, tālrunis/WhatsApp +371 27 155 991; (2) valodas **LV/RU/LTG**
+  (latgaliski), angļu versija atmesta; (3) lapu struktūra apvienota — paturēti `taxes`,
+  `privacy`, `cookies`, `thanks`, pievienoti dizaina `forestry` (Mežizstrāde), `management`
+  (Apsaimniekošana) un `useful` (Noderīgi ar kalkulatoru/valsts saitēm/padomiem). Kopā
+  **14 lapu atslēgas × 3 valodas = 42 lapas**.
+- **Vizuālā sistēma pārtaisīta pilnībā pēc dizaina**: krāsas (#2F3D1F zaļais, #D9982F
+  dzintara, #2E627C saites), Archivo + Source Sans 3 fonti — **self-hostēti** (lejupielādēti
+  no Google Fonts CSS2 API, WOFF2, `site/assets/fonts/` + `fonts.css`), nevis CDN.
+- **Jauni bloku tipi** `build.py`: `team` (komandas kartītes), `reviews` (atsauksmes ar
+  5 zvaigznēm un Google reitingu), `hero.image`/`cards[].image` (Pexels foto ar CSP
+  atļauju), `cards[].href` (stretched-link modelis — vesela karte klikšķināma, derīga HTML),
+  `pills` (kompakta procesa soļu ķēde tekstā).
+- **Pieteikuma anketa vienkāršota** pēc dizaina: 3 lauki (vārds, tālrunis, novads/kadastrs),
+  bez e-pasta, bez piekrišanas rūtiņas (teksts zem pogas). `worker.mjs`/`site.js`/`serve.py`
+  pieskaņoti — tālrunis tagad vienīgais un obligātais kontakta kanāls.
+- **Saturs pārrakstīts** ar darbplūsmu (32 aģenti, LV → paralēli RU/LTG → QA katrai no
+  8 grupām): sākumlapa, 4 pakalpojumu lapas, process+nodokļi (nodokļu likmes **saglabātas
+  nemainīgas** no iepriekšējās versijas — 10 %/25 % izdevumu norma/7,5 % cirsmai,
+  25,5 % kopš 01.01.2025 zemei, 60 mēnešu atbrīvojums NEATTIECAS uz cirsmu — pārbaudīts
+  pēc būves, ka "20 %" parādās TIKAI kā skaidri atzīmēta novecojusi likme), BUJ+par mums+
+  kontakti, Noderīgi, privātuma+sīkdatņu politika (struktūra/tonis pēc SIA "Psihologs Tavā
+  kabatā" (gudone.lv) parauga, adaptēts Ezermeža situācijai un Cloudflare/Turnstile).
+- Uzņēmuma dati (9+ gadi, 250 000+ m³, 12 milj. €, 35 novadi, komanda, tehnika, 3 atsauksmes
+  ar vārdiem, 4,9★/87 Google atsauksmes) pārņemti tieši no klienta paša dizaina — tas ir
+  klienta paša saturs par savu uzņēmumu, nevis izdomāts.
+- **Divas reālas kļūdas atrastas un izlabotas ceļā**: (1) `@page#enkurs` formāts (piem.
+  `@contacts#pieteikums`), ko pats ieteicu CONTENT_SPEC.md, nebija atbalstīts
+  `Site.resolve_href` — pievienots regresijas tests `test_build.py`; (2) `check.py` domēna
+  atpazīšana bija cietkodēta uz "/en/" un lauza katras lapas canonical pārbaudi, tiklīdz
+  valodu sarakstā vairs nebija "en" — izlabots ar `urlparse`.
+- Pilna ķēde pārbaudīta ar reālo saturu: `build.py` (0 brīdinājumu), `check.py` (43 lapas,
+  0 kļūdu), `test_build.py` (visi izturēti), `deploy.py --dry-run` (56 faili, fonti manifestā).
+- `site/DESIGN-DIFF.md` papildināts ar "Rezolūcija" sadaļu, kas fiksē pieņemtos lēmumus.
+
+### Kas NAV pabeigts
+- **Nav publicēts** — nav Cloudflare API tokena.
+- **Latgaliešu saturs nav pārbaudīts ar dzimtās valodas runātāju.** Aģenti raksta autentiskā
+  latgaliešu rakstu valodā (ne mehāniska burtu aizstāšana), bet automātiski ģenerēts LTG
+  teksts jāpārbauda pirms publicēšanas — vairāki `_verify` punkti to skaidri atzīmē.
+- Meža vērtības kalkulators (`web/kalkulators.js`) Noderīgi lapā **nav integrēts** — vietā ir
+  teksts un CTA uz kontaktiem (kalkulatora JS i18n ir atsevišķs, vēl neveikts darbs).
+- `og.png` nav ģenerēts no `og-source.svg` (nav attēlu rīku šajā vidē) — krāsas atjauninātas,
+  gaida manuālu eksportu.
+
+### Prioritātes un riski
+1. **`site/VERIFY.md` satur 187 punktus** — lielākā daļa ir dublēti pa 2-3 valodām par vienu
+   un to pašu apgalvojumu (piem., procesu soļu secība, apsekošanas ilgums, captcha lauka
+   nepieciešamība). Jāizskata pirms pirmās publicēšanas, prioritāri sadaļa 1 (PVN numurs).
+2. Rekvizīti un skaitļi nāk no klienta paša dizaina, tāpēc uzskatāmi par apstiprinātiem, bet
+   tie **noveco** — pirms katras publicēšanas reizes vērts pārliecināties, ka darbinieku
+   skaits/tehnika/apjomi joprojām atbilst realitātei.
+3. Vērtēšanas formulas lietotnē nav mainītas → `tests/regress.js` papildinājums nav vajadzīgs.
+   Mājaslapai savi vārti: `site/check.py` + `site/test_build.py`, abi zaļi.
+
+### Jauni ierobežojumi un atkarības
+- Fontu self-hostēšana: Archivo un Source Sans 3 ir **mainīgie fonti** (variable fonts) —
+  Google Fonts CSS2 API atgriež VIENU fizisko failu vairākiem deklarētajiem svariem
+  (600/700/800 vienam un tam pašam .woff2); tas ir pareizi un paredzēti, ne kļūda.
+- `copy_assets()` tagad rekursīvi kopē `assets/` apakšmapes (vajadzīgs `fonts/` mapei).
+- CSP `img-src` tagad atļauj `https://images.pexels.com` — hero un pakalpojumu kartēs ir
+  klienta izvēlēti Pexels foto (bezmaksas licence), paredzēti kā aizstājami ar īstiem foto.

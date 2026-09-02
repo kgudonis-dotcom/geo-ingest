@@ -57,16 +57,21 @@ def extract(text):
         if r:rules[z]=r
     return rules
 def main():
-    os.makedirs("iadt",exist_ok=True);L=links();print("noteikumi:",len(L),flush=True);out={}
+    os.makedirs("iadt",exist_ok=True);L=links();print("noteikumi:",len(L),flush=True);out={};dropped=[]
     for i,slug in L.items():
         try:
             t=clean(get(f"https://m.likumi.lv/doc.php?id={i}"))
             name=re.search(r"(?:Dabas parka|Dabas lieguma|Aizsargājamo ainavu apvidus|Dabas rezervāta|Nacionālā parka|Biosfēras rezervāta|Dabas pieminekļa|Ģeoloģiskā[^\"]{0,60})\s*\"([^\"]+)\"",t) or re.search(r"([A-ZĀ][\wāēīūšģķļņčž]+ nacionālā parka)",t)
             nm=name.group(1) if name else slug
             zaudejis="Zaudējis spēku" in t[:3000] or "zaudējis spēku" in t[:3000]
-            out[i]={"name":nm,"slug":slug,"url":f"https://likumi.lv/ta/id/{i}","spēkā":not zaudejis,"rules":extract(t),"verify":True}
-            print(" ",i,nm,"zaudējis" if zaudejis else "",list(out[i]["rules"].keys()),flush=True);time.sleep(0.6)
+            if zaudejis:
+                dropped.append({"id":i,"name":nm,"url":f"https://likumi.lv/ta/id/{i}"});time.sleep(0.6);continue
+            out[i]={"name":nm,"slug":slug,"url":f"https://likumi.lv/ta/id/{i}","spēkā":True,"rules":extract(t),"verify":True}
+            print(" ",i,nm,list(out[i]["rules"].keys()),flush=True);time.sleep(0.6)
         except Exception as e:print(" x",i,e,flush=True)
+    # rules.json satur tikai spēkā esošos noteikumus (skat. #42: cērtamo drīkst samazināt tikai spēkā esošs noteikums)
     json.dump({"updated":datetime.date.today().isoformat(),"count":len(out),"items":out},open("iadt/rules.json","w"),ensure_ascii=False,indent=1)
-    print("gatavs:",len(out))
+    print("gatavs:",len(out),"publicēti (spēkā esoši)")
+    print(f"\n=== Izlaisti (spēku zaudējuši, rules.json neietver): {len(dropped)} ===",flush=True)
+    for d in dropped:print(" ",d["id"],d["name"],d["url"],flush=True)
 if __name__=="__main__":main()

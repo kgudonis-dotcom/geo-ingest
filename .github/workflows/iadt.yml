@@ -3,6 +3,7 @@ on:
   schedule:
     - cron: "0 4 1 * *"
   push: {branches: [main], paths: [IADT_RUN]}
+  workflow_dispatch: {}
 permissions: {contents: write}
 jobs:
   r:
@@ -18,9 +19,24 @@ jobs:
         run: |
           git config user.name bot; git config user.email b@l
           mkdir -p logs; cp run.log "logs/iadt_$(date -u +%F_%H%M).md"; git add logs; git commit -m "iadt log" && git pull --rebase origin main && git push || true
-          ls iadt/rules.json >/dev/null 2>&1 || exit 0
-          git fetch --force origin data:data 2>/dev/null || true
-          git checkout --orphan data-new; git rm -rf --cached . >/dev/null 2>&1 || true
+      - name: Pārbauda, ka iadt/rules.json ir izveidots un nav tukšs (tukšā faila drošinātājs -> kļūda, ne klusa izlaišana)
+        run: |
+          test -s iadt/rules.json || { echo "::error::iadt/rules.json neeksistē vai ir tukšs — ekstrakcija neizdevās"; exit 1; }
+          python3 -c "import json,sys; d=json.load(open('iadt/rules.json',encoding='utf-8')); n=d.get('count',0); print('extracted valid rules:',n); sys.exit(0 if n>0 and len(d.get('items',{}))==n else 1)" || { echo "::error::rules.json satur 0 spēkā esošu noteikumu vai count neatbilst items skaitam"; exit 1; }
+      - name: Publicē iadt/rules.json data zarā (pārraksta zaru no jauna, saglabājot pārējos avotus)
+        run: |
+          git config user.name bot; git config user.email b@l
+          git fetch --force origin data:data
+          git branch -D data-new 2>/dev/null || true
+          git checkout --orphan data-new
+          git rm -rf --cached . >/dev/null 2>&1 || true
           git checkout data -- pagasti aplieci infra sentinel 2>/dev/null || true
-          git add -f pagasti iadt; git add -f aplieci infra sentinel 2>/dev/null || true
-          git commit -m "iadt $(date -u +%F)" && git push -f origin data-new:data
+          git add -f iadt
+          git add -f pagasti aplieci infra sentinel 2>/dev/null || true
+          git commit -m "iadt $(date -u +%F)"
+          git push -f origin data-new:data
+      - name: Pārbauda, ka publicēšana tiešām nostrādāja (workflow beidzas ar kļūdu, ja fails nav publicēts)
+        run: |
+          git fetch --force origin data:data
+          git show data:iadt/rules.json > /tmp/published_rules.json || { echo "::error::iadt/rules.json push izpildījās, bet pēc tam data zarā faila nav (iespējams, cits avota workflow to jau ir pārrakstījis — sk. #42 piezīmi par citu publicētāju checkout sarakstiem)"; exit 1; }
+          python3 -c "import json,sys; d=json.load(open('/tmp/published_rules.json',encoding='utf-8')); n=d.get('count',0); print('published to data branch:',n,'valid rules'); sys.exit(0 if n>0 else 1)" || { echo "::error::publicētais iadt/rules.json ir tukšs"; exit 1; }

@@ -51,6 +51,19 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(liz==='{"b":{"k":"lizB","l":"LIZ blokā","ha":8.5,"sale":2500,"buy":1625,"saleSum":21250,"buySum":13813},"p":{"k":"lizP","l":"LIZ parasts","ha":3.5,"sale":2000,"buy":1300,"saleSum":7000,"buySum":4550}}',"LIZ blokā 8,5 ha (LAD) + LIZ parasts 3,5 ha (VZD LIZ 12 − 8,5) (got "+liz+")");
  w.eval("P().lad={ha:20,blocks:['x']};P().expl={liz:12}");
  ok(w.eval("valCalc(P()).rows.find(r=>r.k==='lizB').ha")===20&&w.eval("valCalc(P()).rows.find(r=>r.k==='lizP').ha")===0,"LIZ parasts nekad negatīvs: bloks 20 ha > VZD LIZ 12 ha -> lizB=20, lizP=0");
+ // 4c. iadtRulesFor (#42): rokas noteikums, auto noteikums (spēkā), spēku zaudējis ieraksts neko nesamazina
+ w=await app();
+ w.eval("var t1={dapList:[{kind:'iadt',name:'Rāznas nacionālais parks',zone:'',ha:5},{kind:'zona',zone:'Dabas lieguma zona',ha:5}]}");
+ const razna=w.eval("JSON.stringify(iadtRulesFor(t1))");
+ ok(razna==='[{"iadt":"Rāznas nacionālais parks","key":"Rāznas nacionālais parks","zone":"dabas lieguma zona","src":"MK 447 (2007, red. 2024)","r":{"kcMax":null,"galvena":false,"kopsanaAge":{"Priede":60,"Ozols":60,"Egle":50,"Bērzs":50,"Melnalksnis":50,"Osis":50,"Apse":30},"season":"15.04-31.07","notes":["sausos kokus un kritalas >25 cm neizvāc","sanitārajā cirtē necērt augtspējīgus","atjaunošana stādot tikai ar DAP atļauju"]}}]',"iadtRulesFor: Rāzna -> rokas noteikums (nevis auto), src ar MK numuru (got "+razna+")");
+ w.eval("IADT_AUTO={items:{'999':{name:'Testa liegums',url:'https://likumi.lv/ta/id/999','spēkā':true,rules:{'dabas lieguma zona':{kcMax:null}}}}}");
+ w.eval("var t2={dapList:[{kind:'iadt',name:'Testa liegums',zone:'',ha:2},{kind:'zona',zone:'Dabas lieguma zona',ha:2}]}");
+ const autoRule=w.eval("JSON.stringify(iadtRulesFor(t2))");
+ ok(autoRule==='[{"iadt":"Testa liegums","key":"auto","zone":"dabas lieguma zona","src":"automātiski no https://likumi.lv/ta/id/999 (pārbaudīt)","r":{"kcMax":null,"notes":["auto: kcMax=null"]},"auto":true}]',"iadtRulesFor: teritorija bez rokas noteikuma, ar spēkā auto ierakstu -> atgriež auto noteikumu (got "+autoRule+")");
+ w.eval("IADT_AUTO={items:{'888':{name:'Testa vecais liegums',url:'https://likumi.lv/ta/id/888','spēkā':false,rules:{'dabas lieguma zona':{kcMax:null}}}}}");
+ w.eval("var t3={dapList:[{kind:'iadt',name:'Testa vecais liegums',zone:'',ha:2}]}");
+ const zaudejis=w.eval("JSON.stringify(iadtRulesFor(t3))");
+ ok(zaudejis==="[]","iadtRulesFor: spēku zaudējis auto ieraksts (spēkā=false) neko nesamazina, cērtamais nemainās (got "+zaudejis+")");
  // 5. Koda sadaļu integritāte
  const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
