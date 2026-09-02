@@ -45,6 +45,8 @@ Atjaunots: 2026-09-02 (LAD bloki rindā, talons atjaunots). Šis fails ir vienī
 - OSM ceļi un grāvji pa pagastiem (build-infra): kļūda labota, jāpalaiž vēlreiz (pirmajā reizē 79 pagasti).
 - LVM īpašnieki un ceļi: LVM dati nav atjaunoti kiberuzbrukuma dēļ; būve ņem no Release "mirror", kad būs faili (spoguļa skripts gatavs, vai ar roku no LVM GEO platformas).
 - VZD eksplikācija: skripts gatavs, jāpalaiž atkārtoti.
+- Aizsargjoslas (#39): dzinējs un platumi ar 37.p. atsaucēm gatavi, MK 397 kategorijas reģistrētajām ūdenstecēm. Atlicis: neregistrētām ūdenstecēm nomainīt regex uz minimālo likuma kategoriju + brīdinājums, regresijas tests ar zināmiem datiem, ATIS, LĢIA hidrogrāfija, purvu klasifikācija.
+- ĪADT individuālie noteikumi (#40, #42): Rāzna, GNP, Daugavas loki, Veclaicene ir rokas noteikumos ar MK un pantu. Auto-slānis (114 noteikumi, 33 spēku zaudējuši) lietotni nesasniedz, jo iadt.yml nepublicē rules.json data zarā; jāizmeklē (#42), tikai spēkā esošie publicējami, regresijas tests.
 
 ## 4. Neizpildīts, rindā (secībā)
 1. Sentinel automātiski taviem objektiem + kaimiņiem (kadastru saraksts no lietotnes → nakts darbs → zils karodziņš nogabalā).
