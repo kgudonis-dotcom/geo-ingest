@@ -15,6 +15,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // 1. Zapasnaja 19: VMD izsniedza KC apliecinājumus uz nog. 2,3,4,5,6,7,9 -> tur nedrīkst būt bloķētāju
  let w=await app();await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
  ok(w.eval("P().mer.length")===9,"Zapasnaja: 9 nogabali no VMD");
+ ok(w.eval("P().mer.every(m=>!nogPlausibleIssue(m))")&&w.eval("dashData(P()).kraja")===w.eval("Math.round(P().mer.reduce((s,m)=>s+krajaMer(m),0))"),"Zapasnaja: neviens nogabals nav neticams, kopējā krāja nemainās (#45)");
  w.eval("for(const n of ['2','3','4','5','6','7','9']){const m=P().mer.find(x=>x.nogabals===n);m.cirsmaKods='KC';}recalcLinked()");
  const blocks=w.eval("runChecks(P()).nog.filter(x=>['2','3','4','5','6','7','9'].includes(x.m.nogabals)).flatMap(x=>x.f.filter(f=>f.t==='bloks').map(f=>x.m.nogabals+': '+f.s))");
  ok(blocks.length===0,"Zapasnaja: nav bloķētāju uz nogabaliem ar VMD apliecinājumu "+JSON.stringify(blocks));
@@ -22,6 +23,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // 2. Ezermuiža
  w=await app();await w.eval("createFromPagasts('70600050074')");await new Promise(r=>setTimeout(r,1500));
  ok(w.eval("P().mer.length")===28,"Ezermuiža: 28 nogabali");
+ ok(w.eval("P().mer.every(m=>!nogPlausibleIssue(m))")&&w.eval("dashData(P()).kraja")===w.eval("Math.round(P().mer.reduce((s,m)=>s+krajaMer(m),0))"),"Ezermuiža: neviens nogabals nav neticams, kopējā krāja nemainās (#45)");
  ok(w.eval("P().mer.filter(m=>m.geom).length")===28,"Ezermuiža: visiem ģeometrija");
  ok(w.eval("P().cirsmas.length")>=1,"Ezermuiža: cirsmas izveidotas");
  // 2a. Ezermuiža aizsargjoslas (#39): reāls gadījums, fiksēts 02.09.2026, pārbaudīt pret VMD
@@ -123,8 +125,43 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(w.eval(`S.props.find(p=>p.id==='${pid}').archived`)===false,"restoreProp: objekts atjaunots no arhīva");
  const nAfterRestore=w.eval("fundStats(S.props).n");
  ok(nAfterRestore===nBefore,"atjaunots objekts atkal skaitās Fondā");
- // 8. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ // 8. #45: nogabalu ticamības pārbaude (VMD dbf ×100 kļūda). 60700020059 kv.2 nog.4: B16, D12, H11, 3,05 ha, reālajos datos krāja 25095 m³ (8228 m³/ha), G 1700 -> patiesie ~251 m³, G 17. NĪ "Bojāri" ir 2 ZV, ņem tikai šo.
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ const tgt="P().mer.find(m=>m.kvartals==='2'&&m.nogabals==='4')";
+ ok(w.eval("P().mer.length")===56,"60700020059: 56 nogabali");
+ const pl=JSON.parse(w.eval("JSON.stringify(nogPlausibleIssue("+tgt+"))"));
+ ok(pl&&pl.krha>900&&pl.g>80,"kv.2 nog.4 atzīmēts kā neticams (krāja/ha > 900 vai G > 80): "+JSON.stringify(pl));
+ ok(w.eval("runChecks(P()).nog.find(x=>x.m.kvartals==='2'&&x.m.nogabals==='4').f.some(f=>f.t==='bloks'&&/Krāja ārpus iespējamā \\(\\d+ m³\\/ha\\), avota kļūda/.test(f.s))"),"runChecks: sarkans karodziņš 'Krāja ārpus iespējamā (X m³/ha), avota kļūda'");
+ const rawTot=w.eval("Math.round(P().mer.reduce((s,m)=>s+krajaMer(m),0))"),chkTot=w.eval("dashData(P()).kraja"),fundTot=w.eval("fundStats(S.props).kraja");
+ ok(Math.abs(chkTot-12146)<=125&&chkTot===fundTot&&rawTot-chkTot>20000,"kopējā krāja bez neticamā nogabala ≈ 12 146 m³ Pārskatā un Fondā (got Pārskats "+chkTot+", Fonds "+fundTot+", bez pārbaudes "+rawTot+")");
+ ok(w.eval("fixEligible("+tgt+")")===true,"×0,01 labojums piedāvāts (abi pārkāpj, pēc /100 abi ticami)");
+ w.eval("fixByHundred("+tgt+".id)"); // 1. klikšķis: tikai apbruņo (arm), nedrīkst mainīt datus
+ ok(w.eval(tgt+".G")===1700&&w.eval("ARM")==="fix1"+w.eval(tgt+".id"),"1. klikšķis uz 'Labot ×0,01' tikai apstiprina, dati vēl nemainās (arm)");
+ w.eval("fixByHundred("+tgt+".id)"); // 2. klikšķis (apstiprinājums) piemēro labojumu
+ const after=JSON.parse(w.eval("JSON.stringify((()=>{const m="+tgt+";return {krajaImp:m.krajaImp,G:m.G,man:m.man,plaus:nogPlausibleIssue(m)};})())"));
+ ok(after.G===17&&Math.abs(after.krajaImp-250.95)<0.01&&after.plaus===null&&after.man&&/labots ×0,01/.test(after.man.krajaImp)&&/labots ×0,01/.test(after.man.G),"pēc ×0,01: G 17, krāja 250,95 m³, vairs nav neticams, lauki atzīmēti kā laboti ar roku (got "+JSON.stringify(after)+")");
+ const chkAfter=w.eval("dashData(P()).kraja");
+ ok(Math.abs(chkAfter-12397)<=125&&chkAfter>chkTot,"pēc ×0,01 kopējā krāja ≈ 12 397 m³ (got "+chkAfter+")");
+ ok(w.eval("P().log.some(l=>/labots ×0,01/.test(l.text))"),"vēstures ieraksts par ×0,01 labojumu");
+ ok(w.eval("fixEligible("+tgt+")")===false,"pēc labojuma ×0,01 vairs netiek piedāvāts");
+ // 9. #46: bonitāte no VMD, cirtmets pēc bonitātes, H/vecuma rezerve ar karodziņu.
+ // 60700020059: 18 priedes 101-111 g. Ar reālu I bonitāti (VMD BON lauks) -> KC (cirtmets 101 g); bez bonitātes cirtmetu NENOSAKA.
+ // PIEZĪME: data zarā pagastu failos bon lauka vēl nav (jāpārbūvē ar #46 build_pagasti.py), tāpēc reālo bonitāti šeit uzliek testā.
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ const pinesExpr="P().mer.filter(m=>m.suga==='Priede'&&m.vecums>=101&&m.vecums<=111)";
+ ok(w.eval(pinesExpr+".length")===18,"60700020059: 18 priedes 101-111 g (got "+w.eval(pinesExpr+".length")+")");
+ ok(w.eval(pinesExpr+".every(m=>m.cirsmaKods!=='KC')")===true,"bez bonitātes vecās priedes nav KC (cirtmets nav noteikts, nevis kluss 121 g slieksnis)");
+ ok(w.eval("cirtmetsKC('Priede',108,'')")===""&&w.eval("cirtmetsKC('Priede',108,'I')")==="KC"&&w.eval("cirtmetsKC('Priede',108,'IV')")===""&&w.eval("cirtmetsKC('Priede',121,'IV')")==="KC","cirtmetsKC: tukša bonitāte -> nav cirtmeta; I bon. 101 g; IV bon. 121 g (MK935)");
+ ok(w.eval("cirtmetsKC('Bērzs',51,'I')")===""&&w.eval("cirtmetsKC('Bērzs',71,'I')")==="KC"&&w.eval("cirtmetsKC('Bērzs',51,'IV')")==="KC","cirtmetsKC: Bērzs 51 g ar I bon. nav KC (slieksnis 71), ar IV bon. ir");
+ const bonFlag=w.eval("runChecks(P()).nog.filter(x=>x.f.some(f=>f.t==='warn'&&/bonitāte .* aptuvena/.test(f.s))).length");
+ ok(bonFlag>0,"nogabaliem bez bonitātes ir dzeltens karodziņš 'bonitāte aptuvena' (got "+bonFlag+")");
+ ok(w.eval("bonOf({bon:'II',H:20,vecums:60}).est")===false&&w.eval("bonOf({H:28,vecums:106}).est")===true&&w.eval("bonOf({H:0,vecums:0}).bon")==="","bonOf: dati > aproksimācija > nav zināma");
+ w.eval(pinesExpr+".forEach(m=>{m.bon='I';m.cirsmaKods=cirtmetsKC(m.suga,m.vecums,bonOf(m).bon);});recalcLinked()"); // simulē VMD BON lauku pēc pagastu pārbūves
+ const pineKC=w.eval(pinesExpr+".filter(m=>m.cirsmaKods==='KC').length"),pineM3=w.eval("Math.round("+pinesExpr+".reduce((s,m)=>s+krajaMerChecked(m),0))");
+ ok(pineKC===18&&Math.abs(pineM3-8086)<=120,"ar reālu I bonitāti visas 18 priedes ir KC, krāja ≈ 8086 m³ (got "+pineKC+" gab., "+pineM3+" m³)");
+ ok(w.eval(pinesExpr+".every(m=>!runChecks(P()).nog.find(x=>x.m===m).f.some(f=>/bonitāte .* aptuvena/.test(f.s)))")===true,"ar reālu bonitāti dzeltenā karodziņa vairs nav");
+ // 10. Koda sadaļu integritāte
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
  ok(!/BIG_RIVERS/.test(src),"BIG_RIVERS regex izņemts (#39)");
  console.log(fails?`\n${fails} FAIL`:"\nVISI TESTI OK");process.exit(fails?1:0);

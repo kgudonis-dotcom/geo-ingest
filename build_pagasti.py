@@ -10,6 +10,9 @@ from shapely.ops import unary_union
 CKAN="https://data.gov.lv/dati/api/3/action/package_show?id="
 ATTRS=["zkat","mt","izc","p_darbv","p_darbg","p_cirp","p_cirg","saimn_d_ie","jakopj","jaatjauno","atj_gads",
  "s10","a10","h10","d10","g10","n10","s11","a11","h11","d11","g11","n11","s12","a12","h12","d12","g12","n12","s13","a13","h13","d13","g13","n13","s14","a14","h14","d14","g14","n14"]
+# #46: VMD BON lauks (Number(14), "Bonitāte, kods") -> burtu klase. Avots: VMD klasifikatori
+# https://gis.vmd.gov.lv/Public/GetClasificators, lapa "BON_klasifikators" (0=Ia ... 6=Va), lauks "BON" lapā "Struktūra_KOPĀ".
+BON_CODES={0:"Ia",1:"I",2:"II",3:"III",4:"IV",5:"V",6:"Va"}
 OUT="pagasti"
 OWNERS_DS="meza-zemju-ipasnieku-nogabali"
 def load_owners():
@@ -200,6 +203,12 @@ def process_shp(shp,iadt,store,owners=None,zvgeo=None,expl=None,ni=None):
             for a in ATTRS:
                 x=v(a)
                 if x is not None:st[a]=x
+            # #46: bonitāte atsevišķi, jo v() izmet "0", bet BON kods 0 = Ia (labākā bonitāte)
+            bc=cols.get("bon");bx=d.get(bc) if bc else None
+            if bx is not None and str(bx) not in ("nan","None",""):
+                try:st["bon"]=BON_CODES.get(int(float(bx)))
+                except (TypeError,ValueError):pass
+                if st.get("bon") is None:st.pop("bon",None)
             mp=mapping(gw);ring=max(mp["coordinates"],key=lambda c:len(c[0]))[0] if mp["type"]=="MultiPolygon" else mp["coordinates"][0]
             st["geom"]=[[round(x,6),round(y,6)] for x,y in ring]
             stands.append(st)
