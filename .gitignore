@@ -1,0 +1,22 @@
+# Mājaslapas būves rezultāts un noslēpumi
+site/dist/
+site/.cf.json
+site/worker.config.json
+site/content/_parts/
+site/VERIFY.md
+
+# Aprauti dizaina eksporti (MCP 256 KiB limits) — bezjēdzīgi nogriezumi
+site/design/**/*.TRUNCATED
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Rediģēšanas vide un OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
