@@ -3,10 +3,11 @@ on:
   push: {branches: [main], paths: [APLIECI_RUN]}
 permissions: {contents: write}
 jobs:
-  aplieci:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 120
-    concurrency: {group: data-publish, cancel-in-progress: false}
+    outputs:
+      has_result: ${{ steps.check.outputs.has_result }}
     steps:
       - uses: actions/checkout@v4
       - run: rm -rf pagasti  # #43: pagasti/ vēsturiski nejauši nokļuvis main zarā
@@ -18,4 +19,19 @@ jobs:
         run: |
           git config user.name bot; git config user.email b@l
           mkdir -p logs; cp run.log "logs/aplieci_$(date -u +%F_%H%M).md"; git add logs; git commit -m "aplieci log" && git pull --rebase origin main && git push || true
-          bash scripts/publish_data.sh aplieci || true
+      - id: check
+        run: (ls aplieci/*.json >/dev/null 2>&1 && echo "has_result=true" || echo "has_result=false") >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.has_result == 'true'
+        with: {name: aplieci-result, path: "aplieci/", retention-days: 3}
+  publish:
+    needs: build
+    if: needs.build.outputs.has_result == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: {group: data-publish, cancel-in-progress: false}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: aplieci-result, path: aplieci}
+      - run: bash scripts/publish_data.sh aplieci || true

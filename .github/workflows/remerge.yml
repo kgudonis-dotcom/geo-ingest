@@ -6,7 +6,8 @@ jobs:
   merge:
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    concurrency: {group: data-publish, cancel-in-progress: false}
+    outputs:
+      has_result: ${{ steps.check.outputs.has_result }}
     steps:
       - uses: actions/checkout@v4
       - run: rm -rf pagasti  # #43: pagasti/ vēsturiski nejauši nokļuvis main zarā; nekad nedrīkst sajaukties ar šī darba svaigo izvadi
@@ -17,7 +18,23 @@ jobs:
       - run: |
           git fetch --force origin data:data && mkdir -p artifacts/existing && git --work-tree=artifacts/existing checkout data -- pagasti || true
           python merge_pagasti.py 2>&1 | tee merged.log
-          ls pagasti/*.json.gz >/dev/null 2>&1 || { echo "TUKŠS"; exit 0; }
+      - id: check
+        run: (ls pagasti/*.json.gz >/dev/null 2>&1 && echo "has_result=true" || echo "has_result=false") >> "$GITHUB_OUTPUT"
+      - if: always()
+        run: |
           git config user.name bot; git config user.email b@l
           mkdir -p logs; cp merged.log "logs/remerge_$(date -u +%F_%H%M).md"; git add logs; git commit -m "remerge log" && git pull --rebase origin main && git push || true
-          bash scripts/publish_data.sh pagasti
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.has_result == 'true'
+        with: {name: remerge-result, path: "pagasti/", retention-days: 3}
+  publish:
+    needs: merge
+    if: needs.merge.outputs.has_result == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: {group: data-publish, cancel-in-progress: false}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: remerge-result, path: pagasti}
+      - run: bash scripts/publish_data.sh pagasti
