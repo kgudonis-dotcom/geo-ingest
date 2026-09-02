@@ -1,3 +1,7 @@
+# Ezermežs mājaslapa nav šī repo daļa
+site/
+.github/workflows/site.yml
+
 # Mājaslapas būves rezultāts un noslēpumi
 site/dist/
 site/.cf.json
