@@ -38,12 +38,14 @@ Atjaunots: 2026-09-02 (LAD bloki rindā, talons atjaunots). Šis fails ir vienī
 - Sentinel-2 vainaga zuduma darbs strādā (tests 78680040067) un ir gatavs kā atsevišķs datu avots, bet automātiska iestrāde objektu sarakstos vēl nav pabeigta.
 - Izlūkošana: sasniedzamība un datu avoti dokumentēti logos.
 - Supabase shēma un ielāde (rezerve), 876 ĪADT + 2517 zonas datubāzē.
+- LAD lauku bloki (liz_block_ha, bloku ID) un VZD eksplikācija (parcel.zip XML: LIZ, krūmāji, mežs, purvs, ūdens, ēkas, ceļi, cita) visos 587 pagastu failos (pilnā pārbūve 02.09.2026, 41 min). Lietotnē "LIZ blokā" un "LIZ parasts" aizpildās automātiski.
+- data zars: viens publicētājs scripts/publish_data.sh (tikai sava apakšmape, parasts commit, rebase-retry), iadt/, infra/, pagasti/ vienlaikus; auto ĪADT slānis (81 spēkā esoši noteikumi) un OSM ceļi/grāvji (587 pagasti) pirmo reizi sasniedz lietotni.
 - LAD lauku bloki (2026-09-02, #41, #18): build_pagasti.py katram pagastam vaicā karte.lad.gov.lv ArcGIS REST (bbox, lapots, ≤4 paralēli pieprasījumi, 3 mēģinājumi), krusto ar ZV robežu -> zv[kad].lad={ha,blocks}. Lēts paraksts (bloku skaits + jaunākais VALID_FROM) pagasta bbox'am -> pagastu faila ladSig; ja sakrīt ar iepriekšējo, ģeometrijas vaicājumu izlaiž un "lad" pārnes no vecā faila (kešs, "nemainīts → nepārbūvē"). VZD zemes lietošanas mērķu eksplikācija (dataset kadastra-informacijas-sistemas-atvertie-dati, resurss parcel.zip, XML) -> zv[kad].expl={liz,krum,mezs,...} ha, bez keša (lejupielādē katru reizi, kā DAP/īpašnieku dati). app/: Novērtējumā "LIZ blokā" auto = lad.ha, "LIZ parasts" auto = max(0, expl.liz − lad.ha); ja pagastu failā lauka nav (vecs fails), rinda paliek tukša bez kļūdas. Objekta kartītē pie Dabas vērtībām informatīvi "LAD bloki: X ha (N bloki)". Regresijas tests tests/regress.js 4b. Jāpalaiž pagastu pārbūve (pagasti.yml), lai jaunie lauki nonāktu publicētajos failos.
 - VZD eksplikācijas datu kopa Supabase ķēdē (ingest.py) mainīja formātu no CSV uz XML un datu kopas ID; labots atsevišķi (parses parcel.zip, filtrē pārējos šīs datu kopas resursus).
 
 ## 3. Rit / gaida
-- data zara publicēšana (#43): kopīgs publicētājs ieviests, iadt/infra/pagasti nu ir vienlaikus data zarā. Atlicis: publicēšana atsevišķā job, lai būves neblokē cita citu.
-- Pagastu pilnā pārbūve ar LAD un VZD expl laukiem (#41, #18): smoke tests OK (228 pagasti svaigi), pilnā būve palaista 02.09.
+- data zara publicēšana (#43): kopīgs publicētājs, publicēšana atsevišķā job ar concurrency piecās darbplūsmās; atlicis pagasti.yml tas pats sadalījums (gatavs lokāli, jācommito).
+
 - LVM īpašnieki un ceļi: LVM dati nav atjaunoti kiberuzbrukuma dēļ; būve ņem no Release "mirror", kad būs faili (spoguļa skripts gatavs, vai ar roku no LVM GEO platformas).
 
 - Aizsargjoslas (#39): dzinējs un platumi ar 37.p. atsaucēm gatavi, MK 397 kategorijas reģistrētajām ūdenstecēm. Atlicis: neregistrētām ūdenstecēm nomainīt regex uz minimālo likuma kategoriju + brīdinājums, regresijas tests ar zināmiem datiem, ATIS, LĢIA hidrogrāfija, purvu klasifikācija.
