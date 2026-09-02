@@ -1,5 +1,5 @@
 # FF Forest meža sistēma: vienošanās, izpilde un rinda
-Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts, kas gatavs un kas nav. Glabājas repo `kgudonis-dotcom/geo-ingest` (STATUSS.md) un tiek atjaunots pēc katra darba.
+Atjaunots: 2026-09-02 (LAD bloki rindā, talons atjaunots). Šis fails ir vienīgā patiesība par to, kas norunāts, kas gatavs un kas nav. Glabājas repo `kgudonis-dotcom/geo-ingest` (STATUSS.md) un tiek atjaunots pēc katra darba.
 
 ## 1. Principi, par ko esam vienojušies
 - Objekts sākas ar ZV kadastra numuru; viss pārējais (VMD dati, cirsmas, NĪ vērtība, skices, karodziņi) rodas automātiski. Imports un manuālā ievade tikai svaigai inventarizācijai un dabas apskates labojumiem.
@@ -47,6 +47,7 @@ Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts,
 ## 4. Neizpildīts, rindā (secībā)
 1. Sentinel automātiski taviem objektiem + kaimiņiem (kadastru saraksts no lietotnes → nakts darbs → zils karodziņš nogabalā).
 2. LVC ceļi ar šķīdoņa ierobežojumiem, ATIS aizsargjoslas, VMD mizgrauža monitorings, LĢIA INSPIRE hidrogrāfija un reljefs 20 m.
+   Turpat: LAD lauku bloki pa ZV (liz_block_ha) un automātiska "LIZ blokā" / "LIZ parasts" aizpilde eksplikācijā (#41); tagad LIZ blokā ha jāievada ar roku, tāpēc zemes cena PAF ir nepilnīga.
 3. Izvešanas ceļu modelis 1. posms: OSM ceļi + grāvji + mitrums no meža tipiem → trase, pievešanas attālums auto izmaksās; 2. posms reljefs.
 4. Cirsmu sadalījums pēc atrašanās vietas (ne pēc krājas); "Manas cirsmas" plānošana ar filtriem (pie ceļa, sausa/slapja, izvešana, sezona) un mazo cirsmu apvienošanu.
 5. Supabase kopīgā CRM datubāze ar lomām (RLS), pieteikšanās bez parolēm, bezsaistes rinda; kontaktu bāze (pircēji, pārdevēji) ar vēsturi.
@@ -62,7 +63,7 @@ Atjaunots: 2026-09-02. Šis fails ir vienīgā patiesība par to, kas norunāts,
 - Līgumu paraugi (visi veidi), viens .hpr harvestera fails, Jumis vai Moneo izvēle + importa faila paraugs, pircēju/pārdevēju saraksts sākumam.
 - LVM: kad dati atjaunoti, vai nu palaist spoguli, vai augšupielādēt zip failus Release "mirror".
 - Netlify/Cloudflare konts publicēšanai (vai atļauja man to izdarīt ar tavu GitHub).
-- Jauns GitHub talons ap 1. decembri (pašreizējais līdz ~30.11.2026).
+- Jauns GitHub talons ap 1. decembri (pašreizējais atjaunots 02.09.2026, derīgs līdz 01.12.2026).
 
 ## 6. Zināmie ierobežojumi
 - lvmgeo.lvm.lv, gis.vmd.gov.lv, melioracija.lv no GitHub nesasniedzami; data.gov.lv, geolatvija.lv, karte.lad.gov.lv sasniedzami.
