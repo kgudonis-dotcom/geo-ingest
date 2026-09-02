@@ -33,7 +33,8 @@ jobs:
     if: always()
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    concurrency: {group: data-publish, cancel-in-progress: false}
+    outputs:
+      has_result: ${{ steps.check.outputs.has_result }}
     steps:
       - uses: actions/checkout@v4
       - run: rm -rf pagasti  # #43: skat. build joba piezīmi
@@ -43,16 +44,29 @@ jobs:
         with: {path: artifacts}
       - name: Esošie pagastu faili no data zara (papildina, nevis pārraksta)
         run: git fetch origin data:data 2>/dev/null && mkdir -p artifacts/existing && git --work-tree=artifacts/existing checkout data -- pagasti 2>/dev/null || true
-      - run: |
-          python merge_pagasti.py 2>&1 | tee -a merged.log
-          ls pagasti/*.json.gz >/dev/null 2>&1 || { echo "TUKŠS REZULTĀTS, datu zaru neaiztiek" | tee -a merged.log; echo "SKIP=1" >> $GITHUB_ENV; }
-      - name: Publish logs (main)
+      - run: python merge_pagasti.py 2>&1 | tee -a merged.log
+      - id: check
+        run: (ls pagasti/*.json.gz >/dev/null 2>&1 && echo "has_result=true" || echo "has_result=false") >> "$GITHUB_OUTPUT"
+      - if: always()
         run: |
+          [ "${{ steps.check.outputs.has_result }}" = "false" ] && echo "TUKŠS REZULTĀTS, datu zaru neaiztiek" | tee -a merged.log || true
           git config user.name bot; git config user.email b@l
           mkdir -p logs; for f in artifacts/log-*/run_*.log; do cp "$f" "logs/pagasti_$(date -u +%F_%H%M)_$(basename $f .log).md"; done; cp merged.log "logs/pagasti_$(date -u +%F_%H%M)_merge.md"
           git add logs && git commit -m "pagasti logs" && git pull --rebase origin main && git push || true
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.has_result == 'true'
+        with: {name: pagasti-merged, path: "pagasti/", retention-days: 3}
+  publish:
+    needs: merge
+    if: needs.merge.outputs.has_result == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency: {group: data-publish, cancel-in-progress: false}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: {name: pagasti-merged, path: pagasti}
       - name: Publish data (data branch)
-        if: env.SKIP != '1'
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
             bash scripts/publish_data.sh --squash "pagasti $(date -u +%F)" pagasti
