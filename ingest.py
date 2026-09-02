@@ -10,7 +10,7 @@ CLASSIFIERS_URL = "https://gis.vmd.gov.lv/Public/GetClasificators"
 DATASETS = {
     "stands":    "meza-valsts-registra-meza-dati",
     "protected": "ipasi-aizsargajamas-dabas-teritorijas",
-    "expl":      "kadastra-informacijas-sistemas-atverti-dati",
+    "expl":      "kadastra-informacijas-sistemas-atvertie-dati",
 }
 STAND_ATTRS = ["zkat","mt","izc","jakopj","jaatjauno","p_darbv","p_darbg","p_cirp","p_cirg","atj_gads","plant_audz",
  "s10","a10","h10","d10","g10","n10","s11","a11","h11","d11","g11","n11","s12","a12","h12","d12","g12","n12",
@@ -101,39 +101,34 @@ def do_protected(engine, url):
             ins(con, "insert into protected(kind,name,zone,attrs,geom) values (:kind,:name,:zone,cast(:attrs as jsonb),st_setsrid(st_geomfromwkb(decode(:geom,'hex')),4326))", rows, 300)
         print(f"  {os.path.basename(shp)}: {len(rows)} {kind}", flush=True)
 
+EXPL_NS = "{http://ivis.eps.gov.lv/XMLSchemas/100007/CadastreRegistry/v1-0}"
 def do_expl(engine, url):
-    """VZD teksta dati: zemes vienību lietošanas veidu eksplikācija -> expl(kadastrs, nilm, platiba_ha)."""
-    import csv, io as _io
+    """VZD XML dati (resurss parcel.zip; pārējie datu kopas resursi - property/ownership/building u.c. - netiek apstrādāti):
+    zemes vienību lietošanas mērķu (LandPurposeKind) platību eksplikācija -> expl(kadastrs, nilm, platiba_ha)."""
+    import xml.etree.ElementTree as ET
+    if not url.lower().endswith("parcel.zip"):
+        print("  izlaiž (nav parcel.zip):", url, flush=True); return
     b = requests.get(url, timeout=1800).content
     rows = []
-    with zipfile.ZipFile(_io.BytesIO(b)) as z:
-        names = z.namelist()
-        cand = [n for n in names if re.search(r"lieto|nilm|expl", n, re.I) and n.lower().endswith((".csv",".txt"))]
-        if not cand:
-            print("  zip satur:", names[:15], "... lietošanas veidu fails nav atrasts", flush=True); return
-        for n in cand:
-            raw = z.read(n)
-            for enc in ("utf-8-sig","utf-8","cp1257"):
-                try: txt = raw.decode(enc); break
-                except Exception: continue
-            sniff = txt[:2000]; delim = ";" if sniff.count(";")>=sniff.count(",") else ","
-            rd = csv.reader(_io.StringIO(txt), delimiter=delim)
-            hdr = [h.strip().lower() for h in next(rd)]
-            def col(*keys):
-                for i,h in enumerate(hdr):
-                    if any(k in h for k in keys): return i
-                return None
-            ik = col("apz","kadastr"); inl = col("nilm","lietošanas veida kods","lietosanas veida kods","veida kods"); ip = col("platīb","platib","area")
-            print(f"  {n}: kolonnas {hdr[:8]} -> kad={ik} nilm={inl} plat={ip}", flush=True)
-            if ik is None or inl is None or ip is None: continue
-            for r in rd:
-                try:
-                    kad = re.sub(r"\D","",r[ik])
-                    if len(kad)!=11: continue
-                    ha = float(str(r[ip]).replace(",","."))
-                    if ha>10000: ha = ha/10000  # m2 -> ha
-                    rows.append({"kadastrs":kad,"nilm":str(r[inl]).strip(),"platiba_ha":ha})
-                except Exception: pass
+    with zipfile.ZipFile(io.BytesIO(b)) as z:
+        names = [n for n in z.namelist() if n.lower().endswith(".xml")]
+        if not names:
+            print("  zip satur:", z.namelist()[:15], "... XML fails nav atrasts", flush=True); return
+        for n in names:
+            with z.open(n) as f:
+                for _, el in ET.iterparse(f, events=("end",)):
+                    if el.tag == EXPL_NS + "ParcelItemData":
+                        kad = (el.findtext(EXPL_NS+"ParcelBasicData/"+EXPL_NS+"ParcelCadastreNr") or "").strip()
+                        if len(kad) == 11:
+                            for lp in el.findall(EXPL_NS+"LandPurposeList/"+EXPL_NS+"LandPurposeData"):
+                                nilm = lp.findtext(EXPL_NS+"LandPurposeKind/"+EXPL_NS+"LandPurposeKindId")
+                                area = lp.findtext(EXPL_NS+"LandPurposeArea")
+                                if not nilm or not area: continue
+                                try: ha = float(area) / 10000  # m2 -> ha
+                                except Exception: continue
+                                rows.append({"kadastrs":kad,"nilm":nilm.strip(),"platiba_ha":round(ha,4)})
+                        el.clear()
+            print(f"  {n.split('/')[-1]}: kopā {len(rows)} rindas", flush=True)
     if rows:
         with engine.begin() as con:
             ins(con, "insert into expl(kadastrs,nilm,platiba_ha) values (:kadastrs,:nilm,:platiba_ha)", rows, 5000)
