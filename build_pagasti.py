@@ -1,5 +1,5 @@
-"""Sagriež VMD nogabalus pa pagastiem (kadastra apz. pirmie 4 cipari) statiskos failos ar iepriekš izrēķinātiem kaimiņiem, ĪADT, LAD lauku blokiem un VZD eksplikāciju.
-Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","ladSig":{"n","maxdate"},"zv":{kadastrs:{"stands":[...],"adj":[[i,j,len_m]],"iadt":[...],"lad":{"ha","blocks":[...]},"expl":{"liz","krum","mezs",...}}}}"""
+"""Sagriež VMD nogabalus pa pagastiem (kadastra apz. pirmie 4 cipari) statiskos failos ar iepriekš izrēķinātiem kaimiņiem, ĪADT, LAD lauku blokiem, VZD eksplikāciju un NĪ saiti.
+Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","ladSig":{"n","maxdate"},"zv":{kadastrs:{"stands":[...],"adj":[[i,j,len_m]],"iadt":[...],"lad":{"ha","blocks":[...]},"expl":{"liz","krum","mezs",...},"ni":{"nr","name"}}}}"""
 import os, io, re, json, gzip, zipfile, tempfile, argparse, requests, datetime, time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
@@ -126,7 +126,7 @@ def lad_for_pagasts(geoms,oldSig):
     return sig,per_zv,True
 
 # VZD zemes vienību lietošanas mērķu eksplikācija (m2 -> ha), datu kopa "kadastra-informacijas-sistemas-atvertie-dati", resurss parcel.zip (XML)
-EXPL_NS="{http://ivis.eps.gov.lv/XMLSchemas/100007/CadastreRegistry/v1-0}"
+VZD_NS="{http://ivis.eps.gov.lv/XMLSchemas/100007/CadastreRegistry/v1-0}"
 EXPL_FIELDS=[("AgricultTotal","liz"),("Bushes","krum"),("Forest","mezs"),("Swamp","purvs"),("UnderWaterTotal","udens"),
              ("UnderBuildings","ekas"),("UnderRoads","celi"),("OtherLand","cita"),("Drained","meliorets")]
 def load_expl():
@@ -141,13 +141,13 @@ def load_expl():
                 for n in [n for n in z.namelist() if n.lower().endswith(".xml")]:
                     with z.open(n) as f:
                         for _,el in ET.iterparse(f,events=("end",)):
-                            if el.tag==EXPL_NS+"ParcelItemData":
-                                kad=(el.findtext(EXPL_NS+"ParcelBasicData/"+EXPL_NS+"ParcelCadastreNr") or "").strip()
+                            if el.tag==VZD_NS+"ParcelItemData":
+                                kad=(el.findtext(VZD_NS+"ParcelBasicData/"+VZD_NS+"ParcelCadastreNr") or "").strip()
                                 if len(kad)==11:
                                     agg={}
-                                    for lp in el.iter(EXPL_NS+"LandPurposeExplicationData"):
+                                    for lp in el.iter(VZD_NS+"LandPurposeExplicationData"):
                                         for tag,key in EXPL_FIELDS:
-                                            v=lp.findtext(EXPL_NS+tag)
+                                            v=lp.findtext(VZD_NS+tag)
                                             if v:agg[key]=agg.get(key,0)+float(v)/10000
                                     if agg:out[kad]={k:round(v,2) for k,v in agg.items()}
                                 el.clear()
@@ -155,7 +155,32 @@ def load_expl():
     except Exception as e:print("VZD eksplikācija neizdevās:",e,flush=True)
     return out
 
-def process_shp(shp,iadt,store,owners=None,zvgeo=None,expl=None):
+def load_ni():
+    """{kadastrs:{"nr":NĪ kadastra numurs,"name":nosaukums vai None}}, no VZD property.zip (Nekustamā īpašuma sastāvā esošās zemes vienības)."""
+    out={}
+    try:
+        for name,url in resources("kadastra-informacijas-sistemas-atvertie-dati"):
+            if not url.lower().endswith("property.zip"):continue
+            print("  lejupielādē",url,flush=True)
+            b=requests.get(url,timeout=(20,1800)).content
+            with zipfile.ZipFile(io.BytesIO(b)) as z:
+                for n in [n for n in z.namelist() if n.lower().endswith(".xml")]:
+                    with z.open(n) as f:
+                        for _,el in ET.iterparse(f,events=("end",)):
+                            if el.tag==VZD_NS+"PropertyItemData":
+                                proNr=(el.findtext(VZD_NS+"CadastreObjectIdData/"+VZD_NS+"ProCadastreNr") or "").strip()
+                                pname=el.findtext(VZD_NS+"PropertyBasicData/"+VZD_NS+"PropertyName")
+                                if proNr:
+                                    for o in el.findall(VZD_NS+"PropertyContentData/"+VZD_NS+"ObjectList/"+VZD_NS+"ObjectData"):
+                                        if o.findtext(VZD_NS+"ObjectKindData")=="Zemes vienība":
+                                            zvKad=(o.findtext(VZD_NS+"ObjectCadastreNrData") or "").strip()
+                                            if len(zvKad)==11:out[zvKad]={"nr":proNr,"name":pname.strip() if pname else None}
+                                el.clear()
+                    print(f"  {n.split('/')[-1]}: kopā {len(out)} ZV ar NĪ saiti",flush=True)
+    except Exception as e:print("VZD NĪ saites neizdevās:",e,flush=True)
+    return out
+
+def process_shp(shp,iadt,store,owners=None,zvgeo=None,expl=None,ni=None):
     g=gpd.read_file(shp);g=g.set_crs(3059) if g.crs is None else g.to_crs(3059)
     cols={c.lower():c for c in g.columns};g=g[g.geometry.notna()]
     g["geometry"]=g.geometry.simplify(1.0,preserve_topology=True).buffer(0)
@@ -210,6 +235,7 @@ def process_shp(shp,iadt,store,owners=None,zvgeo=None,expl=None):
                 if ha>0.005:ia.append({"kind":t["kind"],"name":str(t["name"]),"zone":str(t["zone"]),"ha":round(ha,2)})
         rec={"stands":stands,"adj":adj,"iadt":ia}
         if expl is not None and kad in expl:rec["expl"]=expl[kad]
+        if ni is not None and kad in ni:rec["ni"]=ni[kad]
         if owners is not None:
             own=[]
             for i in owners.sindex.query(u,predicate="intersects"):
@@ -300,11 +326,12 @@ def flush(store,zvgeo=None,owners=None,lad=True):
 def main():
     ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true")
     ap.add_argument("--no-iadt",action="store_true");ap.add_argument("--no-owners",action="store_true")
-    ap.add_argument("--no-lad",action="store_true");ap.add_argument("--no-expl",action="store_true")
+    ap.add_argument("--no-lad",action="store_true");ap.add_argument("--no-expl",action="store_true");ap.add_argument("--no-ni",action="store_true")
     ap.add_argument("--index",type=int,default=-1);a=ap.parse_args()
     iadt=None if a.no_iadt else load_iadt()
     owners=None if a.no_owners else load_owners()
     expl=None if a.no_expl else load_expl()
+    ni=None if a.no_ni else load_ni()
     res=resources("meza-valsts-registra-meza-dati")
     if a.index>=0:
         if a.index>=len(res):print("index ārpus saraksta, nav darba");return
@@ -313,7 +340,7 @@ def main():
         if a.filter and a.filter.lower() not in (name+url).lower():continue
         store={};zvgeo={}
         for shp in load_zip(url):
-            process_shp(shp,iadt,store,owners,zvgeo,expl);flush(store,zvgeo,owners,not a.no_lad);zvgeo={}
+            process_shp(shp,iadt,store,owners,zvgeo,expl,ni);flush(store,zvgeo,owners,not a.no_lad);zvgeo={}
         if a.first:break
     n=len(os.listdir(OUT));sz=sum(os.path.getsize(f"{OUT}/{f}") for f in os.listdir(OUT))/1e6
     print(f"gatavs: {n} pagastu faili, {sz:.0f} MB",flush=True)
