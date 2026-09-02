@@ -91,7 +91,39 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(warnFind==='{"t":"warn","s":"Ūdensteces garums nav apstiprināts (nav MK 397 klasifikatorā), pieņemta minimālā aizsargjosla (Aizsargjoslu lik. 7.p.), pārbaudīt."}',"zoneChecks: dzeltens brīdinājums par neapstiprinātu garumu (got "+warnFind+")");
  const m3=w.eval(`Math.round(${kHa}*200)`);
  ok(m3===758,"atliktie m³ = joslas daļa × nogabala krāja: 3,79 ha × 200 m³/ha = 758 m³ (got "+m3+")");
- // 5. Koda sadaļu integritāte
+ // 5. #44: objekts = NĪ ar vairākām ZV - agregācija (krāja, cērtamais, LAD/eksplikācijas ha, PAF zemes summa) = abu ZV summas
+ w=await app();
+ await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
+ const zvA=w.eval("P().id");
+ const statsExpr=p=>"(()=>{const p="+p+";return {mer:p.mer.length,kraja:+p.mer.reduce((s,m)=>s+krajaMer(m),0).toFixed(2),cut:+calcProp(p).m3.toFixed(2),ladHa:p.lad?p.lad.ha:0,explLiz:p.expl?(p.expl.liz||0):0,explMezs:p.expl?(p.expl.mezs||0):0,land:+valCalc(p).landPrice.toFixed(2),zv:p.zv.slice().sort()};})()";
+ const A=JSON.parse(w.eval("JSON.stringify("+statsExpr("P()")+")"));
+ await w.eval("createFromPagasts('70600050074')");await new Promise(r=>setTimeout(r,1500));
+ const B=JSON.parse(w.eval("JSON.stringify("+statsExpr("P()")+")"));
+ await w.eval(`addZV('${zvA}','70600050074')`);await new Promise(r=>setTimeout(r,2000));
+ const C=JSON.parse(w.eval("JSON.stringify("+statsExpr(`S.props.find(x=>x.id==='${zvA}')`)+")"));
+ ok(JSON.stringify(C.zv)==='["36680080031","70600050074"]',"2 ZV objektā: abas ZV pievienotas p.zv (got "+JSON.stringify(C.zv)+")");
+ ok(C.mer===A.mer+B.mer,"2 ZV: nogabalu skaits summējas "+C.mer+" = "+A.mer+" + "+B.mer);
+ ok(Math.abs(C.kraja-(A.kraja+B.kraja))<0.5,"2 ZV: krāja summējas ("+C.kraja+" vs "+(A.kraja+B.kraja).toFixed(2)+")");
+ ok(Math.abs(C.cut-(A.cut+B.cut))<0.5,"2 ZV: cērtamais summējas ("+C.cut+" vs "+(A.cut+B.cut).toFixed(2)+")");
+ ok(Math.abs(C.ladHa-(A.ladHa+B.ladHa))<0.05,"2 ZV: LAD lauku bloku ha (LIZ blokā) summējas ("+C.ladHa+" vs "+(A.ladHa+B.ladHa).toFixed(2)+")");
+ ok(Math.abs(C.explLiz-(A.explLiz+B.explLiz))<0.05&&Math.abs(C.explMezs-(A.explMezs+B.explMezs))<0.05,"2 ZV: VZD eksplikācijas ha (LIZ, mežs) summējas (got C="+JSON.stringify(C)+" A+B liz="+(A.explLiz+B.explLiz).toFixed(2)+" mezs="+(A.explMezs+B.explMezs).toFixed(2)+")");
+ ok(Math.abs(C.land-(A.land+B.land))<5,"2 ZV: PAF zemes pirkuma summa (valCalc landPrice) summējas ("+C.land+" vs "+(A.land+B.land).toFixed(2)+")");
+ // 6. #44: viens ZV kā līdz šim (bez māsas ZV) - siblingZV neizraisa izvēles UI, izveide notiek uzreiz (jau pārbaudīts iepriekš ar Zapasnaja/Ezermuiža/PAF - visi testi augstāk paliek zaļi bez izmaiņām)
+ // 7. #44: Arhivēšana - arhivēts objekts nav sarakstā/Fondā, atjaunots atgriežas
+ w=await app();
+ await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
+ const pid=w.eval("P().id");
+ const nBefore=w.eval("fundStats(S.props).n");
+ w.eval(`archiveProp('${pid}')`);
+ ok(w.eval(`S.props.find(p=>p.id==='${pid}').archived`)===true,"archiveProp: objekts atzīmēts kā arhivēts");
+ ok(w.eval(`S.props.filter(p=>!p.archived).some(p=>p.id==='${pid}')`)===false,"arhivēts objekts nav redzams noklusētajā (nearhivētā) sarakstā");
+ const nAfterArchive=w.eval("fundStats(S.props).n");
+ ok(nAfterArchive===nBefore-1,"arhivēts objekts neskaita Fondā: n "+nAfterArchive+" = "+nBefore+" - 1");
+ w.eval(`restoreProp('${pid}')`);
+ ok(w.eval(`S.props.find(p=>p.id==='${pid}').archived`)===false,"restoreProp: objekts atjaunots no arhīva");
+ const nAfterRestore=w.eval("fundStats(S.props).n");
+ ok(nAfterRestore===nBefore,"atjaunots objekts atkal skaitās Fondā");
+ // 8. Koda sadaļu integritāte
  const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
  ok(!/BIG_RIVERS/.test(src),"BIG_RIVERS regex izņemts (#39)");
