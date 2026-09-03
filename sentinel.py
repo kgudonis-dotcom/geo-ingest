@@ -10,8 +10,9 @@ function evaluatePixel(s){var ok=(s.SCL==4||s.SCL==5||s.SCL==6||s.SCL==7)?1:0; /
  return {ndvi:[(s.B08-s.B04)/(s.B08+s.B04+1e-6)],dataMask:[s.dataMask*ok]};}"""
 def token():
     r=requests.post(TOKEN_URL,data={"grant_type":"client_credentials","client_id":os.environ["CDSE_ID"],"client_secret":os.environ["CDSE_SECRET"]},timeout=60);r.raise_for_status();return r.json()["access_token"]
-def stats(tok,ring,t0,t1):
-    body={"input":{"bounds":{"geometry":{"type":"Polygon","coordinates":[ring]},"properties":{"crs":"http://www.opengis.net/def/crs/OGC/1.3/CRS84"}},"data":[{"type":"sentinel-2-l2a","dataFilter":{"timeRange":{"from":t0+"T00:00:00Z","to":t1+"T23:59:59Z"},"maxCloudCoverage":40}}]},
+def stats(tok,rings,t0,t1):
+    # rings: GeoJSON Polygon coordinates (ārējais + caurumi) — caurumu platība NDVI statistikā netiek ieskaitīta
+    body={"input":{"bounds":{"geometry":{"type":"Polygon","coordinates":rings},"properties":{"crs":"http://www.opengis.net/def/crs/OGC/1.3/CRS84"}},"data":[{"type":"sentinel-2-l2a","dataFilter":{"timeRange":{"from":t0+"T00:00:00Z","to":t1+"T23:59:59Z"},"maxCloudCoverage":40}}]},
           "aggregation":{"timeRange":{"from":t0+"T00:00:00Z","to":t1+"T23:59:59Z"},"aggregationInterval":{"of":"P1D"},"evalscript":EVAL,"resx":10,"resy":10},
           "calculations":{"ndvi":{"statistics":{"default":{"percentiles":{"k":[50]}}}}}}
     for i in range(3):
@@ -27,9 +28,10 @@ def stats(tok,ring,t0,t1):
 def analyse(tok,kad,zv,yr):
     out=[]
     for st in zv["stands"]:
-        ring=st["geom"]
-        if len(ring)<4:continue
-        a,e1=stats(tok,ring,f"{yr-1}-06-01",f"{yr-1}-08-31");b,e2=stats(tok,ring,f"{yr}-06-01",f"{yr}-08-31")
+        # SCHEMA_VERSION 2 (#22): geom = [ārējais gredzens, caurums, ...]; vecais formāts = plakans gredzens. Ar veco kodu len(rings)<4 klusi izlaida VISUS nogabalus.
+        g=st["geom"];rings=[g] if g and isinstance(g[0][0],(int,float)) else g
+        if not rings or len(rings[0])<4:continue
+        a,e1=stats(tok,rings,f"{yr-1}-06-01",f"{yr-1}-08-31");b,e2=stats(tok,rings,f"{yr}-06-01",f"{yr}-08-31")
         d=None if a is None or b is None else round(b-a,3)
         flag="zudums" if d is not None and d<-0.25 else ("kritums" if d is not None and d<-0.12 else "")
         out.append({"kv":st.get("kv"),"nog":st.get("nog"),"ndvi_prev":a and round(a,3),"ndvi_now":b and round(b,3),"delta":d,"flag":flag,"err":e1 or e2})

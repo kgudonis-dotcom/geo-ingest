@@ -78,6 +78,11 @@ def load_usik():
         print("ŪSIK ūdensteces",len(u),"kategorijas:",u.cat.value_counts().to_dict(),flush=True);return u
     except Exception as e:print("ŪSIK neizdevās:",repr(e),flush=True);return None
 
+def geom_points(geom):
+    """pagasti stands geom -> plakans [lon,lat] saraksts. SCHEMA_VERSION 2: [[ring],[hole],...]; vecais: [[lon,lat],...]. 03.09.2026 pēc pagastu
+    pārbūves bbox aprēķins krita ar TypeError (list - float), jo p[0] bija punkts, ne lon."""
+    if not geom:return []
+    return list(geom) if isinstance(geom[0][0],(int,float)) else [c for ring in geom for c in ring]
 def nn(v):
     """NaN/None -> None, lai JSON ir derīgs"""
     try:
@@ -98,7 +103,8 @@ def main():
     for f in sorted(glob.glob("pagasti/*.json.gz")):
         pg=os.path.basename(f)[:4]
         with gzip.open(f,"rt",encoding="utf-8") as h:d=json.load(h)
-        pts=[c for zv in d["zv"].values() for st in zv["stands"] for c in st["geom"]]
+        # SCHEMA_VERSION 2 (#22): geom ir gredzenu saraksts [ārējais,caurums,...]; vecajā formātā — plakans punktu saraksts. Abus saplacina līdz punktiem.
+        pts=[c for zv in d["zv"].values() for st in zv["stands"] for c in geom_points(st["geom"])]
         if not pts:continue
         xs=[p[0] for p in pts];ys=[p[1] for p in pts];bb=box(min(xs)-0.03,min(ys)-0.018,max(xs)+0.03,max(ys)+0.018)
         r=roads.iloc[list(roads.sindex.query(bb,predicate="intersects"))];w=water.iloc[list(water.sindex.query(bb,predicate="intersects"))];wa=watera.iloc[list(watera.sindex.query(bb,predicate="intersects"))]
