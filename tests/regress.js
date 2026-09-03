@@ -174,8 +174,52 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(w.eval("gExceeds('Priede',15,50)")===true&&w.eval("gExceeds('Priede',15,45)")===false,"G=50 > 1,5×32=48 -> pārkāpj (jauns, zem 80); G=45 -> nepārkāpj");
  ok(w.eval("gExceeds('Priede',null,75)")===false&&w.eval("gExceeds('Priede',null,85)")===true,"bez H (normālais nav nosakāms): 80 paliek aizsargs (75 nepārkāpj, 85 pārkāpj)");
  ok(w.eval("nogPlausibleIssue({suga:'Priede',H:15,platMezs:1,G:50,krajaImp:20})")!==null,"nogPlausibleIssue: G=50 pie H=15 (>1,5×normālā) atzīmē nogabalu, kaut arī G<80 un krāja/ha ticama");
- // 10. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ // 10. #22: cirsmas pēc ģeometriskas piegulības (MK935 18.p.), nevis krājas summas; limits pa nogabalu (MK935 15./16./23.p.); atdalošās joslas.
+ // Cēlonis (diagnoze 03.09.2026): adjacency atslēga bija "kv-nog" (bez ZV), bet salīdzināta pret kailu m.nogabals -> daudz-ZV objektos (60700020059, NĪ "Bojāri", 2 ZV)
+ // NEKAD neatrada atbilstību, tāpēc buffers vienmēr bija tukšs masīvs. Labots: atslēga vienmēr zv/kv/nog (mKey), cirsmas veido pēc savienoto komponenšu grafa.
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ const r22=JSON.parse(w.eval(`JSON.stringify((()=>{const r=runChecks(P());
+  const grpOf=k=>r.split.findIndex(g=>g.nog.some(e=>mKey(e.m)===k));
+  const rawTokens=String(P().kaimini||"").split(/[;,]/).map(x=>x.trim()).filter(Boolean);
+  const allResolved=kaiminiPairs(P(),r.nog); // visi pāri, kam abas puses atrastas (nav filtrēts pēc garuma)
+  const pairs=allResolved.filter(pr=>pr.len>ADJ_MIN_M);
+  const unbuffered=pairs.filter(pr=>{const ga=grpOf(mKey(pr.xa.m)),gb=grpOf(mKey(pr.xb.m));if(ga<0||gb<0||ga===gb)return false;
+   return !r.buffers.some(b=>(b.victim===pr.xa.m&&b.other===pr.xb.m)||(b.victim===pr.xb.m&&b.other===pr.xa.m));}).map(pr=>pr.xa.m.nogabals+"-"+pr.xb.m.nogabals);
+  const overLimit=r.split.filter(g=>g.ha>5.001||g.slapjieHa>2.001).map(g=>g.ha);
+  return {rawTokenCount:rawTokens.length,resolvedCount:allResolved.length,numPairs:pairs.length,unbuffered,overLimit,numGroups:r.split.length,numBuffers:r.buffers.length,deferredM3:r.deferredM3,
+   kcTotal:r.kc.sausie.m3+r.kc.slapjie.m3,blockedM3:r.blockedM3,splitsFailed:r.splits.map(s=>s.nog),
+   nog15flag:r.nog.find(x=>x.m.kvartals==="2"&&x.m.nogabals==="15").f.some(f=>f.t==="bloks"&&/23\\.p\\./.test(f.s))};})())`));
+ ok(r22.rawTokenCount>0&&r22.resolvedCount===r22.rawTokenCount,"60700020059 (2 ZV, NĪ 'Bojāri'): kaiminiPairs atrisina VISUS p.kaimini pārus (agrāk 0, jo atslēgā trūka ZV) (got "+r22.resolvedCount+"/"+r22.rawTokenCount+")");
+ ok(r22.numPairs>50,"no tiem piegulošie (robeža > 50 m, MK935 18.p.) ir vairāk par 50 (got "+r22.numPairs+")");
+ ok(r22.overLimit.length===0,"neviena cirsma nepārsniedz MK935 15./16.p. limitu (got "+JSON.stringify(r22.overLimit)+")");
+ ok(r22.unbuffered.length===0,"nevienam piegulošam cirsmu pārim nav joslas/atlikšanas (got "+JSON.stringify(r22.unbuffered)+")");
+ ok(r22.numBuffers>0&&r22.deferredM3>0,"atdalošās joslas izveidotas, atliktie m³ > 0 (got buffers="+r22.numBuffers+", deferredM3="+r22.deferredM3+")");
+ ok(r22.splitsFailed.includes("15")&&r22.nog15flag,"kv.2 nog.15 (5,53 ha damaksnī, geom platība neatbilst deklarētajai) godīgi atzīmēts 'jāsadala ar roku', nevis nepareizs skaitlis");
+ const total22=r22.kcTotal+r22.deferredM3+r22.blockedM3;
+ ok(Math.abs(total22-9340)<=100,"KC kopā + atliktie + bloķētie ≈ 9340 m³ (pirms-sadalīšanas summa, iekšēji konsekventa; PIEZĪME: issue #22 komentārā minētie 9079 m³ bija no 2 jau izveidotām rokas cirsmām, ne visu 56 nogabalu pilnās KC kopsummas — atskaitē paskaidrots) (got "+total22+")");
+ // Zapasnaja/Ezermuiža/70420080041: pateikt, vai mainās
+ w=await app();await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
+ const zap22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
+ ok(zap22.numBuffers>0&&zap22.deferredM3>0,"Zapasnaja: TAS PATS #22 labojums ietekmē arī šo objektu — tagad ir reālas joslas (agrāk 0, tas pats atslēgas defekts) (got buffers="+zap22.numBuffers+", deferredM3="+zap22.deferredM3+")");
+ w=await app();await w.eval("createFromPagasts('70600050074')");await new Promise(r=>setTimeout(r,1500));
+ const ez22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
+ ok(ez22.numBuffers===0&&ez22.deferredM3===0,"Ezermuiža: nemainās (nav piegulošu KC cirsmu pāru šajā objektā) (got buffers="+ez22.numBuffers+", deferredM3="+ez22.deferredM3+")");
+ w=await app();await w.eval("createFromPagasts('70420080041')");await new Promise(r=>setTimeout(r,1500));
+ const paf22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
+ ok(paf22.numBuffers===0&&paf22.deferredM3===0,"70420080041 (PAF): nemainās (got buffers="+paf22.numBuffers+", deferredM3="+paf22.deferredM3+")");
+ // Sintētisks: viens 7 ha nogabals damaksnī (limits 5 ha) -> ģeometriski sadalās KC daļā + 90 m josla (MK935 23.p.) + atlikumā
+ w=await app();
+ w.eval(`var _lon0=25.000,_lat0=57.000,_dlon=350/(111320*Math.cos(_lat0*Math.PI/180)),_dlat=200/111320;
+  var _g=[[_lon0,_lat0],[_lon0+_dlon,_lat0],[_lon0+_dlon,_lat0+_dlat],[_lon0,_lat0+_dlat],[_lon0,_lat0]];
+  var _sm={id:"synt1",zv:"99999999999",kvartals:"1",nogabals:"1",mezaTips:"Damaksnis",platMezs:7,platKop:7,suga:"Priede",krajaImp:1400,G:25,H:28,vecums:100,cirsmaKods:"KC",geom:_g,formula:[{s:"Priede",k:10}]};`);
+ const synHa=w.eval("+(turf.area(merFeature(_sm))/10000).toFixed(2)");
+ ok(Math.abs(synHa-7)<0.1,"sintētiskais nogabals ~7 ha (got "+synHa+")");
+ const sp22=JSON.parse(w.eval("JSON.stringify(splitOversizedNogabals({m:_sm,kr:krajaMer(_sm),krha:krajaMer(_sm)/7},5))"));
+ ok(sp22&&sp22.kcHa<=5&&sp22.kcHa>0&&sp22.stripHa>0&&sp22.restHa>0,"sintētisks 7 ha damaksnī -> KC daļa ≤5 ha, josla > 0, atlikums > 0 (got "+JSON.stringify(sp22)+")");
+ ok(sp22&&Math.abs((sp22.kcHa+sp22.stripHa+sp22.restHa)-7)<0.2,"daļu summa ≈ pilnā platība 7 ha (got "+(sp22?+(sp22.kcHa+sp22.stripHa+sp22.restHa).toFixed(2):null)+")");
+ ok(sp22&&sp22.year===new Date().getFullYear()+3,"josla atlikta uz +3 g (MK935 20.p. atjaunošanās vecums), got gads "+(sp22&&sp22.year));
+ // 11. Koda sadaļu integritāte
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","toggleDeferPair"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
  ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");

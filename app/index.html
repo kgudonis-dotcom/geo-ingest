@@ -365,8 +365,10 @@ function vCirs(){const p=P();const t=calcProp(p);
  for(const c of p.cirsmas)h+=cirsmaCard(c);
  return h;}
 function summaryTable(p,t){if(!p.cirsmas.length)return "";
- const rows=p.cirsmas.map(c=>{const r=calcCirsma(c);return `<tr><td>${esc(c.tips)} ${esc(c.kvartals)}/${esc(c.nogabali)}</td><td>${fmt(num(c.platiba),2)}</td><td>${fmt(r.m3)}</td><td>${fmt(r.m3ha)}</td><td>${fmt(r.rev)}</td><td>${fmt(r.costM3,1)}</td><td>${fmt(r.max)}</td></tr>`;}).join("");
- return `<div class="card scroll"><h2>Kopsavilkums</h2><table><tr><th>Cirsma</th><th>ha</th><th>m³</th><th>m³/ha</th><th>Ieņēmumi €</th><th>Izm. €/m³</th><th>Max cena €</th></tr>${rows}${p.cirsmas.some(c=>c.atlikts)?`<tr><td colspan="7" class="muted" style="text-align:left">Atlikts ${bufM()} m joslām kopā: ${fmt(p.cirsmas.reduce((a,c)=>a+(c.atlikts||0),0))} m³, nav iekļauts augstāk.</td></tr>`:""}<tr class="tot"><td>KOPĀ</td><td>${fmt(t.ha,2)}</td><td>${fmt(t.m3)}</td><td>${fmt(t.ha?t.m3/t.ha:0)}</td><td>${fmt(t.rev)}</td><td>${fmt(t.m3?t.cost/t.m3:0,1)}</td><td>${fmt(t.max)}</td></tr></table></div>`;}
+ const defYear=new Date().getFullYear()+3;
+ const rows=p.cirsmas.map(c=>{const r=calcCirsma(c);return `<tr><td>${esc(c.tips)} ${esc(c.kvartals)}/${esc(c.nogabali)}</td><td>${fmt(num(c.platiba),2)}</td><td>${fmt(r.m3)}</td><td>${fmt(r.m3ha)}</td><td>${fmt(r.rev)}</td><td>${fmt(r.costM3,1)}</td><td>${fmt(r.max)}</td><td>${c.atlikts?fmt(c.atlikts):"–"}</td><td>${c.atlikts?defYear:"–"}</td></tr>`;}).join("");
+ const atliktsTot=p.cirsmas.reduce((a,c)=>a+(c.atlikts||0),0);
+ return `<div class="card scroll"><h2>Kopsavilkums</h2><table><tr><th>Cirsma</th><th>ha</th><th>m³</th><th>m³/ha</th><th>Ieņēmumi €</th><th>Izm. €/m³</th><th>Max cena €</th><th>Atliktie m³ (joslas)</th><th>Gads</th></tr>${rows}<tr class="tot"><td>KOPĀ</td><td>${fmt(t.ha,2)}</td><td>${fmt(t.m3)}</td><td>${fmt(t.ha?t.m3/t.ha:0)}</td><td>${fmt(t.rev)}</td><td>${fmt(t.m3?t.cost/t.m3:0,1)}</td><td>${fmt(t.max)}</td><td>${fmt(atliktsTot)}</td><td>${atliktsTot?defYear:""}</td></tr></table></div>`;}
 function cirsmaCard(c){const r=calcCirsma(c);const open=S.open===c.id;
  let h=`<div class="card"><h2 onclick="tog('${c.id}')" style="cursor:pointer">${open?"▾":"▸"} ${esc(c.tips)} · kv.${esc(c.kvartals)} nog.${esc(c.nogabali)||"–"}<span class="sp"></span><span class="muted">${fmt(r.m3)} m³ · ${fmt(r.max)} €</span></h2>`;
  if(!open)return h+"</div>";
@@ -605,7 +607,7 @@ async function gunzipJson(resp){const buf=await resp.arrayBuffer();
  if(window.pako)return JSON.parse(pako.ungzip(new Uint8Array(buf),{to:"string"}).replace(/:\s*NaN/g,":null"));
  throw new Error("Pārlūks neatbalsta gzip atspiešanu");}
 async function loadPagasts(code){const r=await cachedFetch(`${geoBase()}/pagasti/${code}.json.gz`);if(!r.ok)throw new Error("HTTP "+r.status);return gunzipJson(r);}
-function pagastsToExtra(kad,zvd){const st=zvd.stands;const key=x=>String(x.kv??"")+"-"+String(x.nog??"")+((x.anog&&String(x.anog)!=="0")?"."+x.anog:"");
+function pagastsToExtra(kad,zvd){const st=zvd.stands;const key=x=>kad+"/"+String(x.kv??"")+"/"+String(x.nog??""); // #22: atslēga vienmēr zv/kv/nog (BEZ anog — sakrīt ar mKey/m.nogabals, kas anog arī neietver)
  const items=st.map(x=>{const props={kvartals:x.kv,nogabals:x.nog,anog:x.anog,platiba_ha:x.plat};for(const k in x)if(!["kv","nog","anog","plat","geom"].includes(k))props[k]=x[k];return {props,geom:{type:"Polygon",coordinates:[x.geom]}};});
  const adjacency=(zvd.adj||[]).map(([i,j,L])=>({a:key(st[i]),b:key(st[j]),len_m:L}));
  const protectedL=(zvd.iadt||[]).map(x=>({kind:x.kind,name:x.name,zone:x.zone,overlap_ha:x.ha}));
@@ -831,9 +833,9 @@ function mergeZvInto(p,kad,items,extra){
   m.cirsmaKods=cirtmetsKC(m.suga,m.vecums,bonOf(m).bon);
   if(it.geom)m.geom=geoRing(it.geom); // WGS [lon,lat] gredzens
   m.src="VMD atvērtie dati";p.mer.push(m);added.push(m);}
- // kaimiņi no RPC adjacency (šīs ZV ietvaros)
- if(extra&&extra.adjacency&&extra.adjacency.length){const one=new Set(items.map(it=>String(it.props.kvartals??it.props.kvart??""))).size===1;
-  const lbl=extra.adjacency.map(x=>{const f=t=>one?t.split("-").slice(1).join("."):t.replace("-","/");return f(x.a)+"-"+f(x.b)+":"+x.len_m;}).join("; ");
+ // kaimiņi no RPC adjacency (šīs ZV ietvaros); atslēga vienmēr zv/kv/nog (#22), lai daudz-ZV/daudz-kvartālu objektos numuri nesakristu
+ if(extra&&extra.adjacency&&extra.adjacency.length){
+  const lbl=extra.adjacency.map(x=>x.a+"-"+x.b+":"+x.len_m).join("; ");
   p.kaimini=(p.kaimini?p.kaimini+"; ":"")+lbl;}
  if(extra){p.lad=sumLadExpl(p.lad,extra.lad);p.expl=sumLadExpl(p.expl,extra.expl);if(!p.ni&&extra.ni)p.ni=extra.ni;
   if(extra.kaimZV&&extra.kaimZV.length)p.kaimZV=(p.kaimZV||[]).concat(extra.kaimZV);
@@ -871,10 +873,15 @@ function planSvg(p,opts={}){const ms=p.mer.filter(m=>m.geom);if(!ms.length)retur
  for(const m of ms){const ring=m.geom.map(([lo,la])=>wgsToLks(lo,la));const ci=m.cirsma&&cidx[m.cirsma]!=null?cidx[m.cirsma]:-1;const col=ci>=0?PLAN_COLORS[ci%PLAN_COLORS.length]:"#bbb";
   h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="${col}" fill-opacity="${ci>=0?.45:.12}" stroke="#555" stroke-width="0.8"/>`;
   const cx=ring.reduce((a,b)=>a+b[0],0)/ring.length,cy=ring.reduce((a,b)=>a+b[1],0)/ring.length;
-  h+=`<text x="${X(cx)}" y="${Y(cy)}" font-size="10" text-anchor="middle" fill="#222">${esc(m.nogabals)}</text>`;}
+  h+=`<text x="${X(cx)}" y="${Y(cy)}" font-size="10" text-anchor="middle" fill="#222">${esc(m.nogabals)}${m.cirsmaKods?" · "+fmt(num(m.platMezs||m.platKop),2)+" ha":""}</text>`;} // #22: cērtamam nogabalam arī ha
  h+=`<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#c03" stroke-width="2"/></pattern></defs>`;
+ const deferYear=new Date().getFullYear()+3;
  for(const b of r.buffers){if(!b.geom)continue;const polys=b.geom.type==="MultiPolygon"?b.geom.coordinates:[b.geom.coordinates];
-  for(const pg of polys){const ring=pg[0].map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="url(#hatch)" stroke="#c03" stroke-width="1"/>`;}}
+  for(const pg of polys){const ring=pg[0].map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="url(#hatch)" stroke="#c03" stroke-width="1"/>`;
+   const cx=ring.reduce((q,pp)=>q+pp[0],0)/ring.length,cy=ring.reduce((q,pp)=>q+pp[1],0)/ring.length;h+=`<text x="${X(cx)}" y="${Y(cy)}" font-size="7" fill="#c03" text-anchor="middle">${deferYear}</text>`;}}
+ for(const sp of (r.oversized||[])){if(!sp.stripGeom)continue;const polys=sp.stripGeom.type==="MultiPolygon"?sp.stripGeom.coordinates:[sp.stripGeom.coordinates];
+  for(const pg of polys){const ring=pg[0].map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="url(#hatch)" stroke="#c03" stroke-width="1"/>`;
+   const cx=ring.reduce((q,pp)=>q+pp[0],0)/ring.length,cy=ring.reduce((q,pp)=>q+pp[1],0)/ring.length;h+=`<text x="${X(cx)}" y="${Y(cy)}" font-size="7" fill="#c03" text-anchor="middle">${sp.year}</text>`;}}
  if(r.zoneByNog)for(const id in r.zoneByNog){for(const g of r.zoneByNog[id].kc.geoms){const polys=g.type==="MultiPolygon"?g.coordinates:[g.coordinates];for(const pg of polys){const ring=pg[0].map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="#1e90ff" fill-opacity=".35" stroke="#1e90ff" stroke-width=".8"/>`;}}}
  if(p.infra){for(const w of p.infra.water||[]){if(["ditch","drain"].includes(w.t))continue;for(const ln of w.geom){const pts=ln.map(([lo,la])=>wgsToLks(lo,la));h+=`<polyline points="${pts.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="none" stroke="#1e90ff" stroke-width="1.5"/>`;}}
   for(const w of p.infra.watera||[]){const ring=w.geom.map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="${w.t==="wetland"?"#8fbc8f":"#9ecae1"}" fill-opacity=".5" stroke="#1e90ff" stroke-width=".6"/>`;}
@@ -885,7 +892,7 @@ function planSvg(p,opts={}){const ms=p.mer.filter(m=>m.geom);if(!ms.length)retur
  // leģenda
  let ly=H-32;h+=`<text x="${pad}" y="${ly}" font-size="10">Cirsmas:</text>`;let lx=pad+50;
  p.cirsmas.forEach((c,i)=>{h+=`<rect x="${lx}" y="${ly-9}" width="12" height="10" fill="${PLAN_COLORS[i%PLAN_COLORS.length]}" fill-opacity=".5"/><text x="${lx+15}" y="${ly}" font-size="10">${esc(c.tips)} ${esc(c.nogabali.slice(0,14))}</text>`;lx+=110;});
- h+=`<rect x="${lx}" y="${ly-9}" width="12" height="10" fill="url(#hatch)" stroke="#c03"/><text x="${lx+15}" y="${ly}" font-size="10">${r.bufM} m josla (atlikta ${fmt(r.deferredHa,2)} ha, ${fmt(r.deferredM3)} m³)</text>`;
+ h+=`<rect x="${lx}" y="${ly-9}" width="12" height="10" fill="url(#hatch)" stroke="#c03"/><text x="${lx+15}" y="${ly}" font-size="10">joslas (atliktas ${fmt(r.deferredHa,2)} ha, ${fmt(r.deferredM3)} m³, cērtamas ${new Date().getFullYear()+3})</text>`;
  if(r.zoneByNog&&Object.keys(r.zoneByNog).length){lx+=250;h+=`<rect x="${lx}" y="${ly-9}" width="12" height="10" fill="#1e90ff" fill-opacity=".35"/><text x="${lx+15}" y="${ly}" font-size="10">aizsargjoslas (KC aizliegta)</text>`;}
  const nb=(p.aplieci?p.aplieci.length:0)+(p.kaimCuts?p.kaimCuts.length:0);if(nb){lx+=250;h+=`<rect x="${lx}" y="${ly-9}" width="12" height="10" fill="url(#hatchb)" stroke="#2255aa"/><text x="${lx+15}" y="${ly}" font-size="10">kaimiņu svaigie izcirtumi / apliecinājumi (${nb})</text>`;}
  h+=`<line x1="${W-pad-100*sc}" y1="${H-14}" x2="${W-pad}" y2="${H-14}" stroke="#000" stroke-width="2"/><text x="${W-pad-50*sc}" y="${H-18}" font-size="9" text-anchor="middle">100 m</text></svg>`;
@@ -1163,7 +1170,7 @@ async function attachGeometry(pid){const p=S.props.find(x=>x.id===pid)||P();
     if(!st&&one){st=zvd.stands.find(x=>String(x.nog)+((x.anog&&String(x.anog)!=="0")?"."+x.anog:"")===String(m.nogabals));}
     if(st){m.geom=st.geom;if(!m.zv)m.zv=kad;hit++;if(!m.mezaTips&&st.mt)m.mezaTips=MT_CODES[num(st.mt)]||m.mezaTips;}else miss.push((zvList.length>1?kad+" ":"")+m.nogabals);}
    const {extra}=pagastsToExtra(kad,zvd);
-   if(extra.adjacency.length){const lbl=extra.adjacency.map(x=>{const f=t=>one?t.split("-").slice(1).join("."):t.replace("-","/");return f(x.a)+"-"+f(x.b)+":"+x.len_m;}).join("; ");p.kaimini=(p.kaimini?p.kaimini+"; ":"")+lbl;}
+   if(extra.adjacency.length){const lbl=extra.adjacency.map(x=>x.a+"-"+x.b+":"+x.len_m).join("; ");p.kaimini=(p.kaimini?p.kaimini+"; ":"")+lbl;} // #22: atslēga vienmēr zv/kv/nog
    p.lad=sumLadExpl(p.lad,extra.lad);p.expl=sumLadExpl(p.expl,extra.expl);if(!p.ni&&extra.ni)p.ni=extra.ni;
    if(extra.kaimZV.length)p.kaimZV=p.kaimZV.concat(extra.kaimZV);
    if(extra.lielie.length)p.lielie=p.lielie.concat(extra.lielie);
@@ -1404,11 +1411,49 @@ const isDry=t=>RULES.dryTypes.includes(String(t||"").trim());
 function moistureOf(t){t=String(t||"").trim();if(!t)return "?";return isDry(t)?"sausie":"slapjie";}
 function kcLimitFor(p,m){const z=RULES.iadt[p.iadt||""];if(z&&z.limit!==null)return z.limit;return RULES.kcLimitHa[moistureOf(m.mezaTips)==="sausie"?"sausie":"slapjie"];}
 function bufM(){if(S.settings.buferM===90&&!S.settings.bufMigrated){S.settings.buferM=20;S.settings.bufMigrated=true;}return num(S.settings.buferM)||20;}   // atdalošās joslas platums (lietotāja prakse: 20 m)
-const ADJ_MIN_M=50;      // MK935: piegulošā = kopējā robeža garāka par 50 m
+const ADJ_MIN_M=50;      // MK935 18.p.: piegulošā = kopējā robeža garāka par 50 m
 const SEP_MIN_HA=0.1;    // atdalošā josla vismaz 0,1 ha
 const PIECE_MIN_HA=0.1;  // jauna KC daļa vismaz 0,1 ha (ekonomiski)
 const REMNANT_HA=0.3;    // MK935 17.p.: līdz 0,3 ha atlikumu drīkst iekļaut virs limita
+const SPLIT_SEP_M=90;    // MK935 23.p.: ja VIENĀ nogabalā vairākas KC cirsmas un kopā > limits, min. attālums starp tām 90 m
 function kcLimit(mo){return mo==="sausie"?RULES.kcLimitHa.sausie:mo==="slapjie"?RULES.kcLimitHa.slapjie:null;}
+// #22: nogabala kanoniskā atslēga vienmēr zv/kv/nog (kā #44), lai vairāku ZV/kvartālu objektos numuri nesajauktos
+function mKey(m){return (m.zv||"")+"/"+(m.kvartals||"")+"/"+m.nogabals;}
+function matchNogToken(nogList,tok){const parts=String(tok).split("/");
+ if(parts.length>=3){const nog=parts[parts.length-1],kv=parts[parts.length-2],zv=parts.slice(0,-2).join("/");return nogList.find(x=>x.m.zv===zv&&x.m.kvartals===kv&&x.m.nogabals===nog);}
+ if(parts.length===2)return nogList.find(x=>x.m.kvartals===parts[0]&&x.m.nogabals===parts[1]);
+ return nogList.find(x=>x.m.nogabals===parts[0]);}
+function kaiminiPairs(p,nogList){ // p.kaimini -> [{xa,xb,len}], pieņem zv/kv/nog (auto), kv/nog vai kaili numuri (roku ievade)
+ return String(p.kaimini||"").split(/[;,]/).map(x=>x.trim()).filter(Boolean).map(x=>{const [pr,len]=x.split(":");const parts=pr.split("-");if(parts.length!==2)return null;
+  const xa=matchNogToken(nogList,parts[0]),xb=matchNogToken(nogList,parts[1]);if(!xa||!xb||xa===xb)return null;return {xa,xb,len:num(len)||0};}).filter(Boolean);}
+// MK935 23.p.: viens nogabals PATS pārsniedz limitu -> ģeometriski sadala KC daļā (≤limits) un atlikumā ar 90 m nenocirstu joslu pa šaurāko virzienu
+function splitOversizedNogabals(x,lim){
+ const m=x.m;if(!m.geom||typeof turf==="undefined")return null;
+ try{
+  let poly=merFeature(m);try{const cleaned=turf.buffer(poly,0,{units:"kilometers"});if(cleaned&&turf.area(cleaned)>0)poly=cleaned;}catch(e){} // topoloģijas tīrīšana (VMD ģeometrijai reizēm ir mikroskopiski paškrustojumi)
+  const lksRing=m.geom.map(([lo,la])=>wgsToLks(lo,la));
+  const lxs=lksRing.map(p=>p[0]),lys=lksRing.map(p=>p[1]);const w=Math.max(...lxs)-Math.min(...lxs),h=Math.max(...lys)-Math.min(...lys);
+  const byLon=w>=h; // garāks A-R virzienā -> griež ar Z-D līniju (šaurajā virzienā mazāka josla platība)
+  const lons=m.geom.map(p=>p[0]),lats=m.geom.map(p=>p[1]);
+  const axMin=byLon?Math.min(...lons):Math.min(...lats),axMax=byLon?Math.max(...lons):Math.max(...lats);
+  const crossMin=(byLon?Math.min(...lats):Math.min(...lons))-0.02,crossMax=(byLon?Math.max(...lats):Math.max(...lons))+0.02;
+  const bandPoly=(v0,v1)=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[byLon?
+    [[v0,crossMin],[v1,crossMin],[v1,crossMax],[v0,crossMax],[v0,crossMin]]:
+    [[crossMin,v0],[crossMin,v1],[crossMax,v1],[crossMax,v0],[crossMin,v0]]]}});
+  const areaOf=f=>{try{const i=turf.intersect(turf.featureCollection([poly,f]));return i?{ha:turf.area(i)/10000,f:i}:{ha:0,f:null};}catch(e){return {ha:0,f:null};}};
+  const areaBefore=v=>areaOf(bandPoly(axMin-0.02,v)).ha;
+  let lo=axMin,hi=axMax;for(let i=0;i<28;i++){const mid=(lo+hi)/2;if(areaBefore(mid)<lim)lo=mid;else hi=mid;}
+  const cut=(lo+hi)/2;
+  const midLat=(Math.min(...lats)+Math.max(...lats))/2;
+  const degPerM=byLon?1/(111320*Math.cos(midLat*Math.PI/180)):1/111320; // 90 m -> grādi, lokāli pie šī nogabala platuma (LV ap 57°Z)
+  const half=(SPLIT_SEP_M/2)*degPerM;
+  const kc=areaOf(bandPoly(axMin-0.02,cut-half)),strip=areaOf(bandPoly(cut-half,cut+half)),rest=areaOf(bandPoly(cut+half,axMax+0.02));
+  const statedHa=num(m.platMezs||m.platKop),polyHa=turf.area(poly)/10000,sumHa=kc.ha+strip.ha+rest.ha;
+  // ģeometrija neizdalās tīri vai neatbilst deklarētajai platībai (topoloģijas defekts VMD datos) -> godīgi atsakās, nevis nepareizs skaitlis
+  if(!kc.f||kc.ha<=0||kc.ha>lim+0.05||Math.abs(sumHa-polyHa)>polyHa*0.05||Math.abs(polyHa-statedHa)>statedHa*0.1)return null;
+  return {x,kcHa:+kc.ha.toFixed(2),kcGeom:kc.f.geometry,restHa:+rest.ha.toFixed(2),restGeom:rest.f?rest.f.geometry:null,restM3:Math.round(rest.ha*x.krha),
+   stripHa:+strip.ha.toFixed(2),stripGeom:strip.f?strip.f.geometry:null,stripM3:Math.round(strip.ha*x.krha),year:new Date().getFullYear()+3,widthM:SPLIT_SEP_M};
+ }catch(e){console.warn("splitOversized",e);return null;}}
 function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.iadt||""]||RULES.iadt[""];const out={nog:[],kc:{sausie:{ha:0,m3:0,n:[]},slapjie:{ha:0,m3:0,n:[]},"?":{ha:0,m3:0,n:[]}},global:[]};
  if(!zone.kc)out.global.push("ĪADT zona: kailcirte aizliegta, plāns jāraksta kā izlases/kopšanas programma.");
  if(p.iadt)out.global.push("ĪADT sezona: darbi aizliegti 15.03 līdz 31.07, reāli viens ziemas logs. Atjaunošanā nedrīkst citzemju sugas.");
@@ -1447,34 +1492,68 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
  // Kaimiņu (citu īpašnieku) izcirtumi un blakus ZV limitu neietekmē (lietotāja noteikums 2026-09-01): tikai informācija plānā, bez karodziņiem.
  try{zoneChecks(p,out);}catch(e){console.warn("zones",e);}
  try{iadtChecks(p,out);}catch(e){console.warn("iadt",e);}
- // 17.p. atlikums un nogabala dalīšana: nogabals līdz limits+0,3 ha ir viena cirsma; lielāks dalāms: KC ≤ limits, atdalošā josla ≥ 0,1 ha (≥ 20 m), atlikums kā nākamā KC ≥ 0,1 ha
- out.splits=[];for(const x of out.nog){if(x.m.cirsmaKods!=="KC")continue;const mo=moistureOf(x.m.mezaTips);const lim=kcLimit(mo);if(!lim)continue;const ha=num(x.m.platMezs||x.m.platKop);
+ // #22: cirsmas veido pēc REĀLAS ģeometriskas piegulības (MK935 18.p., robeža > 50 m), nevis pēc krājas summas.
+ // 1) vienu nogabalu, kas PATS > limits+0,3 ha, sadala ģeometriski (MK935 23.p., 90 m josla pa šaurāko virzienu)
+ out.splits=[];out.oversized=[];const effHa=new Map();const failedSplit=new Set(); // mKey -> efektīvā KC platība (samazināta, ja nogabals sadalīts)
+ for(const x of out.nog){if(x.m.cirsmaKods!=="KC")continue;const mo=moistureOf(x.m.mezaTips);const lim=kcLimit(mo);if(!lim)continue;const ha=num(x.m.platMezs||x.m.platKop);
   if(ha<=lim+REMNANT_HA){if(ha>lim)x.f.push({t:"plus",s:`nogabals ${fmt(ha,2)} ha pārsniedz limitu ${lim} ha par ${fmt(ha-lim,2)} ha ≤ 0,3: drīkst cirst vienā cirsmā (MK935 17.p.)`});continue;}
-  let rest=ha,parts=[],i=1;while(rest>0){const kc=Math.min(lim,rest);parts.push({nog:x.m.nogabals+"."+(i++),ha:+kc.toFixed(2),t:"KC"});rest=+(rest-kc).toFixed(2);if(rest<=0)break;
-   if(rest<=REMNANT_HA){parts[parts.length-1].ha=+(parts[parts.length-1].ha+rest).toFixed(2);rest=0;break;}
-   const sep=Math.max(SEP_MIN_HA,+(bufM()*Math.sqrt(kc*10000)/10000).toFixed(2));parts.push({nog:x.m.nogabals+"."+(i++),ha:+Math.min(sep,rest).toFixed(2),t:"josla"});rest=+(rest-Math.min(sep,rest)).toFixed(2);
-   if(rest>0&&rest<PIECE_MIN_HA){parts[parts.length-1].ha=+(parts[parts.length-1].ha+rest).toFixed(2);rest=0;}}
-  out.splits.push({nog:x.m.nogabals,ha,lim,parts});x.f.push({t:"ier",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha: dalāms: ${parts.map(q=>q.nog+" "+q.t+" "+fmt(q.ha,2)+" ha").join(", ")} (josla ≥ ${bufM()} m, ≥ 0,1 ha; kopējā robeža starp KC ≤ 50 m)`});}
- // cirsmu sadalījums (greedy pēc m³, bez kaimiņu ģeometrijas)
- out.split=[];for(const mo of ["sausie","slapjie"]){const lim=zone.limit!==null?zone.limit:RULES.kcLimitHa[mo];const items=out.nog.filter(x=>x.mo===mo&&x.m.cirsmaKods==="KC"&&!x.exclude).sort((a,b)=>b.kr-a.kr);const groups=[];
-  for(const x of items){const ha=num(x.m.platMezs||x.m.platKop);let g=groups.find(g=>g.zv===x.m.zv&&g.ha+ha<=lim+1e-9); // #44: nogabalus grupē tikai vienas ZV ietvaros, ne pa visu NĪ
-   if(!g){if(ha>lim){groups.push({mo,zv:x.m.zv,nog:[x.m.nogabals+" (daļa "+lim+" ha no "+ha+")"],ha:lim,m3:Math.round(x.kr*lim/ha)});groups.push({mo,zv:x.m.zv,nog:[x.m.nogabals+" (atlikums)"],ha:+(ha-lim).toFixed(2),m3:Math.round(x.kr-x.kr*lim/ha)});continue;}g={mo,zv:x.m.zv,nog:[],ha:0,m3:0};groups.push(g);}
-   g.nog.push(x.m.nogabals);g.ha=+(g.ha+ha).toFixed(2);g.m3+=Math.round(x.kr);}
-  out.split.push(...groups);out.kc[mo].limit=lim;out.kc[mo].minCirsmas=lim?Math.ceil(out.kc[mo].ha/lim-1e-9):0;}
- // 90 m joslas starp cirsmām, kas robežojas. Robežas garums: no ieraksta "32-10:200" vai novērtēts kā mazākā nogabala kvadrāta mala.
- out.buffers=[];const pairs=String(p.kaimini||"").split(/[;,]/).map(x=>x.trim()).filter(Boolean).map(x=>{const [pr,len]=x.split(":");const [a,b]=pr.split("-").map(y=>y.trim());return {a,b,len:num(len)||0};}).filter(x=>x.a&&x.b);
- const grpOf=n=>out.split.findIndex(g=>g.nog.some(x=>x===n||x.startsWith(n+" (")));
- for(const pr of pairs){const ga=grpOf(pr.a),gb=grpOf(pr.b);if(ga<0||gb<0||ga===gb)continue;const xa=out.nog.find(x=>x.m.nogabals===pr.a),xb=out.nog.find(x=>x.m.nogabals===pr.b);if(!xa||!xb)continue;
-  const ha_a=num(xa.m.platMezs||xa.m.platKop),ha_b=num(xb.m.platMezs||xb.m.platKop);const L=pr.len||Math.round(Math.sqrt(Math.min(ha_a,ha_b)*10000));
-  const victim=xa.krha<=xb.krha?xa:xb;const vha=num(victim.m.platMezs||victim.m.platKop);const stripHa=Math.min(vha,+Math.max(SEP_MIN_HA,bufM()*L/10000).toFixed(2));const m3=Math.round(stripHa*victim.krha);
-  if(L<=ADJ_MIN_M)continue; // kopējā robeža ≤ 50 m: nav piegulošas, josla nav vajadzīga
-  out.buffers.push({a:pr.a,b:pr.b,L,est:!pr.len,nog:victim.m.nogabals,grp:grpOf(victim.m.nogabals)+1,stripHa,m3,victim:victim.m,other:(victim===xa?xb:xa).m});}
+  const sp=splitOversizedNogabals(x,lim);
+  if(sp){out.oversized.push(sp);effHa.set(mKey(x.m),sp.kcHa);
+   x.f.push({t:"ier",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 23.p.): sadalīts — KC daļa ${fmt(sp.kcHa,2)} ha, ${SPLIT_SEP_M} m nenocirsta josla ${fmt(sp.stripHa,2)} ha (atlikta, cērtama ${sp.year}, kad audze sasniegs 3 g pēc atjaunošanas, MK935 20.p.), atlikums ${fmt(sp.restHa,2)} ha`});}
+  else{out.splits.push({nog:x.m.nogabals,ha,lim});failedSplit.add(mKey(x.m));
+   x.f.push({t:"bloks",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 23.p.), bet ģeometriska sadalīšana neizdevās (ģeometrijas platība neatbilst deklarētajai, vai nav ģeometrijas) — jāsadala ar roku, izslēgts no automātiskā sadalījuma`});}}
+ // 2) piegulošības grafs (MK935 18.p.) starp visiem KC nogabaliem no p.kaimini (reāla ģeometrija, atslēga zv/kv/nog); izslēdz nogabalus, kam sadalīšana neizdevās (nedrīkst nonākt grupā ar pilnu, virs-limita platību)
+ const kcAll=out.nog.filter(x=>x.m.cirsmaKods==="KC"&&!x.exclude&&!failedSplit.has(mKey(x.m)));
+ const adjPairs=kaiminiPairs(p,out.nog).filter(pr=>pr.len>ADJ_MIN_M);
+ const adjOf=new Map();for(const pr of adjPairs){const ka=mKey(pr.xa.m),kb=mKey(pr.xb.m);
+  if(!adjOf.has(ka))adjOf.set(ka,[]);if(!adjOf.has(kb))adjOf.set(kb,[]);adjOf.get(ka).push({x:pr.xb});adjOf.get(kb).push({x:pr.xa});}
+ // 3) savienoto komponenšu grupēšana: sāk no lielākās krājas, pievieno TIKAI ģeometriski piegulošus vēl brīvus nogabalus, kamēr platība ≤ limits (MK935 16.p.: kopā ≤5 ha, slapjā daļa ≤2 ha)
+ const groups=[];const remaining=new Set(kcAll.map(x=>mKey(x.m)));const byKey=k=>kcAll.find(y=>mKey(y.m)===k);
+ while(remaining.size){
+  let seedK=null,seedKr=-1;for(const k of remaining){const x=byKey(k);if(x&&x.kr>seedKr){seedKr=x.kr;seedK=k;}}
+  if(!seedK)break;const seed=byKey(seedK);
+  let sausie=0,slapjie=0;const nogIn=[];const queue=[seedK];const inThis=new Set();
+  while(queue.length){
+   queue.sort((ka,kb)=>{const xa=byKey(ka),xb=byKey(kb);return (xb?xb.kr:0)-(xa?xa.kr:0);});
+   const k=queue.shift();if(inThis.has(k)||!remaining.has(k))continue;const x=byKey(k);if(!x)continue;
+   if(nogIn.length&&x.m.zv!==seed.m.zv)continue; // #44: nogabalus grupē tikai vienas ZV ietvaros
+   const ha=effHa.has(k)?effHa.get(k):num(x.m.platMezs||x.m.platKop);
+   const addS=x.mo==="sausie"?ha:0,addW=x.mo==="slapjie"?ha:0;
+   if(nogIn.length&&(sausie+addS+slapjie+addW>5+1e-9||slapjie+addW>2+1e-9))continue;
+   inThis.add(k);remaining.delete(k);sausie+=addS;slapjie+=addW;nogIn.push({x,ha});
+   for(const {x:nb} of (adjOf.get(k)||[])){const nk=mKey(nb.m);if(remaining.has(nk)&&!inThis.has(nk))queue.push(nk);}}
+  const mo=slapjie>0&&sausie>0?"jaukta":(slapjie>0?"slapjie":"sausie");
+  groups.push({mo,zv:seed.m.zv,ha:+(sausie+slapjie).toFixed(2),sausieHa:+sausie.toFixed(2),slapjieHa:+slapjie.toFixed(2),
+   m3:nogIn.reduce((a,e)=>a+Math.round(e.x.kr*(e.ha/num(e.x.m.platMezs||e.x.m.platKop)||1)),0),nog:nogIn.map(e=>e.x)});}
+ out.split=groups;
+ {const limS=zone.limit!==null?zone.limit:RULES.kcLimitHa.sausie,limW=zone.limit!==null?zone.limit:RULES.kcLimitHa.slapjie;
+  out.kc.sausie.limit=limS;out.kc.sausie.minCirsmas=limS?Math.ceil(out.kc.sausie.ha/limS-1e-9):0;
+  out.kc.slapjie.limit=limW;out.kc.slapjie.minCirsmas=limW?Math.ceil(out.kc.slapjie.ha/limW-1e-9):0;}
+ // 4) starp DAŽĀDĀM galīgajām cirsmām, kas piegulas (> 50 m, MK935 18.p.): MK935 pants NENOSAKA konkrētu joslas platumu šai situācijai
+ // (19./20.p. tikai nosaka, ka piegulošā platība skaitās kopā limitā un jāgaida 3 g pēc atjaunošanas) — tāpēc josla ir PRAKSE VMD saskaņošanai, ne likuma prasība: dzeltens karogs.
+ // Noklusējums: 20 m (bufM()) josla pusē, kas zaudē mazāk m³. Alternatīva (p.deferPairs pāra atslēga): otro cirsmu atliek uz vēlāku periodu bez joslas (tas gan IR likumā balstīts ceļš, MK935 20.p.).
+ const grpOf=k=>groups.findIndex(g=>g.nog.some(e=>mKey(e.m)===k));
+ out.buffers=[];const deferSet=new Set(p.deferPairs||[]);
+ for(const pr of adjPairs){const ka=mKey(pr.xa.m),kb=mKey(pr.xb.m);const ga=grpOf(ka),gb=grpOf(kb);if(ga<0||gb<0||ga===gb)continue;
+  const pairKey=[ka,kb].sort().join("|");
+  if(deferSet.has(pairKey)){out.global.push(`nog. ${pr.xa.m.nogabals}-${pr.xb.m.nogabals}: piegulošas cirsmas (MK935 18.p.), lietotājs izvēlējies otro atlikt uz vēlāku periodu (pēc 3 g atjaunošanas, MK935 20.p.) bez joslas, nevis ${bufM()} m joslu.`);continue;}
+  const victim=pr.xa.krha<=pr.xb.krha?pr.xa:pr.xb,other=victim===pr.xa?pr.xb:pr.xa;
+  const vha=num(victim.m.platMezs||victim.m.platKop);const stripHa=Math.min(vha,+Math.max(SEP_MIN_HA,bufM()*pr.len/10000).toFixed(2));const m3=Math.round(stripHa*victim.krha);
+  out.buffers.push({a:pr.xa.m.nogabals,b:pr.xb.m.nogabals,pairKey,L:pr.len,practice:true,nog:victim.m.nogabals,grp:grpOf(mKey(victim.m))+1,stripHa,m3,year:new Date().getFullYear()+3,victim:victim.m,other:other.m});}
  // ja ir ģeometrija: īsta josla = nogabals ∩ buferis(kaimiņš, bufM)
  if(typeof turf!=="undefined")for(const b of out.buffers){if(!b.victim.geom||!b.other.geom)continue;try{
   const v=merFeature(b.victim),o=merFeature(b.other);const strip=turf.intersect(turf.featureCollection([v,turf.buffer(o,bufM()/1000,{units:"kilometers"})]));
   if(strip){let ha=turf.area(strip)/10000;let w=bufM();while(ha<SEP_MIN_HA&&w<200){w+=5;const s2=turf.intersect(turf.featureCollection([v,turf.buffer(o,w/1000,{units:"kilometers"})]));if(!s2)break;strip=s2;ha=turf.area(strip)/10000;b.widened=w;}
-  b.stripHa=+Math.min(ha,num(b.victim.platMezs||b.victim.platKop)).toFixed(2);const x=out.nog.find(n=>n.m===b.victim);b.m3=Math.round(b.stripHa*(x?x.krha:0));b.geom=strip.geometry;b.est=false;b.real=true;}}catch(e){console.warn("strip",e);}}
- out.deferredM3=out.buffers.reduce((a,b)=>a+b.m3,0);out.bufM=bufM();out.deferredHa=+out.buffers.reduce((a,b)=>a+b.stripHa,0).toFixed(2);
+  b.stripHa=+Math.min(ha,num(b.victim.platMezs||b.victim.platKop)).toFixed(2);const x=out.nog.find(n=>n.m===b.victim);b.m3=Math.round(b.stripHa*(x?x.krha:0));b.geom=strip.geometry;b.real=true;}}catch(e){console.warn("strip",e);}}
+ // atliktais (joslas + sadalīto nogabalu josla+atlikums) izslēdz no "cērtams tagad" KC kopsummas — kopā ar atlikto un bloķēto tas sakrīt ar pilno krāju
+ for(const sp of out.oversized){const mo=moistureOf(sp.x.m.mezaTips);const def=sp.stripHa+sp.restHa;out.kc[mo].ha=+(out.kc[mo].ha-def).toFixed(2);out.kc[mo].m3-=(sp.stripM3+sp.restM3);}
+ for(const b of out.buffers){const x=out.nog.find(n=>n.m===b.victim);const mo=x?x.mo:null;if(mo){out.kc[mo].ha=+(out.kc[mo].ha-b.stripHa).toFixed(2);out.kc[mo].m3-=b.m3;}}
+ out.blockedM3=0;out.blockedHa=0; // nogabali, kam MK935 23.p. sadalīšana neizdevās (nav ne cērtami tagad, ne ieplānoti — jārisina ar roku)
+ for(const k of failedSplit){const x=out.nog.find(n=>mKey(n.m)===k);if(!x)continue;const mo=x.mo,ha=num(x.m.platMezs||x.m.platKop);
+  out.kc[mo].ha=+(out.kc[mo].ha-ha).toFixed(2);out.kc[mo].m3-=Math.round(x.kr);out.blockedHa=+(out.blockedHa+ha).toFixed(2);out.blockedM3+=Math.round(x.kr);}
+ out.deferredM3=out.buffers.reduce((a,b)=>a+b.m3,0)+out.oversized.reduce((a,s)=>a+s.stripM3+s.restM3,0);
+ out.deferredHa=+(out.buffers.reduce((a,b)=>a+b.stripHa,0)+out.oversized.reduce((a,s)=>a+s.stripHa+s.restHa,0)).toFixed(2);
+ out.bufM=bufM();
  return out;}
 const PRECHECK=["ĪADT / Natura 2000 statuss un funkcionālā zona Ozolā pēc kadastra nr. Ja ĪADT, individuālie MK noteikumi aizstāj vispārējos limitus.","Inventarizācija visos nogabalos jaunāka par 20 gadiem.","Platības limits un joslas attiecas uz savām cirsmām vienā zemes vienībā; kaimiņu īpašnieku izcirtumi un savas blakus zemes vienības limitu neietekmē. Blakus savai atjaunotajai audzei jābūt vismaz 3 g vecai (MK935 20.p.); jūras joslā un atsevišķās ĪADT 10 g skujkokiem / 5 g lapkokiem.","Piegulošas ir cirsmas ar kopējo robežu virs 50 m (MK935). Ja limits pārsniegts, atdala jaunu nogabalu (piem. 1.1) kā joslu ≥ 20 m platu un ≥ 0,1 ha; atlikums ≥ 0,1 ha kā nākamā KC. Slapjš KC blakus sausam: 20 m josla pa visu robežu, sauso cērt kā atsevišķu KC.","Dobumainie koki un koki ar ligzdām D > 50 cm, aizsargājamie koki D > 60 cm: izstaigāt vecos ozola / oša / apses nogabalus.","Nogabala atlikums ≤ 0,3 ha ir iekļaujams cirsmā virs limita (MK935 17.p.). Silā, mētrājā, lānā limits 10 ha, ja atstāj 20 priedes sēklas kokus/ha (15.3). Gatavojamie individuālie ĪADT noteikumi var samazināt limitu."];
 function speciesSummary(p,t){if(!p.cirsmas.length||!t.m3)return "";const rs=p.cirsmas.map(c=>calcCirsma(c));
@@ -1493,12 +1572,17 @@ function legalBlocks(p){if(!p.mer.length)return "";const r=runChecks(p);const zo
  h+=`<div class="card scroll"><h2>Kailcirte pa mitruma grupām</h2><table><tr><th>Grupa</th><th>KC ha</th><th>neto m³</th><th>limits ha/cirsma</th><th>min. cirsmu skaits</th><th>nogabali</th></tr>`;
  for(const mo of ["sausie","slapjie","?"]){const k=r.kc[mo];if(!k.n.length)continue;h+=`<tr><td>${mo==="sausie"?"Sausie (Sl, Mr, Ln, Dm, Vr, Gr)":mo==="slapjie"?"Slapjie, purvāji, āreņi, kūdreņi":"Nav tipa"}</td><td class="${k.limit&&k.ha>k.limit?"pctbad":""}">${fmt(k.ha,2)}</td><td>${fmt(k.m3)}</td><td>${k.limit??"–"}</td><td>${k.minCirsmas??"–"}</td><td style="white-space:normal;text-align:left">${k.n.map(m=>m.nogabals).join(", ")}</td></tr>`;}
  h+=`</table><div class="muted">Neto m³ = krāja mīnus ekoloģiskie koki (${RULES.ecoTreesHa.KC}/ha KC, ${RULES.ecoTreesHa.KKC}/ha kopšanā, ${RULES.ecoTreeM3} m³ koks).</div></div>`;
- if(r.split.length){const pairs=String(p.kaimini||"").split(/[;,]/).map(x=>x.trim().split("-").map(y=>y.trim())).filter(x=>x.length===2);
+ if(r.split.length){
   h+=`<div class="card scroll"><h2>Cirsmu sadalījuma priekšlikums</h2><table><tr><th>Cirsma</th><th>Nogabali</th><th>ha</th><th>m³</th><th>Piezīme</th></tr>`;
-  r.split.forEach((g,i)=>{const conflicts=[];r.split.forEach((g2,j)=>{if(j<=i)return;for(const pr of pairs){if((g.nog.includes(pr[0])&&g2.nog.includes(pr[1]))||(g.nog.includes(pr[1])&&g2.nog.includes(pr[0])))conflicts.push(`robežojas ar cirsmu ${j+1} (nog. ${pr.join("-")})`);}});
-   h+=`<tr><td>${i+1} (${g.mo})</td><td style="white-space:normal;text-align:left">${g.nog.join("; ")}</td><td>${fmt(g.ha,2)}</td><td>${fmt(g.m3)}</td><td style="white-space:normal;text-align:left" class="${conflicts.length?"pctbad":""}">${conflicts.join("; ")||"–"}</td></tr>`;});
-  h+=`</table><div class="muted">Grupēts pēc lielākās krājas, katra ≤ limits. Robežošanos rīks zina tikai no ierakstītajiem pāriem (nav ģeometrijas). Ja divas cirsmas robežojas, starp tām 90 m josla vai dabisks atdalītājs, vai viena cērtama pēc otras atjaunošanas.</div>${r.buffers.length?`<h3 style="margin:10px 0 4px">Atdalošās joslas ${bufM()} m (kopējā robeža > 50 m; cērt pēc blakus cirsmas atjaunošanas)</h3><table><tr><th>Pāris</th><th>Robeža m</th><th>Josla paliek nog.</th><th>Cirsma</th><th>ha</th><th>m³ atlikti</th></tr>${r.buffers.map(b=>`<tr><td>${esc(b.a)}-${esc(b.b)}</td><td>${b.L}${b.real?" (ģeometrija)":b.est?" (novērtēts)":""}${b.widened?" · paplašināta līdz "+b.widened+" m, lai ≥ 0,1 ha":""}</td><td>${esc(b.nog)}</td><td>${b.grp}</td><td>${fmt(b.stripHa,2)}</td><td>${fmt(b.m3)}</td></tr>`).join("")}<tr class="tot"><td>KOPĀ</td><td></td><td></td><td></td><td>${fmt(r.deferredHa,2)}</td><td>${fmt(r.deferredM3)}</td></tr></table><div class="muted">Bez garuma robežu novērtē kā mazākā nogabala kvadrāta malu (√(ha × 10 000)); precīzāk: "32-10:200". Joslu liek nogabalā ar mazāku krāju/ha. Katram nogabalam rīks ieraksta buferi % no m³ (Mērījumos labojams; manuāli ievadītu vērtību rīks nepārraksta).</div>`:""}
- <button class="btn amber" style="margin-top:8px" onclick="applySplit()">${ARM==="split"?"Aizstās esošās Kc cirsmas. Spied vēlreiz":"Pārveidot cirsmas pēc šī sadalījuma"}</button></div>`;}
+  const grpIdxOf=m=>r.split.findIndex(g=>g.nog.some(e=>e.m===m));
+  r.split.forEach((g,i)=>{const notes=[];
+   for(const b of r.buffers){let otherM=null;if(g.nog.some(e=>e.m===b.victim))otherM=b.other;else if(g.nog.some(e=>e.m===b.other))otherM=b.victim;
+    if(otherM){const j=grpIdxOf(otherM);if(j>=0&&j!==i)notes.push(`josla ar cirsmu ${j+1} (nog. ${b.a}-${b.b})`);}}
+   h+=`<tr><td>${i+1} (${esc(g.mo)})</td><td style="white-space:normal;text-align:left">${esc(g.nog.map(e=>e.m.nogabals).join("; "))}</td><td>${fmt(g.ha,2)}</td><td>${fmt(g.m3)}</td><td style="white-space:normal;text-align:left" class="${notes.length?"pctwarn":""}">${notes.join("; ")||"–"}</td></tr>`;});
+  h+=`</table><div class="muted">Cirsmas veidotas pēc reālas ģeometriskas piegulības (MK935 18.p., kopēja robeža > 50 m), katra ≤ MK935 15./16.p. limitu (sausie 5 ha, slapjie 2 ha, jaukta kopā ≤5 ar slapjo daļu ≤2).</div>`;
+  if(r.oversized.length)h+=`<h3 style="margin:10px 0 4px">Nogabali, kas paši > limitu (MK935 23.p., ${SPLIT_SEP_M} m josla pa šaurāko virzienu)</h3><table><tr><th>Nog.</th><th>Kopā ha</th><th>KC daļa ha</th><th>Josla ha</th><th>Atlikums ha</th><th>Atliktie m³</th><th>Gads</th></tr>${r.oversized.map(sp=>`<tr><td>${esc(sp.x.m.nogabals)}</td><td>${fmt(num(sp.x.m.platMezs||sp.x.m.platKop),2)}</td><td>${fmt(sp.kcHa,2)}</td><td>${fmt(sp.stripHa,2)}</td><td>${fmt(sp.restHa,2)}</td><td>${fmt(sp.stripM3+sp.restM3)}</td><td>${sp.year}</td></tr>`).join("")}</table>`;
+  if(r.buffers.length)h+=`<h3 style="margin:10px 0 4px">Atdalošās joslas ${bufM()} m starp piegulošām cirsmām — PRAKSE VMD saskaņošanai, ne tieša MK935 prasība (19./20.p. nosaka tikai kopējo limitu un 3 g atjaunošanās vecumu, ne joslas platumu)</h3><table><tr><th>Pāris</th><th>Robeža m</th><th>Josla paliek nog.</th><th>Cirsma</th><th>ha</th><th>m³ atlikti</th><th>Gads</th><th></th></tr>${r.buffers.map(b=>`<tr><td>${esc(b.a)}-${esc(b.b)}</td><td>${b.L}${b.real?" (ģeometrija)":" (novērtēts)"}${b.widened?" · paplašināta līdz "+b.widened+" m, lai ≥ 0,1 ha":""}</td><td>${esc(b.nog)}</td><td>${b.grp}</td><td>${fmt(b.stripHa,2)}</td><td>${fmt(b.m3)}</td><td>${b.year}</td><td><button class="btn sm sec" onclick="toggleDeferPair('${b.pairKey}')">Atlikt otru cirsmu bez joslas</button></td></tr>`).join("")}<tr class="tot"><td>KOPĀ</td><td></td><td></td><td></td><td>${fmt(r.buffers.reduce((a,b)=>a+b.stripHa,0),2)}</td><td>${fmt(r.buffers.reduce((a,b)=>a+b.m3,0))}</td><td></td><td></td></tr></table><div class="muted">Noklusējums: josla tajā pusē, kas zaudē mazāk m³ (mazāka krāja/ha). "Atlikt otru cirsmu bez joslas" ir likumā balstīta alternatīva (MK935 20.p.: piegulošo cirsmu drīkst cirst, kad atjaunotā audze sasniegusi 3 g).</div>`;
+  h+=`<button class="btn amber" style="margin-top:8px" onclick="applySplit()">${ARM==="split"?"Aizstās esošās Kc cirsmas. Spied vēlreiz":"Pārveidot cirsmas pēc šī sadalījuma"}</button></div>`;}
  const flagged=r.nog.filter(x=>x.f.length);
  h+=`<div class="card"><h2>Nogabali ar piezīmēm (${flagged.length})</h2><div class="list">${flagged.map(x=>`<div class="item"><div class="t"><b>${x.m.kvartals?"kv."+esc(x.m.kvartals)+" ":""}nog. ${esc(x.m.nogabals)} · ${esc(x.m.mezaTips)} · ${esc(x.m.suga)} ${x.m.vecums||""}g · ${fmt(x.kr)} m³ (${fmt(x.krha)} m³/ha) ${x.m.cirsmaKods?"· "+x.m.cirsmaKods:""}</b><small>${x.f.map(f=>`<span class="${f.t==="bloks"?"pctbad":f.t==="warn"?"pctwarn":f.t==="info"?"pctinfo":""}">${esc(f.s)}</span>`).join(" · ")}</small></div></div>`).join("")||'<div class="empty">Piezīmju nav.</div>'}</div></div>`;
  const realistic=r.nog.filter(x=>x.m.cirsmaKods&&!x.exclude);const rm3=realistic.reduce((a,x)=>a+Math.max(x.kr-x.eco,0),0),rha=realistic.reduce((a,x)=>a+num(x.m.platMezs||x.m.platKop),0);
@@ -1514,13 +1598,18 @@ function cirsmaLegal(c){const p=P();const linked=p.mer.filter(m=>m.cirsma===c.id
  const eco=rows.reduce((a,x)=>a+x.eco,0);h+=`<div class="kv"><span>Ekoloģiskie koki (${RULES.ecoTreesHa[c.tips==="Kc"?"KC":"KKC"]||0}/ha), atskaitīti</span><b>${fmt(eco)} m³</b></div>`;
  for(const x of rows)for(const f of x.f)h+=`<div class="kv"><span>nog. ${esc(x.m.nogabals)}</span><b class="${f.t==="bloks"?"pctbad":f.t==="warn"?"pctwarn":f.t==="info"?"pctinfo":""}" style="text-align:right;white-space:normal;max-width:70%">${esc(f.s)}</b></div>`;
  return h+"</div>";}
-function bufferSuggest(p,r){const out={};for(const b of (r||runChecks(p)).buffers){const m=p.mer.find(x=>x.nogabals===b.nog);if(!m)continue;const ha=num(m.platMezs||m.platKop);out[m.id]=Math.min(100,Math.round((out[m.id]||0)+(ha?b.stripHa/ha*100:0)));}return out;}
+function bufferSuggest(p,r){r=r||runChecks(p);const out={};
+ for(const b of r.buffers){const m=b.victim;if(!m)continue;const ha=num(m.platMezs||m.platKop);out[m.id]=Math.min(100,Math.round((out[m.id]||0)+(ha?b.stripHa/ha*100:0)));} // #22: pēc objekta (b.victim), ne pēc nogabala numura (bija ambiguzs daudz-kvartālu objektos)
+ for(const sp of (r.oversized||[])){const m=sp.x.m;const ha=num(m.platMezs||m.platKop);const def=sp.stripHa+sp.restHa;out[m.id]=Math.min(100,Math.round((out[m.id]||0)+(ha?def/ha*100:0)));}
+ return out;}
 function applyBuffers(p,r){const sug=bufferSuggest(p,r);for(const m of p.mer){if(m.buferManual)continue;m.buferPct=sug[m.id]||0;}}
+// #22: alternatīva 20 m joslai — otro no divām piegulošām cirsmām atliek uz vēlāku periodu (MK935 20.p., 3 g pēc atjaunošanas) bez joslas
+function toggleDeferPair(pairKey){const p=P();p.deferPairs=p.deferPairs||[];const i=p.deferPairs.indexOf(pairKey);
+ if(i>=0)p.deferPairs.splice(i,1);else p.deferPairs.push(pairKey);save(S.cur);}
 function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!=="split"){ARM="split";render();setTimeout(()=>{if(ARM==="split"){ARM=null;render();}},4000);return;}ARM=null;
  p.cirsmas=p.cirsmas.filter(c=>c.tips!=="Kc");
- r.split.forEach((g,i)=>{const c=newCirsma();c.tips="Kc";c.kvartals="";c.nogabali=g.nog.join(";");c.platiba=g.ha;
-  for(const x of r.nog){if(x.m.zv!==g.zv||!g.nog.some(n=>n===x.m.nogabals||n.startsWith(x.m.nogabals+" (")))continue;const frac=g.nog.includes(x.m.nogabals)?1:(g.nog.some(n=>n.startsWith(x.m.nogabals+" (daļa"))?g.ha/num(x.m.platMezs||x.m.platKop):1-g.ha/num(x.m.platMezs||x.m.platKop));
-   x.m.cirsma=c.id;c.kvartals=c.kvartals||x.m.kvartals;}
+ r.split.forEach((g,i)=>{const c=newCirsma();c.tips="Kc";c.kvartals="";c.nogabali=g.nog.map(x=>x.m.nogabals).join(";");c.platiba=g.ha;
+  for(const x of g.nog){x.m.cirsma=c.id;c.kvartals=c.kvartals||x.m.kvartals;}
   p.cirsmas.push(c);rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));});
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
