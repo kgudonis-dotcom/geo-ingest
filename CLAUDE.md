@@ -18,6 +18,9 @@ Repo galvenie komponenti:
 - Atbildes un komentāri vienmēr jāraksta latviski.
 - Nelasi mapi data/ un failus, kas ir lielāki par 200 KB, ja vien lietotājs tos tieši neprasa.
 - App kods atrodas app/; kalkulators atrodas web/; spoguļskripti atrodas mirror/.
+- Sesijas sākumā vienmēr `git checkout main && git pull`; nekad nestrādā citā zarā, ja lietotājs to nav prasījis.
+- Ja mainās pagastu faila shēma, workflow argumenti vai lietotāja funkcija, tajā pašā commit atjauno DOKUMENTACIJA.md attiecīgo sadaļu.
+- GitHub issues neveido pats; ja uzdevumam nav issue numura, jautā.
 - Pēc katra darba (pat maziem labojumiem vai jauniem prototipiem) jāatjauno [STATUSS.md](STATUSS.md). Tajā jānorāda:
   - datums
   - kas ir pabeigts

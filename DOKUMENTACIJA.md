@@ -40,16 +40,19 @@ Principi, kas nosaka uzbūvi: bez servera (nav ko uzturēt un nav ko maksāt), v
 Kadastra apzīmējuma pirmie 4 cipari ir pagasta (administratīvās teritorijas) kods. Katrs pagasts ir viens saspiests fails `pagasti/PPPP.json.gz` (0,5 līdz 5 MB), kurā ir visas tā pagasta meža zemes vienības:
 
 ```json
-{"pagasts":"7060","updated":"2026-09-01","zv":{
+{"pagasts":"7060","updated":"2026-09-01","ladSig":{"n":842,"maxdate":1735689600000},"zv":{
   "70600050074":{
     "stands":[{"kv":"4","nog":"22","anog":null,"plat":0.71,"zkat":"10","mt":"5",
                "s10":"9","a10":44,"h10":19,"d10":20,"g10":19, "s11":"4",...,
-               "p_cirp":"11","p_cirg":2017,"saimn_d_ie":6,
+               "p_cirp":"11","p_cirg":2017,"saimn_d_ie":6,"bon":"II",
                "geom":[[lon,lat],[lon,lat],...]}],
     "adj":[[0,2,112],[0,10,61]],
     "iadt":[{"kind":"iadt","name":"Vestiena","zone":"AAA","ha":28.1}],
     "kaimini":[{"kad":"70600050099","len_m":393,"owner":null}],
-    "lielie":[{"owner":"AS Latvijas valsts meži","hops":1,"kad":"...","dist_m":0}]
+    "lielie":[{"owner":"AS Latvijas valsts meži","hops":1,"kad":"...","dist_m":0}],
+    "lad":{"ha":0.42,"blocks":["7060123-4"]},
+    "expl":{"liz":0.15,"krum":0.03,"mezs":0.71,"purvs":0,"udens":0,"ekas":0,"celi":0.02,"cita":0},
+    "ni":{"nr":"70600050074001","name":"Ezermuiža"}
   }}}
 ```
 
@@ -57,16 +60,20 @@ Lauku nozīme (VMD Meža valsts reģistra struktūra):
 - `kv`, `nog`, `anog`: kvartāls, nogabals, apakšnogabals. `plat`: platība ha. `zkat`: zemes kategorija (10 = mežaudze). `mt`: meža tipa kods (5 = Vēris; pilna tabula lietotnē `MT_CODES`).
 - `s10..s14`: 1. stāva elementu sugas (kodi: 1 Priede, 3 Egle, 4 Bērzs, 6 Melnalksnis, 8 Apse, 9 Baltalksnis, 10 Ozols, 11 Osis), `a`/`h`/`d`/`g`/`n`: vecums, augstums, caurmērs, šķērslaukums, koku skaits katram elementam.
 - `p_cirp`/`p_cirg`: pēdējās cirtes veids un gads; `p_darbv`/`p_darbg`: pēdējā darbība; `saimn_d_ie`: saimnieciskās darbības ierobežojuma kods (APROB klasifikators, "Aizliegts KailC" analogs); `jakopj`, `jaatjauno`: VMD karodziņi.
+- `bon`: valdošās sugas bonitāte, VMD BON klasifikators (kods 0-6 → Ia, I, II, III, IV, V, Va; 0 = Ia, labākā). Avots: `gis.vmd.gov.lv/Public/GetClasificators` (xlsx), lapas "BON_klasifikators" / "Struktūra_KOPĀ", lauks "BON". Nosaka `cirtmetsKC` slieksni lietotnē (#46); ja tukšs, cirtmets netiek noteikts (nevis pieņemts sliktākais gadījums).
 - `geom`: nogabala kontūra WGS84 (lon, lat), vienkāršota līdz 1 m.
 - `adj`: kaimiņu pāri nogabalu indeksos ar kopējās robežas garumu metros (rēķināts būvē).
 - `iadt`: DAP (Ozols) slāņu pārklājums: ĪADT, zonējums, mikroliegums, biotops, sugas atradne, aizsargājams koks, dabas piemineklis, ar ha.
 - `kaimini`: tieši robežojošās meža zemes vienības ar robežas garumu un lielā īpašnieka nosaukumu (ja LVM dati pieejami); `lielie`: tuvākie lielie īpašnieki līdz 3 soļiem pa kaimiņu ķēdi.
+- `lad`: LAD lauku bloku pārklājums ar ZV, `{ha, blocks}` — `ha` ir bloku ∩ ZV platība, `blocks` bloku numuru saraksts. Avots: `karte.lad.gov.lv` ArcGIS REST (`lauku_bloki/MapServer/0/query`), lasīts pa pagasta bbox. `ladSig` pagasta faila saknē (`{n, maxdate}`, bloku skaits + jaunākais `VALID_FROM`) ir lēts paraksts: ja nākamajā būvē paraksts sakrīt, LAD ģeometrijas vaicājums tiek izlaists (dati nav mainījušies).
+- `expl`: VZD zemes vienības lietošanas mērķu eksplikācija ha: `liz` (lauksaimniecībā izmantojamā zeme), `krum` (krūmāji), `mezs`, `purvs`, `udens`, `ekas` (zeme zem ēkām), `celi`, `cita`, `meliorets`. Avots: VZD datu kopa "kadastra-informacijas-sistemas-atvertie-dati", resurss `parcel.zip` (XML), lauki `AgricultTotal`, `Bushes`, `Forest`, `Swamp`, `UnderWaterTotal`, `UnderBuildings`, `UnderRoads`, `OtherLand`, `Drained` (m² → ha, summēts pa visiem ZV lietošanas mērķiem).
+- `ni`: nekustamā īpašuma numurs un nosaukums, `{nr, name}`. Avots: tā pati VZD datu kopa, resurss `property.zip` (XML), lauki `ProCadastreNr` un `PropertyName`; `name` var būt `null`. Lietotnē: objekta nosaukums (`niLabel`), NĪ-māsu ZV atrašana vienā objektā (`siblingZV`).
 
 ### 3.2. Skripti (katrs ar docstring faila sākumā)
 
 | Fails | Ko dara | Ieeja | Izeja |
 |---|---|---|---|
-| `build_pagasti.py` | Novelk VMD MVR SHP pa virsmežniecībām (data.gov.lv CKAN API), DAP 6 datu kopas, LVM īpašniekus (no Release "mirror"); katram nogabalam vienkāršo ģeometriju, katrai ZV rēķina kaimiņus, ĪADT pārklājumu, lielos īpašniekus; raksta `pagasti/*.json.gz` | `--index N` (viens VMD fails, matricas darbam), `--filter vidzem`, `--no-owners`, `--no-iadt`, `--first` | `pagasti/` mape |
+| `build_pagasti.py` | Novelk VMD MVR SHP pa virsmežniecībām (data.gov.lv CKAN API), DAP 6 datu kopas, LVM īpašniekus (no Release "mirror"), LAD lauku blokus (`karte.lad.gov.lv`), VZD eksplikāciju un NĪ saiti (`parcel.zip`/`property.zip`); katram nogabalam vienkāršo ģeometriju, katrai ZV rēķina kaimiņus, ĪADT pārklājumu, lielos īpašniekus; raksta `pagasti/*.json.gz` | `--index N` (viens VMD fails, matricas darbam), `--filter vidzem`, `--no-owners`, `--no-iadt`, `--no-lad`, `--no-expl`, `--no-ni`, `--first` | `pagasti/` mape |
 | `merge_pagasti.py` | Apvieno vairāku paralēlo darbu artefaktus ar esošo datu zaru (esošais + jaunais, jaunais uzvar) | `artifacts/**` | `pagasti/` |
 | `build_infra.py` | OSM (Geofabrik) ceļi un ūdensteces pa pagastiem (pagasta aptvērums + 2 km) | `pagasti/` | `infra/PPPP.json.gz` |
 | `sentinel.py` | Copernicus Sentinel-2: vasaras NDVI pērn pret šogad katram nogabalam; kritums > 0,25 = vainaga zudums | `--kad` vai `--pagasts`, noslēpumi `CDSE_ID`, `CDSE_SECRET` | `sentinel/PPPP.json.gz` |
@@ -76,12 +83,25 @@ Lauku nozīme (VMD Meža valsts reģistra struktūra):
 | `build_aplieci.py` | VMD apliecinājumu slāņa meklēšana (VMD to vairs nepublicē; darbs izslēgts no grafika) | | |
 | `mirror/lvm_spogulis.py` | Skripts datorā Latvijā: novelk LVM failus un ieliek Release "mirror" | GitHub talons | Release faili |
 
+**Datu avoti**, ko `build_pagasti.py` novelk un iestrādā pagasta failā:
+
+| Avots | Ko dod | Atjaunošanas biežums |
+|---|---|---|
+| VMD MVR (data.gov.lv CKAN API, SHP pa virsmežniecībām) | `stands`, `adj` | reizi ceturksnī (`pagasti.yml` grafiks) |
+| DAP Ozols (6 datu kopas) | `iadt` | reizi ceturksnī, kopā ar VMD būvi |
+| LVM īpašnieki (Release "mirror", jo `lvmgeo.lvm.lv` no GitHub nesasniedzams) | `owners`, `lielie`, `kaimini.owner` | pēc pieprasījuma (`mirror/lvm_spogulis.py`, ārpus GitHub) |
+| **LAD lauku bloki** (`karte.lad.gov.lv` ArcGIS REST) | `lad {ha, blocks}` | reizi ceturksnī, kopā ar VMD būvi; `ladSig` paraksts izlaiž vaicājumu, ja bloki pagastā nav mainījušies |
+| **VZD `parcel.zip`** (data.gov.lv, "kadastra-informacijas-sistemas-atvertie-dati") | `expl` (lietošanas mērķu eksplikācija) | reizi ceturksnī, kopā ar VMD būvi |
+| VZD `property.zip` (tā pati datu kopa) | `ni {nr, name}` | reizi ceturksnī, kopā ar VMD būvi |
+| OSM (Geofabrik) | `infra/PPPP.json.gz` (ceļi, grāvji) | reizi mēnesī (7. datumā) |
+| Copernicus Sentinel-2 | `sentinel/PPPP.json.gz` (NDVI kritums) | pēc pieprasījuma, tikai saviem objektiem |
+
 ### 3.3. Darbplūsmas (GitHub Actions, mape `.github/workflows`)
 Palaišana notiek ar "trigera failiem": izmainot failu repo, sākas darbs. Tas izvēlēts tāpēc, ka piekļuves talonam nav tiesību palaist darbus tieši.
 
 | Darbplūsma | Trigeris | Ko dara | Grafiks |
 |---|---|---|---|
-| `pagasti.yml` | `PAGASTI_ARGS` (saturs = argumenti) | 10 paralēli darbi pa VMD failiem → `merge` apvieno un publicē `data` zarā | 6. janv., apr., jūl., okt. |
+| `pagasti.yml` | `PAGASTI_ARGS` (saturs = argumenti, piem. `--no-owners`, `--no-lad`, `--no-expl`, `--no-ni`) | 10 paralēli darbi pa VMD failiem → `merge` apvieno un publicē `data` zarā | 6. janv., apr., jūl., okt. |
 | `remerge.yml` | `REMERGE` (saturs = run id) | Atkārto apvienošanu no esošiem artefaktiem bez pārbūves | pēc pieprasījuma |
 | `infra.yml` | `INFRA_RUN` | OSM ceļi un grāvji | 7. datumā katru mēnesi |
 | `sentinel.yml` | `SENTINEL_RUN` (saturs = argumenti) | Sentinel-2 | pēc pieprasījuma |
@@ -129,7 +149,7 @@ Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vien
 | MK 935 | `MK935.gLimits`, `nLimits`, `dCirte`, `kkcCertamais` | likuma tabulas un kopšanas cērtamais (Gkrit + 2) |
 | STATE | `S`, `P()`, `C()`, `M()`, `save()`, `render()` | stāvoklis un pārzīmēšana |
 | APRĒĶINI | `krajaMer`, `speciesShares`, `calcCirsma`, `calcProp`, `rebuildCirsma`, `sortSharesForD` | krāja (G × H × f), cirsmas m³ un nauda |
-| PĀRBAUDES | `runChecks`, `cirsmaLegal`, `legalBlocks`, `moistureOf`, `cirtmetsKC` | MK935 karodziņi, limiti, buferi (`turf.intersect` ar kaimiņa buferi), kaimiņu izcirtumi |
+| PĀRBAUDES | `runChecks`, `cirsmaLegal`, `legalBlocks`, `moistureOf`, `cirtmetsKC`, `nogPlausibleIssue`, `krajaMerChecked`, `bonOf` | MK935 karodziņi, limiti, buferi (`turf.intersect` ar kaimiņa buferi), kaimiņu izcirtumi, nogabalu datu ticamība, bonitāte |
 | VALODA | `RU`, `translateNode`, `t()` | krievu tulkojums pēc renderēšanas |
 | ĪPAŠUMA NOVĒRTĒJUMS | `VAL_ROWS`, `valAutoHa`, `valCalc`, `xirr` | PAF: zemes rindas, nodeva MK1250, plūsmas, IRR |
 | PAGASTU FAILI | `loadPagasts`, `cachedFetch`, `gunzipJson`, `pagastsToExtra`, `createFromPagasts`, `attachGeometry` | datu ielāde un objekta būve; ģeometrijas pievienošana importētiem |
@@ -155,6 +175,10 @@ Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vien
 - Buferjosla: nogabals ∩ buferis(kaimiņa nogabals, platums m); atliktie m³ = joslas ha × nogabala m³/ha.
 - IRR: XIRR pa dienām no plūsmām [iegāde (0. d., −), koksne = max cena (90. d.), meža zeme (365. d.), LIZ (365. d.)]; bruto = ieplūdes − iegāde.
 - Nodeva: `min(likme × max(pirkums, kadastrālā), 50 000) + 14,23 + 7,11`, likme 2 % / 1,5 % / 0,5 %.
+
+**Nogabalu ticamības pārbaude (#45).** VMD dbf avota dati reizēm satur decimālkļūdas (piem. krāja ×100 par lielu). `nogPlausibleIssue(m)` katram nogabalam pārbauda krāju/ha > 900 m³/ha vai G > 80 m²/ha; ja pārkāpts, nogabals sarkans ("Krāja ārpus iespējamā, avota kļūda") un izslēgts no kopsummām (`krajaMerChecked` — Pārskats, Fonds, cirsmas), kamēr nav labots. `krajaMer` (rādīšanai pa nogabalu) paliek nemainīts. Ja gan krāja, gan G pārkāpj UN abi kļūst ticami pēc dalīšanas ar 100, pieejama poga "Labot ×0,01" ar diviem klikšķiem apstiprinājumam (`arm()`); pēc labošanas lauki dzelteni (labots ar roku) un ieraksts vēsturē. Nekad nelabo automātiski.
+
+**Cirtmets pēc bonitātes (#46).** `cirtmetsKC(suga, vecums, bonitāte)` nosaka KC pieļaujamību pēc MK935 (Priedei I-III bon. 101 g, IV un zemāka 121 g; pārējām sugām attiecīga tabula) — ja bonitāte nav zināma, cirtmets NETIEK noteikts (agrāk klusi pieņēma sliktāko gadījumu, kas nepamatoti bloķēja KC). `bonOf(m)` dod bonitāti trīs pakāpēs: reāla (VMD `bon` lauks) > H/vecuma aproksimācija (dzeltens karogs "bonitāte aptuvena") > nezināma (sarkans karogs, cirtmets nenosakāms). H/vecuma aproksimācijas tabula pagaidām ir vispārīga Orlova tipa formula, nevis MK Nr. 384 (2016) 3. pielikuma "Mežaudžu bonitāšu skala" — tā jāaizstāj, kolīdz tā ir uzticami nolasāma.
 
 ### 4.4. Lietošana soli pa solim
 1. Atver https://kgudonis-dotcom.github.io/geo-ingest/ (telefonā: "Pievienot sākuma ekrānam"). Pirmajā reizē izvēlies valodu.
