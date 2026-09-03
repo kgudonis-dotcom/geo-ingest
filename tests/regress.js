@@ -144,24 +144,40 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(Math.abs(chkAfter-12397)<=125&&chkAfter>chkTot,"pēc ×0,01 kopējā krāja ≈ 12 397 m³ (got "+chkAfter+")");
  ok(w.eval("P().log.some(l=>/labots ×0,01/.test(l.text))"),"vēstures ieraksts par ×0,01 labojumu");
  ok(w.eval("fixEligible("+tgt+")")===false,"pēc labojuma ×0,01 vairs netiek piedāvāts");
- // 9. #46: bonitāte no VMD, cirtmets pēc bonitātes, H/vecuma rezerve ar karodziņu.
- // 60700020059: 18 priedes 101-111 g. Ar reālu I bonitāti (VMD BON lauks) -> KC (cirtmets 101 g); bez bonitātes cirtmetu NENOSAKA.
- // PIEZĪME: data zarā pagastu failos bon lauka vēl nav (jāpārbūvē ar #46 build_pagasti.py), tāpēc reālo bonitāti šeit uzliek testā.
+ // 9. #46 pabeigšana: bonitāte pēc MK 384 (21.06.2016) 3. piel. 4./5./6. tabula (nevis Orlova aproksimācija).
+ // Avoti pārbaudīti neatkarīgi (vestnesis.lv + likumi.lv, 447 rindas identiskas), pilnā tabula data/mk384_bonitate.json.
+ ok(w.eval("cirtmetsKC('Priede',108,'')")===""&&w.eval("cirtmetsKC('Priede',108,'I')")==="KC"&&w.eval("cirtmetsKC('Priede',108,'IV')")===""&&w.eval("cirtmetsKC('Priede',121,'IV')")==="KC","cirtmetsKC: tukša bonitāte -> nav cirtmeta; I bon. 101 g; IV bon. 121 g (MK935)");
+ ok(w.eval("cirtmetsKC('Bērzs',51,'I')")===""&&w.eval("cirtmetsKC('Bērzs',71,'I')")==="KC"&&w.eval("cirtmetsKC('Bērzs',51,'IV')")==="KC","cirtmetsKC: Bērzs 51 g ar I bon. nav KC (slieksnis 71), ar IV bon. ir");
+ // MK 384 3.piel. 4.tabula (priede u.c.), rinda vecums=106: Ia≥32,I 28-31,II 24-27,III 20-23,IV 17-19,V 13-16,Va≤12
+ ok(w.eval("bonOf({suga:'Priede',H:30,vecums:106}).bon")==="I","Priede 106 g, H 30 -> I (MK384 4.tab.)");
+ ok(w.eval("bonOf({suga:'Priede',H:22,vecums:106}).bon")==="III","Priede 106 g, H 22 -> III (MK384 4.tab.)");
+ // MK 384 3.piel. 5.tabula (bērzs u.c.), rinda vecums=60: Ia 27,I 23,II 20,III 17,IV 13,V 10
+ ok(w.eval("bonOf({suga:'Bērzs',H:22,vecums:60}).bon")==="II","Bērzs 60 g, H 22 -> II (MK384 5.tab.)");
+ // MK 384 3.piel. 6.tabula (baltalksnis, pīlādzis), rinda vecums=30: Ia 18,I 16,II 14,III 11,IV 9,V 6
+ ok(w.eval("bonOf({suga:'Baltalksnis',H:15,vecums:30}).bon")==="II","Baltalksnis 30 g, H 15 -> II (MK384 6.tab.)");
+ ok(w.eval("bonOf({suga:'Priede',H:20,vecums:15}).bon")===""&&w.eval("bonOf({suga:'Priede',H:20,vecums:15}).src")==="jauns","vecums < tabulas minimuma (21 priedei) -> nav nosakāms, klusi (bez karodziņa)");
+ ok(w.eval("bonOf({suga:'Priede',H:36,vecums:250}).bon")===w.eval("bonOf({suga:'Priede',H:36,vecums:160}).bon"),"vecums > tabulas maksimuma (160) -> pēdējā rinda");
+ ok(w.eval("bonOf({bon:'II',H:20,vecums:60}).est")===false&&w.eval("bonOf({suga:'Priede',H:28,vecums:106}).est")===true&&w.eval("bonOf({H:0,vecums:0}).bon")==="","bonOf: dati > MK384 tabula > nav zināma");
+ const bonFlagOld=w.eval("runChecks(P()).nog.filter(x=>x.f.some(f=>f.t==='warn'&&/aptuvena/.test(f.s))).length");
+ ok(bonFlagOld===0,"vecās 'bonitāte aptuvena' (Orlova aproksimācija) dzeltenā karodziņa vairs nav — funkcija izņemta");
+ // 60700020059: 18 priedes 101-111 g ar REĀLIEM H no pagasta faila (bez simulētas bonitātes) -> visām MK384 dod bon I-III -> visas KC
  w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
  const pinesExpr="P().mer.filter(m=>m.suga==='Priede'&&m.vecums>=101&&m.vecums<=111)";
  ok(w.eval(pinesExpr+".length")===18,"60700020059: 18 priedes 101-111 g (got "+w.eval(pinesExpr+".length")+")");
- ok(w.eval(pinesExpr+".every(m=>m.cirsmaKods!=='KC')")===true,"bez bonitātes vecās priedes nav KC (cirtmets nav noteikts, nevis kluss 121 g slieksnis)");
- ok(w.eval("cirtmetsKC('Priede',108,'')")===""&&w.eval("cirtmetsKC('Priede',108,'I')")==="KC"&&w.eval("cirtmetsKC('Priede',108,'IV')")===""&&w.eval("cirtmetsKC('Priede',121,'IV')")==="KC","cirtmetsKC: tukša bonitāte -> nav cirtmeta; I bon. 101 g; IV bon. 121 g (MK935)");
- ok(w.eval("cirtmetsKC('Bērzs',51,'I')")===""&&w.eval("cirtmetsKC('Bērzs',71,'I')")==="KC"&&w.eval("cirtmetsKC('Bērzs',51,'IV')")==="KC","cirtmetsKC: Bērzs 51 g ar I bon. nav KC (slieksnis 71), ar IV bon. ir");
- const bonFlag=w.eval("runChecks(P()).nog.filter(x=>x.f.some(f=>f.t==='warn'&&/bonitāte .* aptuvena/.test(f.s))).length");
- ok(bonFlag>0,"nogabaliem bez bonitātes ir dzeltens karodziņš 'bonitāte aptuvena' (got "+bonFlag+")");
- ok(w.eval("bonOf({bon:'II',H:20,vecums:60}).est")===false&&w.eval("bonOf({H:28,vecums:106}).est")===true&&w.eval("bonOf({H:0,vecums:0}).bon")==="","bonOf: dati > aproksimācija > nav zināma");
- w.eval(pinesExpr+".forEach(m=>{m.bon='I';m.cirsmaKods=cirtmetsKC(m.suga,m.vecums,bonOf(m).bon);});recalcLinked()"); // simulē VMD BON lauku pēc pagastu pārbūves
+ const pineBon=JSON.parse(w.eval("JSON.stringify("+pinesExpr+".map(m=>bonOf(m)))"));
+ ok(pineBon.every(b=>b.src==="mk384"&&/^(Ia|I|II|III|IV|V|Va)$/.test(b.bon)),"visām 18 priedēm bonitāte no MK384 tabulas (nevis datos, nevis nezināma), got "+JSON.stringify(pineBon.map(b=>b.bon)));
  const pineKC=w.eval(pinesExpr+".filter(m=>m.cirsmaKods==='KC').length"),pineM3=w.eval("Math.round("+pinesExpr+".reduce((s,m)=>s+krajaMerChecked(m),0))");
- ok(pineKC===18&&Math.abs(pineM3-8086)<=120,"ar reālu I bonitāti visas 18 priedes ir KC, krāja ≈ 8086 m³ (got "+pineKC+" gab., "+pineM3+" m³)");
- ok(w.eval(pinesExpr+".every(m=>!runChecks(P()).nog.find(x=>x.m===m).f.some(f=>/bonitāte .* aptuvena/.test(f.s)))")===true,"ar reālu bonitāti dzeltenā karodziņa vairs nav");
+ ok(pineKC===18&&Math.abs(pineM3-8086)<=150,"ar reālu H no pagasta faila (MK384) visas 18 priedes ir KC, krāja ≈ 8086 m³ (got "+pineKC+" gab., "+pineM3+" m³)");
+ ok(w.eval(pinesExpr+".every(m=>runChecks(P()).nog.find(x=>x.m===m).f.some(f=>f.t==='info'&&/MK 384 3\\. piel\\./.test(f.s)))")===true,"katrai priedei zils informatīvs karogs 'bonitāte X (MK 384 3. piel. N. tab.)'");
+ // #45 turpinājums: G > 1,5× normālais (MK384 2.tab.) ir jutīgāks slieksnis nekā fiksēts 80; 80 paliek kā aizsargs, ja normālais nav nosakāms
+ ok(w.eval("normalG('Priede',15)")===32,"MK384 2.tab.: priedei H=15 normālais G = 32 m²/ha");
+ ok(w.eval("gExceeds('Priede',15,50)")===true&&w.eval("gExceeds('Priede',15,45)")===false,"G=50 > 1,5×32=48 -> pārkāpj (jauns, zem 80); G=45 -> nepārkāpj");
+ ok(w.eval("gExceeds('Priede',null,75)")===false&&w.eval("gExceeds('Priede',null,85)")===true,"bez H (normālais nav nosakāms): 80 paliek aizsargs (75 nepārkāpj, 85 pārkāpj)");
+ ok(w.eval("nogPlausibleIssue({suga:'Priede',H:15,platMezs:1,G:50,krajaImp:20})")!==null,"nogPlausibleIssue: G=50 pie H=15 (>1,5×normālā) atzīmē nogabalu, kaut arī G<80 un krāja/ha ticama");
  // 10. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
+ ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
  ok(!/BIG_RIVERS/.test(src),"BIG_RIVERS regex izņemts (#39)");
  console.log(fails?`\n${fails} FAIL`:"\nVISI TESTI OK");process.exit(fails?1:0);

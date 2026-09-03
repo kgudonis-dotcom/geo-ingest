@@ -18,6 +18,9 @@ __pycache__/
 .venv/
 venv/
 
+# Node (lokālā testu vide, sk. tests/regress.js)
+node_modules/
+
 # Rediģēšanas vide un OS
 .vscode/
 .idea/
