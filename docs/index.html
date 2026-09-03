@@ -1460,6 +1460,13 @@ function splitOversizedNogabals(x,lim){
   return {x,kcHa:+kc.ha.toFixed(2),kcGeom:kc.f.geometry,restHa:+rest.ha.toFixed(2),restGeom:rest.f?rest.f.geometry:null,restM3:Math.round(rest.ha*x.krha),
    stripHa:+strip.ha.toFixed(2),stripGeom:strip.f?strip.f.geometry:null,stripM3:Math.round(strip.ha*x.krha),year:new Date().getFullYear()+3,widthM:SPLIT_SEP_M};
  }catch(e){console.warn("splitOversized",e);return null;}}
+// #22 turpinājums: ja ģeometriskā sadalīšana neizdodas (nav ģeometrijas, vai tā neatbilst VMD platībai), proporcionāls dalījums pēc VMD platības —
+// platība un krāja IR zināmas, tāpēc nav sarkans bloks (tikai dzeltens, sadalījuma līnija jāprecizē skicē); atlikums + prakses josla atlikti kopā.
+function splitOversizedProportional(x,lim){
+ const ha=num(x.m.platMezs||x.m.platKop);if(!ha||!x.kr)return null;
+ const restHa=+(ha-lim).toFixed(2);
+ return {x,kcHa:lim,kcGeom:null,restHa,restGeom:null,restM3:Math.round(x.kr*(restHa/ha)),
+  stripHa:0,stripGeom:null,stripM3:0,year:new Date().getFullYear()+3,widthM:bufM(),proportional:true};}
 function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.iadt||""]||RULES.iadt[""];const out={nog:[],kc:{sausie:{ha:0,m3:0,n:[]},slapjie:{ha:0,m3:0,n:[]},"?":{ha:0,m3:0,n:[]}},global:[]};
  if(!zone.kc)out.global.push("ĪADT zona: kailcirte aizliegta, plāns jāraksta kā izlases/kopšanas programma.");
  if(p.iadt)out.global.push("ĪADT sezona: darbi aizliegti 15.03 līdz 31.07, reāli viens ziemas logs. Atjaunošanā nedrīkst citzemju sugas.");
@@ -1505,9 +1512,12 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
   if(ha<=lim+REMNANT_HA){if(ha>lim)x.f.push({t:"plus",s:`nogabals ${fmt(ha,2)} ha pārsniedz limitu ${lim} ha par ${fmt(ha-lim,2)} ha ≤ 0,3: drīkst cirst vienā cirsmā (MK935 17.p.)`});continue;}
   const sp=splitOversizedNogabals(x,lim);
   if(sp){out.oversized.push(sp);effHa.set(mKey(x.m),sp.kcHa);
-   x.f.push({t:"ier",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 23.p.): sadalīts — KC daļa ${fmt(sp.kcHa,2)} ha, ${SPLIT_SEP_M} m nenocirsta josla ${fmt(sp.stripHa,2)} ha (atlikta, cērtama ${sp.year}, kad audze sasniegs 3 g pēc atjaunošanas, MK935 20.p.), atlikums ${fmt(sp.restHa,2)} ha`});}
-  else{out.splits.push({nog:x.m.nogabals,ha,lim});failedSplit.add(mKey(x.m));
-   x.f.push({t:"bloks",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 23.p.), bet ģeometriska sadalīšana neizdevās (ģeometrijas platība neatbilst deklarētajai, vai nav ģeometrijas) — jāsadala ar roku, izslēgts no automātiskā sadalījuma`});}}
+   x.f.push({t:"ier",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 23.p.): sadalīts — KC daļa ${fmt(sp.kcHa,2)} ha, ${SPLIT_SEP_M} m nenocirsta josla ${fmt(sp.stripHa,2)} ha (atlikta, cērtama ${sp.year}, kad audze sasniegs 3 g pēc atjaunošanas, MK935 20.p.), atlikums ${fmt(sp.restHa,2)} ha`});continue;}
+  const psp=splitOversizedProportional(x,lim);
+  if(psp){out.oversized.push(psp);effHa.set(mKey(x.m),psp.kcHa);
+   x.f.push({t:"warn",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 23.p.): ģeometrija nav uzticama, proporcionāls dalījums pēc VMD platības — cirsmā ${fmt(psp.kcHa,2)} ha, atlikums ${fmt(psp.restHa,2)} ha + ${bufM()} m josla (${psp.restM3} m³, cērtams ${psp.year}); sadalījuma līnija jāprecizē skicē`});continue;}
+  out.splits.push({nog:x.m.nogabals,ha,lim});failedSplit.add(mKey(x.m));
+  x.f.push({t:"bloks",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 23.p.), bet platība vai krāja nav zināma — jāsadala ar roku, izslēgts no automātiskā sadalījuma`});}
  // 2) piegulošības grafs (MK935 18.p.) starp visiem KC nogabaliem no p.kaimini (reāla ģeometrija, atslēga zv/kv/nog); izslēdz nogabalus, kam sadalīšana neizdevās (nedrīkst nonākt grupā ar pilnu, virs-limita platību)
  const kcAll=out.nog.filter(x=>x.m.cirsmaKods==="KC"&&!x.exclude&&!failedSplit.has(mKey(x.m)));
  const adjPairs=kaiminiPairs(p,out.nog).filter(pr=>pr.len>ADJ_MIN_M);

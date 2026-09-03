@@ -186,15 +186,21 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   const unbuffered=pairs.filter(pr=>{const ga=grpOf(mKey(pr.xa.m)),gb=grpOf(mKey(pr.xb.m));if(ga<0||gb<0||ga===gb)return false;
    return !r.buffers.some(b=>(b.victim===pr.xa.m&&b.other===pr.xb.m)||(b.victim===pr.xb.m&&b.other===pr.xa.m));}).map(pr=>pr.xa.m.nogabals+"-"+pr.xb.m.nogabals);
   const overLimit=r.split.filter(g=>g.ha>5.001||g.slapjieHa>2.001).map(g=>g.ha);
+  const nog15=r.nog.find(x=>x.m.kvartals==="2"&&x.m.nogabals==="15");
+  const nog15sp=r.oversized.find(sp=>sp.x.m.kvartals==="2"&&sp.x.m.nogabals==="15");
   return {rawTokenCount:rawTokens.length,resolvedCount:allResolved.length,numPairs:pairs.length,unbuffered,overLimit,numGroups:r.split.length,numBuffers:r.buffers.length,deferredM3:r.deferredM3,
    kcTotal:r.kc.sausie.m3+r.kc.slapjie.m3,blockedM3:r.blockedM3,splitsFailed:r.splits.map(s=>s.nog),
-   nog15flag:r.nog.find(x=>x.m.kvartals==="2"&&x.m.nogabals==="15").f.some(f=>f.t==="bloks"&&/23\\.p\\./.test(f.s))};})())`));
+   nog15bloks:nog15.f.some(f=>f.t==="bloks"&&/23\\.p\\./.test(f.s)),nog15warn:nog15.f.find(f=>f.t==="warn"&&/sadalījuma līnija jāprecizē skicē/.test(f.s)),
+   nog15sp:nog15sp?{kcHa:nog15sp.kcHa,restHa:nog15sp.restHa,restM3:nog15sp.restM3,proportional:!!nog15sp.proportional}:null};})())`));
  ok(r22.rawTokenCount>0&&r22.resolvedCount===r22.rawTokenCount,"60700020059 (2 ZV, NĪ 'Bojāri'): kaiminiPairs atrisina VISUS p.kaimini pārus (agrāk 0, jo atslēgā trūka ZV) (got "+r22.resolvedCount+"/"+r22.rawTokenCount+")");
  ok(r22.numPairs>50,"no tiem piegulošie (robeža > 50 m, MK935 18.p.) ir vairāk par 50 (got "+r22.numPairs+")");
  ok(r22.overLimit.length===0,"neviena cirsma nepārsniedz MK935 15./16.p. limitu (got "+JSON.stringify(r22.overLimit)+")");
  ok(r22.unbuffered.length===0,"nevienam piegulošam cirsmu pārim nav joslas/atlikšanas (got "+JSON.stringify(r22.unbuffered)+")");
  ok(r22.numBuffers>0&&r22.deferredM3>0,"atdalošās joslas izveidotas, atliktie m³ > 0 (got buffers="+r22.numBuffers+", deferredM3="+r22.deferredM3+")");
- ok(r22.splitsFailed.includes("15")&&r22.nog15flag,"kv.2 nog.15 (5,53 ha damaksnī, geom platība neatbilst deklarētajai) godīgi atzīmēts 'jāsadala ar roku', nevis nepareizs skaitlis");
+ // #22 turpinājums: kv.2 nog.15 (5,53 ha, VMD ģeometrija vēl bez cauruma — pirms build_pagasti.py rebuild) -> proporcionāls dalījums, dzeltens, NAV sarkans bloks
+ ok(!r22.nog15bloks&&!!r22.nog15warn,"kv.2 nog.15: nav sarkans bloks par sadalīšanu (MK935 23.p., platība un krāja zināma), dzeltens 'sadalījuma līnija jāprecizē skicē' (got bloks="+r22.nog15bloks+", warn="+JSON.stringify(r22.nog15warn)+")");
+ ok(r22.nog15sp&&r22.nog15sp.proportional&&Math.abs(r22.nog15sp.kcHa-5)<0.01&&Math.abs(r22.nog15sp.restHa-0.53)<0.01,"kv.2 nog.15: proporcionāls dalījums -> cirsmā ~5,0 ha, atlikums ~0,53 ha (got "+JSON.stringify(r22.nog15sp)+")");
+ ok(r22.splitsFailed.length===0,"vairs nav neviena 'jāsadala ar roku' sarkanā bloka (proporcionālais fallback aizstāj) (got "+JSON.stringify(r22.splitsFailed)+")");
  const total22=r22.kcTotal+r22.deferredM3+r22.blockedM3;
  ok(Math.abs(total22-9340)<=100,"KC kopā + atliktie + bloķētie ≈ 9340 m³ (pirms-sadalīšanas summa, iekšēji konsekventa; PIEZĪME: issue #22 komentārā minētie 9079 m³ bija no 2 jau izveidotām rokas cirsmām, ne visu 56 nogabalu pilnās KC kopsummas — atskaitē paskaidrots) (got "+total22+")");
  // Zapasnaja/Ezermuiža/70420080041: pateikt, vai mainās
@@ -226,7 +232,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(holeHa<outerHa-0.03,"jauns formāts (gredzenu saraksts): caurums atskaitīts no platības (ārējais "+outerHa+" ha, ar caurumu "+holeHa+" ha)");
  ok(outerHa>0.9&&outerHa<1.1,"vecais plakanais gredzens joprojām strādā (merFeature atpazīst abus formātus) (got "+outerHa+" ha)");
  // 11. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","toggleDeferPair","ringsOf","outerRingOf"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
  ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
