@@ -1,5 +1,5 @@
 """Sagriež VMD nogabalus pa pagastiem (kadastra apz. pirmie 4 cipari) statiskos failos ar iepriekš izrēķinātiem kaimiņiem, ĪADT, LAD lauku blokiem, VZD eksplikāciju un NĪ saiti.
-Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","ladSig":{"n","maxdate"},"zv":{kadastrs:{"stands":[...],"adj":[[i,j,len_m]],"iadt":[...],"lad":{"ha","blocks":[...]},"expl":{"liz","krum","mezs",...},"ni":{"nr","name"}}}}"""
+Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","ladSig":{"n","maxdate","schema":SCHEMA_VERSION},"zv":{kadastrs:{"stands":[...],"adj":[[i,j,len_m]],"iadt":[...],"lad":{"ha","blocks":[...]},"expl":{"liz","krum","mezs",...},"ni":{"nr","name"}}}}"""
 import os, io, re, json, gzip, zipfile, tempfile, argparse, requests, datetime, time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
@@ -12,6 +12,14 @@ ATTRS=["zkat","mt","izc","p_darbv","p_darbg","p_cirp","p_cirg","saimn_d_ie","jak
  "s10","a10","h10","d10","g10","n10","s11","a11","h11","d11","g11","n11","s12","a12","h12","d12","g12","n12","s13","a13","h13","d13","g13","n13","s14","a14","h14","d14","g14","n14"]
 # #46: VMD BON lauks (Number(14), "Bonitāte, kods") -> burtu klase. Avots: VMD klasifikatori
 # https://gis.vmd.gov.lv/Public/GetClasificators, lapa "BON_klasifikators" (0=Ia ... 6=Va), lauks "BON" lapā "Struktūra_KOPĀ".
+# #46-turpinājums (2026-09-03): data.gov.lv publiskajā SHP/DBF eksportā ("meza-valsts-registra-meza-dati")
+# NAV lauka ar nosaukumu "bon" — pārbaudīts lokāli uz 2 reģionu (Centra, Dienvidu) DBF, 69 lauki katrā,
+# neviens nesatur apakšvirkni "bon". cols.get("bon") tāpēc vienmēr atgriež None un st["bon"] nekad netiek iestatīts.
+# Kandidātlauki bv10..bv14 (katram no 5 sugas elementiem) satur 3 ciparu kodus (piem. 500, 624, 300),
+# kas NEATBILST 0-6 BON_CODES skalai — to nozīme nav apstiprināta, tāpēc NAV izmantoti. Sk. STATUSS.md.
+SCHEMA_VERSION=1  # pagasta JSON izvades shēmas versija (zv ieraksta lauku struktūra). Paaugstini par 1 katru
+# reizi, kad pievieno/noņem/pārdēvē lauku zv ierakstā, un ieraksti izmaiņu CLAUDE.md — tas iekļaujas
+# lad_signature() parakstā, tāpēc versijas maiņa vienmēr liek no jauna aprēķināt paraksta-balstīto (LAD) kešu.
 BON_CODES={0:"Ia",1:"I",2:"II",3:"III",4:"IV",5:"V",6:"Va"}
 OUT="pagasti"
 OWNERS_DS="meza-zemju-ipasnieku-nogabali"
@@ -97,7 +105,7 @@ def lad_signature(bbox):
                "outStatistics":json.dumps([{"statisticType":"count","onStatisticField":"OBJECTID","outStatisticFieldName":"n"},
                                             {"statisticType":"max","onStatisticField":"VALID_FROM","outStatisticFieldName":"maxdate"}]),"f":"json"})
     a={k.lower():v for k,v in (d.get("features") or [{}])[0].get("attributes",{}).items()}
-    return {"n":a.get("n",0),"maxdate":a.get("maxdate")}
+    return {"n":a.get("n",0),"maxdate":a.get("maxdate"),"schema":SCHEMA_VERSION}
 def lad_fetch(bbox):
     """Visi LAD lauku bloki bbox'am (lapots pa 2000, resultOffset), GeoDataFrame EPSG:3059 ar block,geometry."""
     feats=[];offset=0
@@ -297,7 +305,7 @@ def neighbours(zv,zvgeo,owners):
                 if o not in found or d<found[o]["dist_m"]:found.setdefault(o,{"owner":o,"hops":None,"kad":None,"dist_m":d})["dist_m"]=min(d,found[o]["dist_m"]) if o in found else d
         rec["lielie"]=sorted(found.values(),key=lambda x:(x["hops"] or 9,x["dist_m"]))
 
-def flush(store,zvgeo=None,owners=None,lad=True):
+def flush(store,zvgeo=None,owners=None,lad=True,force=False):
     os.makedirs(OUT,exist_ok=True)
     if zvgeo:
         for pg,zv in store.items():neighbours(zv,zvgeo.get(pg,{}),owners)
@@ -306,7 +314,9 @@ def flush(store,zvgeo=None,owners=None,lad=True):
         path=f"{OUT}/{pg}.json.gz"
         if os.path.exists(path):
             with gzip.open(path,"rt",encoding="utf-8") as f:d=json.load(f)
-            old[pg]=d.get("zv",{});oldSig[pg]=d.get("ladSig")
+            # --force: ignorē veco parakstu (nevis visu veco zv), lai LAD un cita paraksta-balstīta
+            # izlaišana vienmēr pārrēķina no jauna, arī bez SCHEMA_VERSION izmaiņas.
+            old[pg]=d.get("zv",{});oldSig[pg]=None if force else d.get("ladSig")
         else:old[pg]={};oldSig[pg]=None
     newSig={}
     if lad and zvgeo:
@@ -336,6 +346,7 @@ def main():
     ap=argparse.ArgumentParser();ap.add_argument("--filter",default="");ap.add_argument("--first",action="store_true")
     ap.add_argument("--no-iadt",action="store_true");ap.add_argument("--no-owners",action="store_true")
     ap.add_argument("--no-lad",action="store_true");ap.add_argument("--no-expl",action="store_true");ap.add_argument("--no-ni",action="store_true")
+    ap.add_argument("--force",action="store_true",help="ignorē esošo ladSig parakstu, pārrēķina LAD blokus visiem pagastiem šajā darbā")
     ap.add_argument("--index",type=int,default=-1);a=ap.parse_args()
     iadt=None if a.no_iadt else load_iadt()
     owners=None if a.no_owners else load_owners()
@@ -349,7 +360,7 @@ def main():
         if a.filter and a.filter.lower() not in (name+url).lower():continue
         store={};zvgeo={}
         for shp in load_zip(url):
-            process_shp(shp,iadt,store,owners,zvgeo,expl,ni);flush(store,zvgeo,owners,not a.no_lad);zvgeo={}
+            process_shp(shp,iadt,store,owners,zvgeo,expl,ni);flush(store,zvgeo,owners,not a.no_lad,a.force);zvgeo={}
         if a.first:break
     n=len(os.listdir(OUT));sz=sum(os.path.getsize(f"{OUT}/{f}") for f in os.listdir(OUT))/1e6
     print(f"gatavs: {n} pagastu faili, {sz:.0f} MB",flush=True)

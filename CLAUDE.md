@@ -20,6 +20,7 @@ Repo galvenie komponenti:
 - App kods atrodas app/; kalkulators atrodas web/; spoguļskripti atrodas mirror/.
 - Sesijas sākumā vienmēr `git checkout main && git pull`; nekad nestrādā citā zarā, ja lietotājs to nav prasījis.
 - Ja mainās pagastu faila shēma, workflow argumenti vai lietotāja funkcija, tajā pašā commit atjauno DOKUMENTACIJA.md attiecīgo sadaļu.
+- Ja mainās pagasta JSON izvades shēma (jauns/dzēsts/pārdēvēts lauks zv ierakstā `build_pagasti.py`), paaugstini `SCHEMA_VERSION` par 1 tajā pašā commit — tā ir daļa no `lad_signature()` paraksta, tāpēc versijas maiņa liek paraksta-balstītajai izlaišanai (LAD) vienmēr pārrēķināt, nevis izmantot veco kešu.
 - GitHub issues neveido pats; ja uzdevumam nav issue numura, jautā.
 - Pēc katra darba (pat maziem labojumiem vai jauniem prototipiem) jāatjauno [STATUSS.md](STATUSS.md). Tajā jānorāda:
   - datums
