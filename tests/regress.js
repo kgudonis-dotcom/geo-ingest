@@ -267,8 +267,45 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const holeHa=w.eval("+(turf.area(merFeature(_mHole))/10000).toFixed(3)"),outerHa=w.eval("+(turf.area(merFeature(_mFlat))/10000).toFixed(3)");
  ok(holeHa<outerHa-0.03,"jauns formāts (gredzenu saraksts): caurums atskaitīts no platības (ārējais "+outerHa+" ha, ar caurumu "+holeHa+" ha)");
  ok(outerHa>0.9&&outerHa<1.1,"vecais plakanais gredzens joprojām strādā (merFeature atpazīst abus formātus) (got "+outerHa+" ha)");
+ // #21: izvešanas ceļi — viena krautuve, efektīvākais (Dijkstra) ceļš pa ceļu tīklu katram cērtamajam nogabalam, svērtais vidējais, izmaksu formula
+ // sintētisks gadījums: L veida ceļš K -[364 m]-> E -[557 m]-> N (NE taisnā līnijā); nog. A pie E (mazs, 100 m³), nog. B pie N (liels, 300 m³)
+ w=await app();
+ w.eval(`var _K=[25.0000,57.0000],_E=[25.0060,57.0000],_N=[25.0060,57.0050];
+  var _roads21=[{t:"unclassified",geom:[[_K,_E,_N]]}];
+  var _standA21={id:"a1",zv:"1",kvartals:"1",nogabals:"A",platMezs:1,platKop:1,cirsmaKods:"KC",suga:"Priede",krajaImp:100,
+   geom:[[25.0064,57.0001],[25.0068,57.0001],[25.0068,57.0004],[25.0064,57.0004],[25.0064,57.0001]]};
+  var _standB21={id:"b1",zv:"1",kvartals:"1",nogabals:"B",platMezs:1,platKop:1,cirsmaKods:"KC",suga:"Priede",krajaImp:300,
+   geom:[[25.0055,57.0053],[25.0059,57.0053],[25.0059,57.0056],[25.0055,57.0056],[25.0055,57.0053]]};
+  var _cA21={id:"cA21",tips:"Kc"},_cB21={id:"cB21",tips:"Kc"};_standA21.cirsma="cA21";_standB21.cirsma="cB21";
+  var _p21={mer:[_standA21,_standB21],cirsmas:[_cA21,_cB21],infra:{roads:_roads21},krautuve:{lon:_K[0],lat:_K[1],manual:true}};`);
+ const c21=JSON.parse(w.eval("JSON.stringify(izvedCalc(_p21))"));
+ const dA=c21.byNog.find(r=>r.m.nogabals==="A"),dB=c21.byNog.find(r=>r.m.nogabals==="B");
+ // neatkarīgi apstiprināts (turf.distance, haversine, ne app pašas wgsToLks): ceļš K-E 363,4 m, E-N 556,0 m, piesaiste A->E 45,8 m, B->N 53,2 m -> gaidāms distA≈409, distB≈973 (LKS-92 vs haversine atšķirība <0,5 %)
+ ok(c21.ok&&Math.abs(dA.dist-410.4)<3,"#21 nog. A: attālums pa ceļu (ne taisnā līnijā) ≈410 m (got "+(dA&&dA.dist.toFixed(1))+")");
+ ok(Math.abs(dB.dist-974.4)<3,"#21 nog. B: attālums pa ceļu (garāks zars) ≈974 m (got "+(dB&&dB.dist.toFixed(1))+")");
+ ok(dA.path.length>2&&dB.path.length>2,"#21 maršruts iet pa ceļa virsotnēm (L līkumu), ne taisnā līnijā (got ceļa punktu skaits "+dA.path.length+", "+dB.path.length+")");
+ const expAvg=(410.36383407973153*100+974.4119280670265*300)/400;
+ ok(Math.abs(c21.avgDist-expAvg)<0.01&&Math.abs(c21.totalM3-400)<0.01,"#21 svērtais vidējais attālums (svars=m³): (410,4×100+974,4×300)/400 ≈833,4 m (got "+c21.avgDist.toFixed(1)+", totalM3 "+c21.totalM3+")");
+ w.eval("S.settings.izvedBase=6;S.settings.izvedExtra=0.25;S.settings.izvedBaseDist=300;");
+ const iz21=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(_p21))"));
+ ok(iz21.ok&&Math.abs(iz21.costM3-7.3335)<0.01&&Math.abs(iz21.cost-2933.4)<1,"#21 izmaksu formula: 6+max(0,833,4−300)/100×0,25 ≈7,33 €/m³ × 400 m³ ≈2933 € (got "+iz21.costM3.toFixed(3)+" €/m³, "+iz21.cost.toFixed(1)+" €)");
+ // 7.p.: infra vai krautuve trūkst -> izmaksa 0, dzeltens karodziņš, ne kļūda
+ const izNoKr=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(Object.assign({},_p21,{krautuve:null})))"));
+ ok(izNoKr.ok===false&&izNoKr.cost===0&&/krautuve/.test(izNoKr.reason),"#21 bez krautuves: izmaksa 0, iemesls skaidrs (got "+JSON.stringify(izNoKr)+")");
+ const izNoInfra=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(Object.assign({},_p21,{infra:{roads:[]}})))"));
+ ok(izNoInfra.ok===false&&izNoInfra.cost===0&&/infrastruktūr/.test(izNoInfra.reason),"#21 bez ceļu datiem: izmaksa 0, iemesls skaidrs (got "+JSON.stringify(izNoInfra)+")");
+ // reāls objekts ar infra datiem (60700020059, 03.09.2026, pēc infra pārbūves commit 8ea4b8e): krautuve automātiski uz ceļa pieslēguma, 24 cērtamie nogabali
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ w.eval("loadInfra(P())");await new Promise(r=>setTimeout(r,8000));
+ const krReal=JSON.parse(w.eval("JSON.stringify(P().krautuve)"));
+ ok(krReal&&typeof krReal.lon==="number"&&typeof krReal.lat==="number","60700020059: krautuve piedāvāta automātiski (got "+JSON.stringify(krReal)+")");
+ const c21r=JSON.parse(w.eval("JSON.stringify(izvedCalc(P()))"));
+ ok(c21r.ok&&c21r.byNog.length===24&&Math.abs(c21r.totalM3-9638)<1,"60700020059: 24 cērtamie nogabali, kopā ≈9638 m³ (got "+(c21r.byNog&&c21r.byNog.length)+", "+(c21r.totalM3&&c21r.totalM3.toFixed(0))+")");
+ ok(Math.abs(c21r.avgDist-1248.8)<2,"60700020059: svērtais vidējais izvešanas attālums ≈1249 m pa ceļu tīklu uz vienu krautuvi (got "+c21r.avgDist.toFixed(1)+")");
+ const iz21r=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(P()))"));
+ ok(iz21r.ok&&Math.abs(iz21r.cost-80689)<50,"60700020059: izvešanas izmaksas ≈80 689 € (bāzes likmes, #21) (got "+iz21r.cost.toFixed(0)+")");
  // 11. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
  ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
