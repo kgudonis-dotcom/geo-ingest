@@ -749,7 +749,7 @@ function zoneFeatures(p){ // atgriež {kc:[Feature], main:[Feature], krautuve:[F
    const mZ=turf.buffer(f,km(A.mainBand),{units:"kilometers"});mZ.properties={label,w:A.mainBand,unconfirmed:!!unconfirmed};main.push(mZ);}catch(e){}};
  // Oficiālās ūdensteces >10 km ar garuma kategoriju (MK 397 / VARAM klasifikators): platums tieši pēc kategorijas
  const usikNames=new Set();
- for(const w of inf.usik||[]){const c=String(w.cat||"");const zw=/100/.test(c)&&/[>l]|virs|100\s*-|100\+/.test(c)&&!/25/.test(c)?A.riverBig:/25/.test(c)&&/100/.test(c)?A.lake100:/10/.test(c)&&/25/.test(c)?A.river:A.river;
+ for(const w of inf.usik||[]){const c=String(w.cat||"");const zw=c==="<10"?A.stream:/100/.test(c)&&/[>l]|virs|100\s*-|100\+/.test(c)&&!/25/.test(c)?A.riverBig:/25/.test(c)&&/100/.test(c)?A.lake100:/10/.test(c)&&/25/.test(c)?A.river:A.river; // #39: "<10" (ŪSIK kods 4) = 7.p. mazākā klase, 10 m
   const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};if(w.name)usikNames.add(w.name.toLowerCase());add(f,zw,"upe "+(w.name||"")+" ("+c+" km)");}
  // Ūdenstecēm bez USIK ieraksta MK 397 garuma kategorija nav zināma: lieto AJ_DEFAULT minimālo ūdensteces kategoriju (stream, 7.p.), atzīmē kā neapstiprinātu (#39)
  for(const w of inf.water||[]){if(["ditch","drain"].includes(w.t))continue;if(w.name&&usikNames.has(w.name.toLowerCase()))continue; // jau no ŪSIK

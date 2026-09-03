@@ -191,15 +191,19 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   return {rawTokenCount:rawTokens.length,resolvedCount:allResolved.length,numPairs:pairs.length,unbuffered,overLimit,numGroups:r.split.length,numBuffers:r.buffers.length,deferredM3:r.deferredM3,
    kcTotal:r.kc.sausie.m3+r.kc.slapjie.m3,blockedM3:r.blockedM3,splitsFailed:r.splits.map(s=>s.nog),
    nog15bloks:nog15.f.some(f=>f.t==="bloks"&&/23\\.p\\./.test(f.s)),nog15warn:nog15.f.find(f=>f.t==="warn"&&/sadalījuma līnija jāprecizē skicē/.test(f.s)),
-   nog15sp:nog15sp?{kcHa:nog15sp.kcHa,restHa:nog15sp.restHa,restM3:nog15sp.restM3,proportional:!!nog15sp.proportional}:null};})())`));
+   nog15ier:nog15.f.find(f=>f.t==="ier"&&/MK935 23\\.p\\.\\): sadalīts/.test(f.s)),geomRings:ringsOf(nog15.m.geom).length,
+   nog15sp:nog15sp?{kcHa:nog15sp.kcHa,stripHa:nog15sp.stripHa,restHa:nog15sp.restHa,restM3:nog15sp.restM3,proportional:!!nog15sp.proportional}:null};})())`));
  ok(r22.rawTokenCount>0&&r22.resolvedCount===r22.rawTokenCount,"60700020059 (2 ZV, NĪ 'Bojāri'): kaiminiPairs atrisina VISUS p.kaimini pārus (agrāk 0, jo atslēgā trūka ZV) (got "+r22.resolvedCount+"/"+r22.rawTokenCount+")");
  ok(r22.numPairs>50,"no tiem piegulošie (robeža > 50 m, MK935 18.p.) ir vairāk par 50 (got "+r22.numPairs+")");
  ok(r22.overLimit.length===0,"neviena cirsma nepārsniedz MK935 15./16.p. limitu (got "+JSON.stringify(r22.overLimit)+")");
  ok(r22.unbuffered.length===0,"nevienam piegulošam cirsmu pārim nav joslas/atlikšanas (got "+JSON.stringify(r22.unbuffered)+")");
  ok(r22.numBuffers>0&&r22.deferredM3>0,"atdalošās joslas izveidotas, atliktie m³ > 0 (got buffers="+r22.numBuffers+", deferredM3="+r22.deferredM3+")");
- // #22 turpinājums: kv.2 nog.15 (5,53 ha, VMD ģeometrija vēl bez cauruma — pirms build_pagasti.py rebuild) -> proporcionāls dalījums, dzeltens, NAV sarkans bloks
- ok(!r22.nog15bloks&&!!r22.nog15warn,"kv.2 nog.15: nav sarkans bloks par sadalīšanu (MK935 23.p., platība un krāja zināma), dzeltens 'sadalījuma līnija jāprecizē skicē' (got bloks="+r22.nog15bloks+", warn="+JSON.stringify(r22.nog15warn)+")");
- ok(r22.nog15sp&&r22.nog15sp.proportional&&Math.abs(r22.nog15sp.kcHa-5)<0.01&&Math.abs(r22.nog15sp.restHa-0.53)<0.01,"kv.2 nog.15: proporcionāls dalījums -> cirsmā ~5,0 ha, atlikums ~0,53 ha (got "+JSON.stringify(r22.nog15sp)+")");
+ // #22 turpinājums: kopš pagastu pārbūves 03.09.2026 12:07 (SCHEMA_VERSION 2, caurumi saglabāti) kv.2 nog.15 ģeometrija ir 2 gredzeni,
+ // poligona platība 5,506 ha ≈ VMD 5,53 ha, tāpēc strādā ĢEOMETRISKAIS dalījums (MK935 23.p., 90 m josla), nevis proporcionālais fallback.
+ // Vērtības fiksētas pret data zaru 6d4419d: KC daļa 4,14 ha, josla 1,30 ha (487 m³), atlikums 0,06 ha; cirsma 1 = nog. 2/15 + 2/6 = 4,87 ha.
+ ok(r22.geomRings===2,"kv.2 nog.15: ģeometrija ar caurumu (2 gredzeni) pēc pagastu pārbūves (got "+r22.geomRings+")");
+ ok(!r22.nog15bloks&&!r22.nog15warn&&!!r22.nog15ier,"kv.2 nog.15: ģeometriskais dalījums (ier, MK935 23.p.), nav ne sarkana bloka, ne dzeltena proporcionālā karoga (got bloks="+r22.nog15bloks+", warn="+!!r22.nog15warn+", ier="+!!r22.nog15ier+")");
+ ok(r22.nog15sp&&!r22.nog15sp.proportional&&r22.nog15sp.kcHa<=5&&Math.abs(r22.nog15sp.kcHa-4.14)<=0.15&&Math.abs(r22.nog15sp.stripHa-1.30)<=0.15&&r22.nog15sp.restHa<0.2,"kv.2 nog.15: ģeometriski KC daļa ≈4,14 ha (≤5), 90 m josla ≈1,30 ha, atlikums ≈0,06 ha (got "+JSON.stringify(r22.nog15sp)+")");
  ok(r22.splitsFailed.length===0,"vairs nav neviena 'jāsadala ar roku' sarkanā bloka (proporcionālais fallback aizstāj) (got "+JSON.stringify(r22.splitsFailed)+")");
  const total22=r22.kcTotal+r22.deferredM3+r22.blockedM3;
  ok(Math.abs(total22-9340)<=100,"KC kopā + atliktie + bloķētie ≈ 9340 m³ (pirms-sadalīšanas summa, iekšēji konsekventa; PIEZĪME: issue #22 komentārā minētie 9079 m³ bija no 2 jau izveidotām rokas cirsmām, ne visu 56 nogabalu pilnās KC kopsummas — atskaitē paskaidrots) (got "+total22+")");
@@ -224,6 +228,9 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(sp22&&sp22.kcHa<=5&&sp22.kcHa>0&&sp22.stripHa>0&&sp22.restHa>0,"sintētisks 7 ha damaksnī -> KC daļa ≤5 ha, josla > 0, atlikums > 0 (got "+JSON.stringify(sp22)+")");
  ok(sp22&&Math.abs((sp22.kcHa+sp22.stripHa+sp22.restHa)-7)<0.2,"daļu summa ≈ pilnā platība 7 ha (got "+(sp22?+(sp22.kcHa+sp22.stripHa+sp22.restHa).toFixed(2):null)+")");
  ok(sp22&&sp22.year===new Date().getFullYear()+3,"josla atlikta uz +3 g (MK935 20.p. atjaunošanās vecums), got gads "+(sp22&&sp22.year));
+ // Proporcionālais fallback vairs nav sasniedzams ar reālo nog.15 (ģeometrija tagad uzticama) -> sintētiski: tā pati 7 ha ģeometrija, bet VMD deklarē 9 ha (>10 % atšķirība) -> ģeometriskais atsakās, proporcionālais pārņem
+ const spProp=JSON.parse(w.eval("JSON.stringify((()=>{const m=Object.assign({},_sm,{platMezs:9,platKop:9});const x={m,kr:1800,krha:200};return {geo:splitOversizedNogabals(x,5),prop:splitOversizedProportional(x,5)};})())"));
+ ok(spProp.geo===null&&spProp.prop&&spProp.prop.proportional&&spProp.prop.kcHa===5&&Math.abs(spProp.prop.restHa-4)<0.01&&spProp.prop.restM3===800,"ģeometrija ≠ VMD platība (7 pret 9 ha): ģeometriskais atsakās, proporcionālais dod cirsmā 5 ha, atlikums 4 ha / 800 m³ (got "+JSON.stringify({geo:spProp.geo,kcHa:spProp.prop&&spProp.prop.kcHa,restHa:spProp.prop&&spProp.prop.restHa,restM3:spProp.prop&&spProp.prop.restM3})+")");
  // #39: zoneByNog piesaiste — cēlonis NAV #22 atslēgas kļūda (zoneFeatures/stripHaOf strādā ar ģeometriju, ne string-atslēgām),
  // bet TĀ PATI "paturi tikai lielāko fragmentu" kļūda kā #22 sākotnējā ģeometrijā — build_infra.py watera eksportā liela ūdensobjekta
  // (piem. Daugavas) bbox-apgriešana to sadala vairākos fragmentos, un kods paturēja TIKAI lielāko, izmetot nogabaliem tuvāko.
