@@ -244,6 +244,17 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const synt39=JSON.parse(w.eval(`JSON.stringify((()=>{const Z=zoneFeatures(_p39);const f=Z.kc[0];
   return {label:f.properties.label,w:f.properties.w,intersects:turf.booleanIntersects(merFeature(_stand),f)};})())`));
  ok(synt39.intersects===true&&/upe Daugava/.test(synt39.label),"sintētisks Daugavas gadījums: mazs fragments pie nogabala vairs netiek izmests, josla > 0 (got "+JSON.stringify(synt39)+")");
+ // #39 turpinājums (03.09.2026): TAS PATS "paturi tikai vienu formātu" defekts arī loadInfra watera filtrā (nevis tikai zoneFeatures) —
+ // inBB(w.geom) sagaidīja plakanu gredzenu, bet kopš infra pārbūves watera[].geom vienmēr MultiPolygon; reālajā datu bāzē tas izmeta VISUS 108 poligonus pagastā 6070. Testē caur loadInfra pašu (ar mocked fetch).
+ w=await app();
+ w.eval(`var _standRing39w=[[27.000,57.000],[27.001,57.000],[27.001,57.001],[27.000,57.001],[27.000,57.000]];
+  var _p39w={id:"synt39w",zv:["99990010001"],mer:[{id:"s1",zv:"9999",kvartals:"1",nogabals:"1",platMezs:1,platKop:1,cirsmaKods:"KC",suga:"Priede",geom:_standRing39w}],cirsmas:[],deferPairs:[]};`);
+ const infraGz=zlib.gzipSync(Buffer.from(JSON.stringify({pagasts:"9999",updated:"2026-09-03",roads:[],water:[],usik:[],watera:[{t:"water",name:"Testezers",ha:5,geom:[[[[27.0005,57.0005],[27.0015,57.0005],[27.0015,57.0015],[27.0005,57.0015],[27.0005,57.0005]]]]}]})));
+ w.fetch=async(url)=>/\/infra\/9999\.json\.gz/.test(url)?{ok:true,arrayBuffer:async()=>infraGz.buffer.slice(infraGz.byteOffset,infraGz.byteOffset+infraGz.byteLength)}:{ok:false,status:404};
+ w.eval(`window.__err39w=null;loadInfra(_p39w).catch(e=>window.__err39w=e.message);`);
+ await new Promise(r=>setTimeout(r,1500));
+ const w39=JSON.parse(w.eval("JSON.stringify({watera:(_p39w.infra&&_p39w.infra.watera)||[],err:window.__err39w})"));
+ ok(w39.watera.length===1&&!w39.err,"loadInfra: MultiPolygon watera formāts vairs netiek izmests bbox filtrā, vismaz 1 poligons paliek (got "+JSON.stringify(w39)+")");
  // reālie dati: vecais plakans watera formāts (pirms infra pārbūves) joprojām strādā bez kļūdas (atpakaļsaderība)
  w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
  w.eval("loadInfra(P())");await new Promise(r=>setTimeout(r,4000));

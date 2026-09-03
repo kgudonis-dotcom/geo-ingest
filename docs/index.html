@@ -438,10 +438,10 @@ function addMer(){const m=newMer();P().mer.push(m);S.open=m.id;save(S.cur);}
 const M=id=>P().mer.find(m=>m.id===id);
 function mf(id,k,v){M(id)[k]=v;recalcLinked();save(S.cur);}
 function recalcAll(){const cur=S.cur;for(const p of S.props){S.cur=p.id;recalcLinked();}S.cur=cur;}
-function recalcLinked(){const p=P();if(p.cirsmas.some(c=>c.tips==="Kc"))applyBuffers(p);for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(linked.length)rebuildCirsma(c,linked);}}
-function rebuildCirsma(c,linked){c.aizsargM3=0;const _ir=(typeof iadtRulesFor==="function")?iadtRulesFor(P()):[];const _eco=_ir.reduce((a,x)=>Math.max(a,x.r.eco||0),0);for(const s of SPECIES)c.species[s].m3=0;c.platiba=0;const acc={};c.bruto=0;c.eko=0;c.zud=0;c.atlikts=0;
+function recalcLinked(){const p=P();if(p.cirsmas.some(c=>c.tips==="Kc"))applyBuffers(p);for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(linked.length)rebuildCirsma(c,linked,p);}}
+function rebuildCirsma(c,linked,p){c.aizsargM3=0;const _ir=(typeof iadtRulesFor==="function")?iadtRulesFor(p):[];const _eco=_ir.reduce((a,x)=>Math.max(a,x.r.eco||0),0);for(const s of SPECIES)c.species[s].m3=0;c.platiba=0;const acc={};c.bruto=0;c.eko=0;c.zud=0;c.atlikts=0;
  for(const m of linked){let kr=krajaMerChecked(m);if(m.cirsmaKods==="KKC"){if(m.hasCert){if(!(m.certamais>0)){continue;}kr=m.certamais;}else kr=nogPlausibleIssue(m)?0:kkcCertamais(m).m3;}
-  if(c.tips==="Kc"&&m.geom&&m.suga!=="Baltalksnis"&&P().infra){try{const Z=zoneFeatures(P());const k=Z?stripHaOf(m,Z.kc):{ha:0};const ha=num(m.platMezs||m.platKop);if(k.ha>0&&ha>0){const cut=kr*k.ha/ha;kr-=cut;c.aizsargM3=(c.aizsargM3||0)+Math.round(cut);}}catch(e){}}const ha=num(m.platMezs||m.platKop);const defFrac=Math.min(1,Math.max(0,num(m.buferPct)/100));c.atlikts=(c.atlikts||0)+kr*defFrac;kr*=(1-defFrac);c.bruto+=kr;
+  if(c.tips==="Kc"&&m.geom&&m.suga!=="Baltalksnis"&&p.infra){try{const Z=zoneFeatures(p);const k=Z?stripHaOf(m,Z.kc):{ha:0};const ha=num(m.platMezs||m.platKop);if(k.ha>0&&ha>0){const cut=kr*k.ha/ha;kr-=cut;c.aizsargM3=(c.aizsargM3||0)+Math.round(cut);}}catch(e){}}const ha=num(m.platMezs||m.platKop);const defFrac=Math.min(1,Math.max(0,num(m.buferPct)/100));c.atlikts=(c.atlikts||0)+kr*defFrac;kr*=(1-defFrac);c.bruto+=kr;
   const eko=S.settings.ekoKoki===false?0:Math.min(kr,Math.max(RULES.ecoTreesHa[m.cirsmaKods==="KKC"?"KKC":"KC"]||0,_eco||0)*ha*RULES.ecoTreeM3);const zud=(kr-eko)*num(S.settings.zudumi)/100;c.eko+=eko;c.zud+=zud;kr=kr-eko-zud;const sh=speciesShares(m);
   for(const s2 in sh){if(!c.species[s2])continue;const v=kr*sh[s2];c.species[s2].m3=num(c.species[s2].m3)+v;const ss=sortSharesForD(s2,m.D);acc[s2]=acc[s2]||{};for(const k in ss)acc[s2][k]=(acc[s2][k]||0)+v*ss[k];}
   c.platiba=+(num(c.platiba)+num(m.platMezs||m.platKop)).toFixed(2);}
@@ -562,7 +562,7 @@ function vf(k,val,man){const p=P();valOf(p);if(man)p.val[man]=true;
  const path=k.split(".");let o=p.val;while(path.length>1)o=o[path.shift()];o[path[0]]=val;save(S.cur);}
 function vha(k,val){const p=P();valOf(p);p.val.haMan[k]=true;p.val.ha[k]=num(val);save(S.cur);}
 function vhaAuto(k){const p=P();valOf(p);delete p.val.haMan[k];save(S.cur);}
-function setAllCirsmas(k,val){const p=P();for(const c of p.cirsmas){c[k]=val;rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));}p.updatedAt=Date.now();save(S.cur);}
+function setAllCirsmas(k,val){const p=P();for(const c of p.cirsmas){c[k]=val;rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id),p);}p.updatedAt=Date.now();save(S.cur);}
 function vVal(){const p=P();const v=valOf(p);const c=valCalc(p);const t=calcProp(p);const avg=k=>p.cirsmas.reduce((a,cc)=>a+num(cc[k])*calcCirsma(cc).m3,0)/(t.m3||1);
  let h=objSwitch();
  h+=`<div class="card"><h2>Īpašuma novērtējums: ${esc(objLabel(p))}<span class="sp"></span><button class="btn sm" onclick="openReport()">Vērtējuma atskaite</button></h2><div class="row"><div><label>Reģistrētā platība (Zemesgrāmata), ha</label><input type="number" inputmode="decimal" step="0.01" value="${v.regHa||""}" onchange="vf('regHa',num(this.value))"></div></div></div>`;
@@ -652,10 +652,10 @@ async function loadInfra(p){const zvList=(p.zv&&p.zv.length?p.zv:(p.kadastrs?[p.
  const inBB=g=>g.some(([x,y])=>x>=bb[0]&&x<=bb[2]&&y>=bb[1]&&y<=bb[3]);
  const roads=[],water=[],usik=[],watera=[];let updated=null,any=false;
  for(const pc of pagCodes){const r=await cachedFetch(`${geoBase()}/infra/${pc}.json.gz`);if(!r.ok)continue;any=true;const d=await gunzipJson(r);updated=d.updated||updated;
-  roads.push(...(d.roads||[]).filter(r=>r.geom.some(inBB)));water.push(...(d.water||[]).filter(w=>w.geom.some(inBB)));usik.push(...(d.usik||[]).filter(w=>w.geom.some(inBB)));watera.push(...(d.watera||[]).filter(w=>inBB(w.geom)));}
+  roads.push(...(d.roads||[]).filter(r=>r.geom.some(inBB)));water.push(...(d.water||[]).filter(w=>w.geom.some(inBB)));usik.push(...(d.usik||[]).filter(w=>w.geom.some(inBB)));watera.push(...(d.watera||[]).filter(w=>wateraPolys(w.geom).some(poly=>poly.some(ring=>inBB(ring)))));}
  if(!any){p.infraMissing=true;return;}
  p.infra={updated,roads,water,usik,watera};
- for(const c of p.cirsmas)rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));save(S.cur);}
+ for(const c of p.cirsmas)rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id),p);save(S.cur);}
 /* ---------- CIRŠANAS APLIECINĀJUMI ---------- */
 function lksTiles(p){const t=new Set();for(const m of p.mer)if(m.geom)for(const [lo,la] of outerRingOf(m.geom)){const [x,y]=wgsToLks(lo,la);t.add(`${Math.floor(x/10000)}_${Math.floor(y/10000)}`);}return [...t];}
 function aplProp(props,re){for(const k in props)if(re.test(k))return props[k];return "";}
@@ -854,7 +854,7 @@ function mergeZvInto(p,kad,items,extra){
   if(!cg[key]){const c=newCirsma();c.tips="Kc";c.kvartals=m.kvartals;c.nogabali="";cg[key]=c;}
   cg[key].nogabali+=(cg[key].nogabali?";":"")+m.nogabals;m.cirsma=cg[key].id;}
  const newC=Object.values(cg);p.cirsmas=(p.cirsmas||[]).concat(newC);
- for(const c of newC)rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));
+ for(const c of newC)rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id),p);
  return added;}
 function buildFromGeo(groups){const p=newProp();
  S.props.unshift(p);S.cur=p.id; // #44: rebuildCirsma lasa P(), tāpēc objektam jābūt S.cur PIRMS mergeZvInto
@@ -1292,7 +1292,7 @@ function impCreate(){const mer=buildMer();if(!mer.length)return toast("Nav nogab
   let kr=krajaMer(m);if(code==="KKC"){if(m.hasCert){if(!(m.certamais>0))continue;kr=m.certamais;}else{kr=kkcCertamais(m).m3;if(!kr)continue;}}else if(m.hasCert&&!(m.certamais>0))continue;
   const key=code+"|"+m.kvartals;if(!groups[key]){const c=newCirsma();c.tips=code;c.kvartals=m.kvartals;c.nogabali="";groups[key]=c;}const c=groups[key];
   c.nogabali+=(c.nogabali?";":"")+m.nogabals;m.cirsma=c.id;}
- p.cirsmas=Object.values(groups);for(const c of p.cirsmas)rebuildCirsma(c,mer.filter(m=>m.cirsma===c.id));S.props.unshift(p);S.cur=p.id;S.view="cirs";S.settings.impMap=IMP.map;IMP={rows:[],hdr:0,map:{},name:"",kadastrs:"",src:""};save(p.id);toast(`Objekts: ${mer.length} nogabali, ${p.cirsmas.length} cirsmas`);}
+ p.cirsmas=Object.values(groups);for(const c of p.cirsmas)rebuildCirsma(c,mer.filter(m=>m.cirsma===c.id),p);S.props.unshift(p);S.cur=p.id;S.view="cirs";S.settings.impMap=IMP.map;IMP={rows:[],hdr:0,map:{},name:"",kadastrs:"",src:""};save(p.id);toast(`Objekts: ${mer.length} nogabali, ${p.cirsmas.length} cirsmas`);}
 
 /* ---------- PDF PARSERS (VMD formāti) ---------- */
 const CANON=["kadastrs","kvartāls","nogabals","platība","veids","meža_tips","formula","suga","vecums","augstums","caurmērs","šķērslaukums","kraja_ha","krāja","sugu_krāja","cirsma","ierobežojumi","pēd_cirte","inv_gads","bonitāte"];
@@ -1633,14 +1633,14 @@ function applySplit(){const p=P();const r=runChecks(p);applyBuffers(p,r);if(ARM!
  p.cirsmas=p.cirsmas.filter(c=>c.tips!=="Kc");
  r.split.forEach((g,i)=>{const c=newCirsma();c.tips="Kc";c.kvartals="";c.nogabali=g.nog.map(x=>x.m.nogabals).join(";");c.platiba=g.ha;
   for(const x of g.nog){x.m.cirsma=c.id;c.kvartals=c.kvartals||x.m.kvartals;}
-  p.cirsmas.push(c);rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));});
+  p.cirsmas.push(c);rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id),p);});
  S.view="cirs";save(S.cur);toast("Cirsmas pārveidotas");}
 
 /* migrācija: pārrēķina esošos objektus pēc jaunajiem noteikumiem */
 const APP_VERSION="0.36";
 function migrate(){if(S.migrated===APP_VERSION)return;const cur=S.cur;for(const p of S.props){S.cur=p.id;for(const c of p.cirsmas){const linked=p.mer.filter(m=>m.cirsma===c.id);if(!linked.length)continue;
   for(const m of linked){const bad=(m.hasCert&&!(m.certamais>0))||/aizliegts/i.test(m.ierob||"")||(c.tips==="KKC"&&m.cirsmaKods!=="KKC")||(c.tips==="Kc"&&m.cirsmaKods!=="KC");if(bad)m.cirsma="";}
-  const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now);}
+  const now=p.mer.filter(m=>m.cirsma===c.id);c.nogabali=now.map(m=>m.nogabals).join(";");if(now.length)rebuildCirsma(c,now,p);}
  p.cirsmas=p.cirsmas.filter(c=>c.nogabali||Object.values(c.species).some(v=>v.m3));}
  S.cur=cur;S.migrated=APP_VERSION;localStorage.setItem(KEY,JSON.stringify(S));}
 migrate();
