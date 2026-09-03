@@ -188,9 +188,9 @@ Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vien
 ### 4.4. Lietošana soli pa solim
 1. Atver https://kgudonis-dotcom.github.io/geo-ingest/ (telefonā: "Pievienot sākuma ekrānam"). Pirmajā reizē izvēlies valodu.
 2. Iestatījumi: īpašnieka rekvizīti (iesniegumam), komanda un lomas, naudas izmaksas %, mērķa bruto %, buferjoslas platums. Cenas: sortimentu cenas, zemes cenas, izmaksas.
-3. Objekti → kadastra numurs → Izveidot. Vai Importēt (Kadastra atskaite, VMD PDF); ģeometrija pieliekas pati.
+3. Objekti → kadastra numurs(-i) → Izveidot (vairākus ZV atdala ar atstarpi, komatu vai jaunu rindu — ielādējas vienā objektā uzreiz). Ja NĪ ietver vēl citas ZV tajā pašā pagasta failā, tās piedāvā modālī (kadastrs, ha, nogabalu skaits, krāja m³; ievadītā ZV vienmēr atzīmēta). Vai Importēt (Kadastra atskaite, VMD PDF); ģeometrija pieliekas pati. Katrā objekta kartītē "+ ZV" pievieno vēl kadastrus (arī citā pagastā) ar to pašu modāli; ZV noņemšana (× pie kadastra Cirsmās) atstāj nogabalus objektā ar atzīmi "bez ZV". Arhivēšana un dzēšana (tikai jaunam objektam bez vērtējuma/vēstures) ir Objektu sarakstā, abas ar apstiprinājumu (#44).
 4. Pārskats: KPI, karte, uzdevumi, komentāri, vēsture, rezultāts šodien. Statusa maiņa objekta kartītē (Cirsmas) rada uzdevumus.
-5. Cirsmas: pārbaudi likumdošanas bloku (sarkans = nedrīkst), robežu plānu, katrai cirsmai sortimentus, izmaksas, brīvā teksta izvešanas ceļa/krautuves piezīmi (VMD iesniegumam); "Importēt dastojumu", ja mežā uzmērīts; "Pabeigt cirsmu" ar faktu, kad nocirsts. Objekta VIENU faktisko krautuvi un aprēķinātos izvešanas attālumus skaties Pārskatā, kartē (#21).
+5. Cirsmas: NĪ numurs/nosaukums (tikai lasāms, no VZD datiem) un ZV saraksts galvenē; pārbaudi likumdošanas bloku (sarkans = nedrīkst), robežu plānu, katrai cirsmai sortimentus, izmaksas, brīvā teksta izvešanas ceļa/krautuves piezīmi (VMD iesniegumam); "Importēt dastojumu", ja mežā uzmērīts; "Pabeigt cirsmu" ar faktu, kad nocirsts. Objekta VIENU faktisko krautuvi un aprēķinātos izvešanas attālumus skaties Pārskatā, kartē (#21).
 6. Mērījumi: labo to, ko redz dabā (lauks kļūst dzeltens); viss pārrēķinās.
 7. Novērtējums: zemes rindas, darījums, nodeva, IRR, bruto peļņa, prasītās cenas, "Kāpēc šie skaitļi".
 8. Dokumenti: atskaite, Excel, iesniegums VMD ar skicēm, katras cirsmas skice; "Drukāt / PDF".

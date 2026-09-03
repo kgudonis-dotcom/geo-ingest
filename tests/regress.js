@@ -116,8 +116,10 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
  const pid=w.eval("P().id");
  const nBefore=w.eval("fundStats(S.props).n");
- w.eval(`archiveProp('${pid}')`);
- ok(w.eval(`S.props.find(p=>p.id==='${pid}').archived`)===true,"archiveProp: objekts atzīmēts kā arhivēts");
+ w.eval(`archiveProp('${pid}')`); // #44: divkāršs klikšķis apstiprinājumam (arhivēt ar apstiprinājumu) — 1. klikšķis tikai iestata ARM, nearhivē
+ ok(w.eval(`S.props.find(p=>p.id==='${pid}').archived`)!==true,"archiveProp: 1. klikšķis vēl nearhivē (gaida apstiprinājumu)");
+ w.eval(`archiveProp('${pid}')`); // 2. klikšķis izpilda
+ ok(w.eval(`S.props.find(p=>p.id==='${pid}').archived`)===true,"archiveProp: 2. klikšķis atzīmē kā arhivētu");
  ok(w.eval(`S.props.filter(p=>!p.archived).some(p=>p.id==='${pid}')`)===false,"arhivēts objekts nav redzams noklusētajā (nearhivētā) sarakstā");
  const nAfterArchive=w.eval("fundStats(S.props).n");
  ok(nAfterArchive===nBefore-1,"arhivēts objekts neskaita Fondā: n "+nAfterArchive+" = "+nBefore+" - 1");
