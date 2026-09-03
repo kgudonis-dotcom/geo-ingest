@@ -23,6 +23,7 @@ Repo galvenie komponenti:
 - Ja mainās pagasta JSON izvades shēma (jauns/dzēsts/pārdēvēts lauks zv ierakstā `build_pagasti.py`), paaugstini `SCHEMA_VERSION` par 1 tajā pašā commit — tā ir daļa no `lad_signature()` paraksta, tāpēc versijas maiņa liek paraksta-balstītajai izlaišanai (LAD) vienmēr pārrēķināt, nevis izmantot veco kešu.
 - GitHub issues neveido pats; ja uzdevumam nav issue numura, jautā.
 - Nekad negaidi fona procesus, CI darbus vai pārbūves ar polling, sleep vai ieplānotiem wakeup. Ja rezultāts nav gatavs uzreiz, pabeidz darbu ar to, kas ir, uzraksti atskaiti un pasaki, ko pārbaudīt vēlāk. Lietotājs pats pateiks, kad turpināt.
+- Komandas un skriptus vienmēr palaid priekšplānā ar tiešu izvadi (nekad run_in_background), ar laika limitu līdz 10 minūtēm. Ja darbs ilgst ilgāk, sadali to mazākos soļos.
 - Pēc katra darba (pat maziem labojumiem vai jauniem prototipiem) jāatjauno [STATUSS.md](STATUSS.md). Tajā jānorāda:
   - datums
   - kas ir pabeigts
