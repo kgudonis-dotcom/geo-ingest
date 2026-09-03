@@ -21,10 +21,12 @@ function sortShares(sp,D){const t=SORT_D[sp]||SORT_D["Citas sugas"];let row=t[0]
 async function loadPagasts(base,code){const r=await fetch(`${base}/pagasti/${code}.json.gz`,{cache:"force-cache"});if(!r.ok)throw new Error("HTTP "+r.status);const buf=await r.arrayBuffer();
  if(typeof DecompressionStream!=="undefined"){const txt=await new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text();return JSON.parse(txt);}
  if(window.pako)return JSON.parse(window.pako.ungzip(new Uint8Array(buf),{to:"string"}));throw new Error("gzip");}
+// SCHEMA_VERSION 2 (#22, 03.09.2026): pagasti geom = [ārējais gredzens, caurumi...]; vecais formāts = plakans gredzens. Skicei ņem ārējo gredzenu (bez tā svgMap deva NaN un tukšu karti).
+const outerRing=g=>(!g||!g.length)?g:(Array.isArray(g[0][0])?g[0]:g);
 function analyse(zv,cfg){const stands=zv.stands||[];const rows=[];let haAll=0,haMez=0,kraja=0;const sp={},mtg={};
  for(const st of stands){const ha=n(st.plat);haAll+=ha;const mt=MT[n(st.mt)]||String(st.mt||"");const els=[];
   for(let i=0;i<5;i++){const s=SP_CODES[n(st["s1"+i])];if(!s)continue;els.push({s,a:n(st["a1"+i]),h:n(st["h1"+i]),d:n(st["d1"+i]),g:n(st["g1"+i])});}
-  const nog={kv:st.kv,nog:st.nog+(st.anog&&String(st.anog)!=="0"?"."+st.anog:""),ha,mt,els,geom:st.geom,cat:"nm",m3:0,cut:0,val:0};
+  const nog={kv:st.kv,nog:st.nog+(st.anog&&String(st.anog)!=="0"?"."+st.anog:""),ha,mt,els,geom:outerRing(st.geom),cat:"nm",m3:0,cut:0,val:0};
   if(els.length){haMez+=ha;const lead=els.reduce((x,y)=>y.g>x.g?y:x);nog.suga=lead.s;nog.age=lead.a;nog.H=lead.h;nog.D=lead.d;nog.G=els.reduce((t,e)=>t+e.g,0);
    nog.m3=Math.round(els.reduce((t,e)=>t+e.g*e.h*(FF[e.s]||.45),0)*ha);kraja+=nog.m3;
    for(const e of els){const share=e.g*e.h*(FF[e.s]||.45)/Math.max(1e-9,els.reduce((t,x)=>t+x.g*x.h*(FF[x.s]||.45),0));sp[e.s]=sp[e.s]||{m3:0,cut:0};sp[e.s].m3+=nog.m3*share;}
