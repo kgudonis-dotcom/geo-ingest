@@ -1,5 +1,8 @@
 """Ceļi un grāvji pa pagastiem no OpenStreetMap (Geofabrik Latvia, SHP ekstrakts).
-Izvade: infra/<PPPP>.json.gz  {"roads":[{t,surface,name,geom:[[lon,lat]...]}], "water":[{t,name,geom}]}
+Izvade: infra/<PPPP>.json.gz  {"roads":[{t,surface,name,geom:[[lon,lat]...]}], "water":[{t,name,geom}], "watera":[{t,name,ha,geom:[[ring0,caurums1,...],[poly2_ring0,...]]}]}
+#39: watera["geom"] ir MultiPolygon.coordinates formātā (VISI poligonu fragmenti UN caurumi) — iepriekš bbox apgriešana lielu
+ūdensobjektu (piem. Daugavu) sadalīja vairākos fragmentos, un kods paturēja TIKAI lielāko fragmentu bez caurumiem (#22 tipa kļūda),
+tāpēc joslas bieži neaizsniedza nogabalus, kas robežojās ar mazāku (izmestu) fragmentu.
 Pagasta apgabals = pagasti/<PPPP>.json.gz zemes vienību aptverošais taisnstūris + 2 km."""
 import os, io, json, gzip, zipfile, tempfile, glob, requests, datetime
 import geopandas as gpd
@@ -61,11 +64,16 @@ def main():
             elif g.geom_type in("MultiLineString","GeometryCollection"):
                 for p in g.geoms:out+=lines(p)
             return [[list(c)[:2] for c in ln] for ln in out if len(ln)>1]
+        def all_polys(gm):
+            """GeoJSON mapping (Polygon vai MultiPolygon) -> VISI poligonu fragmenti, katrs kā gredzenu saraksts [ārējais,caurums,...] (#39)."""
+            return [gm["coordinates"]] if gm["type"]=="Polygon" else gm["coordinates"]
         out={"pagasts":pg,"updated":datetime.date.today().isoformat(),"src":"OpenStreetMap (Geofabrik)",
              "roads":[{"t":x.fclass,"surface":nn(getattr(x,"surface",None)),"name":nn(x.name),"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in r.itertuples() if lines(x.geometry.intersection(bb))],
              "water":[{"t":x.fclass,"name":nn(x.name),"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in w.itertuples() if lines(x.geometry.intersection(bb))],
              "usik":[{"t":"river","cat":nn(x.cat),"name":nn(x.name),"geom":[[[round(a,6),round(b_,6)] for a,b_ in ln] for ln in lines(x.geometry.intersection(bb))]} for x in us.itertuples() if lines(x.geometry.intersection(bb))] if us is not None else [],
-             "watera":[{"t":x.fclass,"name":nn(x.name),"ha":round(x.ha,2),"geom":[[round(a,6),round(b_,6)] for a,b_ in (mapping(x.geometry.intersection(bb))["coordinates"][0] if mapping(x.geometry.intersection(bb))["type"]=="Polygon" else max(mapping(x.geometry.intersection(bb))["coordinates"],key=lambda c:len(c[0]))[0])]} for x in wa.itertuples() if not x.geometry.intersection(bb).is_empty and mapping(x.geometry.intersection(bb))["type"] in ("Polygon","MultiPolygon")]}
+             "watera":[{"t":x.fclass,"name":nn(x.name),"ha":round(x.ha,2),
+                        "geom":[[[[round(a,6),round(b_,6)] for a,b_ in ring] for ring in poly] for poly in all_polys(mapping(x.geometry.intersection(bb)))]}
+                       for x in wa.itertuples() if not x.geometry.intersection(bb).is_empty and mapping(x.geometry.intersection(bb))["type"] in ("Polygon","MultiPolygon")]}
         with gzip.open(f"infra/{pg}.json.gz","wt",encoding="utf-8") as h:json.dump(out,h,ensure_ascii=False,separators=(",",":"))
         n+=1
     print("gatavs:",n,"pagastu infra faili,",round(sum(os.path.getsize(x) for x in glob.glob('infra/*.json.gz'))/1e6),"MB",flush=True)

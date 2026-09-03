@@ -756,8 +756,12 @@ function zoneFeatures(p){ // atgriež {kc:[Feature], main:[Feature], krautuve:[F
   const f={type:"Feature",properties:{},geometry:{type:"MultiLineString",coordinates:w.geom}};
   if(w.t==="canal"){add(f,A.canal,"kanāls"+(w.name?" "+w.name:""));continue;}
   add(f,A.stream,(w.t==="river"?"upe":"strauts")+(w.name?" "+w.name:"")+" (garums nav apstiprināts)",true);}
- for(const w of inf.watera||[]){const f={type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[w.geom]}};let zw,label;
+ // #39: watera[].geom var būt vecs plakans gredzens (viens fragments, bez caurumiem) vai jauns MultiPolygon.coordinates
+ // (VISI bbox-apgriešanas fragmenti + caurumi) — iepriekš liela ūdensobjekta (piem. Daugavas) apgriešana ap pagasta bbox
+ // to sadalīja vairākos fragmentos, un tika paturēts TIKAI lielākais, bieži izlaižot nogabaliem tuvāko fragmentu.
+ for(const w of inf.watera||[]){const f={type:"Feature",properties:{},geometry:{type:"MultiPolygon",coordinates:wateraPolys(w.geom)}};let zw,label;
   if(w.t==="wetland"){if(w.ha<10)continue;zw=w.ha>100?A.bogBig:A.bog100;label="purvs "+w.ha+" ha";}
+  else if(w.t==="riverbank"){zw=w.ha>1000?A.lakeBig:w.ha>100?A.lake1000:w.ha>25?A.lake100:w.ha>10?A.lake25:A.lake10;label="upe "+(w.name||"")+" (ūdens laukums "+w.ha+" ha)";}
   else{zw=w.ha>1000?A.lakeBig:w.ha>100?A.lake1000:w.ha>25?A.lake100:w.ha>10?A.lake25:A.lake10;label=(w.t==="reservoir"?"ūdenskrātuve ":"ezers ")+(w.name||"")+" "+w.ha+" ha";}
   add(f,zw,label);}
  return {kc,main,full};}
@@ -864,6 +868,8 @@ function buildFromGeo(groups){const p=newProp();
 // #22: m.geom var būt vecs plakans gredzens [[lon,lat],...] vai jauns gredzenu saraksts [ārējais,caurums1,...] (SCHEMA_VERSION 2, GeoJSON konvencija)
 function ringsOf(geom){if(!geom||!geom.length)return [];return typeof geom[0][0]==="number"?[geom]:geom;}
 function outerRingOf(geom){return ringsOf(geom)[0]||[];} // tikai ārējais (bbox/vienkāršai zīmēšanai — caurumi vienmēr ir ārējā gredzena iekšpusē, neietekmē robežlodziņu)
+// #39: infra watera[].geom var būt vecs plakans gredzens (viens poligons, viens fragments) vai jauns MultiPolygon.coordinates (visi fragmenti+caurumi)
+function wateraPolys(geom){if(!geom||!geom.length)return [];return typeof geom[0][0]==="number"?[[geom]]:geom;}
 function merFeature(m){return {type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:ringsOf(m.geom)}};}
 const PLAN_COLORS=["#2C6A47","#D9A441","#4477AA","#AA4499","#117733","#B4382B","#886633","#33AAAA"];
 function planSvg(p,opts={}){const ms=p.mer.filter(m=>m.geom);if(!ms.length)return "";const r=runChecks(p);
@@ -889,7 +895,8 @@ function planSvg(p,opts={}){const ms=p.mer.filter(m=>m.geom);if(!ms.length)retur
    const cx=ring.reduce((q,pp)=>q+pp[0],0)/ring.length,cy=ring.reduce((q,pp)=>q+pp[1],0)/ring.length;h+=`<text x="${X(cx)}" y="${Y(cy)}" font-size="7" fill="#c03" text-anchor="middle">${sp.year}</text>`;}}
  if(r.zoneByNog)for(const id in r.zoneByNog){for(const g of r.zoneByNog[id].kc.geoms){const polys=g.type==="MultiPolygon"?g.coordinates:[g.coordinates];for(const pg of polys){const ring=pg[0].map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="#1e90ff" fill-opacity=".35" stroke="#1e90ff" stroke-width=".8"/>`;}}}
  if(p.infra){for(const w of p.infra.water||[]){if(["ditch","drain"].includes(w.t))continue;for(const ln of w.geom){const pts=ln.map(([lo,la])=>wgsToLks(lo,la));h+=`<polyline points="${pts.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="none" stroke="#1e90ff" stroke-width="1.5"/>`;}}
-  for(const w of p.infra.watera||[]){const ring=w.geom.map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="${w.t==="wetland"?"#8fbc8f":"#9ecae1"}" fill-opacity=".5" stroke="#1e90ff" stroke-width=".6"/>`;}
+  for(const w of p.infra.watera||[]){const polys=wateraPolys(w.geom);const d=polys.flat().map(rg=>"M"+rg.map(([lo,la])=>{const [x,y]=wgsToLks(lo,la);return X(x)+","+Y(y);}).join("L")+"Z").join(" "); // #39: visi fragmenti+caurumi
+   h+=`<path d="${d}" fill-rule="evenodd" fill="${w.t==="wetland"?"#8fbc8f":"#9ecae1"}" fill-opacity=".5" stroke="#1e90ff" stroke-width=".6"/>`;}
   for(const rd of p.infra.roads||[]){for(const ln of rd.geom){const pts=ln.map(([lo,la])=>wgsToLks(lo,la));h+=`<polyline points="${pts.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="none" stroke="${/track|path/.test(rd.t)?"#8b5a2b":"#333"}" stroke-width="${/track|path/.test(rd.t)?1:1.6}" stroke-dasharray="${/track|path/.test(rd.t)?"3 2":""}"/>`;}}}
  if(p.kaimCuts)for(const k of p.kaimCuts){const ring=k.geom.coordinates[0].map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="url(#hatchb)" stroke="#2255aa" stroke-width="1.2" stroke-dasharray="4 2"/>`;const cx=ring.reduce((q,b)=>q+b[0],0)/ring.length,cy=ring.reduce((q,b)=>q+b[1],0)/ring.length;h+=`<text x="${X(cx)}" y="${Y(cy)}" font-size="8" fill="#2255aa" text-anchor="middle">izc. ${esc(k.gads)}</text>`;}
  if(p.aplieci)for(const a of p.aplieci){if(!a.geom||!a.geom.coordinates||!a.geom.coordinates.length)continue;const polys=a.geom.type==="MultiPolygon"?a.geom.coordinates:a.geom.type==="Polygon"?[a.geom.coordinates]:[];for(const pg of polys){const ring=pg[0].map(([lo,la])=>wgsToLks(lo,la));h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="url(#hatchb)" stroke="#2255aa" stroke-width="1.2" stroke-dasharray="4 2"/>`;const cx=ring.reduce((q,b)=>q+b[0],0)/ring.length,cy=ring.reduce((q,b)=>q+b[1],0)/ring.length;h+=`<text x="${X(cx)}" y="${(+Y(cy)+11).toFixed(1)}" font-size="8" fill="#2255aa" text-anchor="middle">apl. ${esc(a.izsn||"")}</text>`;}}

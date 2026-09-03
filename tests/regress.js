@@ -224,6 +224,24 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(sp22&&sp22.kcHa<=5&&sp22.kcHa>0&&sp22.stripHa>0&&sp22.restHa>0,"sintētisks 7 ha damaksnī -> KC daļa ≤5 ha, josla > 0, atlikums > 0 (got "+JSON.stringify(sp22)+")");
  ok(sp22&&Math.abs((sp22.kcHa+sp22.stripHa+sp22.restHa)-7)<0.2,"daļu summa ≈ pilnā platība 7 ha (got "+(sp22?+(sp22.kcHa+sp22.stripHa+sp22.restHa).toFixed(2):null)+")");
  ok(sp22&&sp22.year===new Date().getFullYear()+3,"josla atlikta uz +3 g (MK935 20.p. atjaunošanās vecums), got gads "+(sp22&&sp22.year));
+ // #39: zoneByNog piesaiste — cēlonis NAV #22 atslēgas kļūda (zoneFeatures/stripHaOf strādā ar ģeometriju, ne string-atslēgām),
+ // bet TĀ PATI "paturi tikai lielāko fragmentu" kļūda kā #22 sākotnējā ģeometrijā — build_infra.py watera eksportā liela ūdensobjekta
+ // (piem. Daugavas) bbox-apgriešana to sadala vairākos fragmentos, un kods paturēja TIKAI lielāko, izmetot nogabaliem tuvāko.
+ w=await app();
+ w.eval(`var _standRing=[[27.000,57.000],[27.001,57.000],[27.001,57.001],[27.000,57.001],[27.000,57.000]];
+  var _stand={id:"s1",zv:"1",kvartals:"1",nogabals:"1",platMezs:1,platKop:1,cirsmaKods:"KC",suga:"Priede",geom:_standRing};
+  var _smallFrag=[[[27.0012,57.0003],[27.0018,57.0003],[27.0018,57.0007],[27.0012,57.0007],[27.0012,57.0003]]]; // mazs fragments PIE nogabala
+  var _bigFrag=[[[30.000,60.000],[30.100,60.000],[30.100,60.050],[30.000,60.050],[30.000,60.000]]]; // liels fragments TĀLU (vecais kods paturētu tikai šo)
+  var _wateraDaugava={t:"riverbank",name:"Daugava",ha:100,geom:[_smallFrag,_bigFrag]};
+  var _p39={mer:[_stand],cirsmas:[],infra:{water:[],usik:[],watera:[_wateraDaugava]}};`);
+ const synt39=JSON.parse(w.eval(`JSON.stringify((()=>{const Z=zoneFeatures(_p39);const f=Z.kc[0];
+  return {label:f.properties.label,w:f.properties.w,intersects:turf.booleanIntersects(merFeature(_stand),f)};})())`));
+ ok(synt39.intersects===true&&/upe Daugava/.test(synt39.label),"sintētisks Daugavas gadījums: mazs fragments pie nogabala vairs netiek izmests, josla > 0 (got "+JSON.stringify(synt39)+")");
+ // reālie dati: vecais plakans watera formāts (pirms infra pārbūves) joprojām strādā bez kļūdas (atpakaļsaderība)
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ w.eval("loadInfra(P())");await new Promise(r=>setTimeout(r,4000));
+ const liveZ=w.eval("(()=>{try{const Z=zoneFeatures(P());return Z?Z.kc.length:-1;}catch(e){return 'ERR:'+e.message;}})()");
+ ok(typeof liveZ==="number"&&liveZ>=0,"60700020059: zoneFeatures nesalūzt uz reāliem (vēl vecā formāta, pirms infra pārbūves) datiem (got "+liveZ+")");
  // #22 turpinājums: pagasta faila geom tagad gredzenu saraksts [ārējais,caurums,...] (SCHEMA_VERSION 2) — merFeature/turf.area caurumu atskaita; vecais plakanais formāts joprojām strādā
  w.eval(`var _o=[[25,57],[25.001650165,57],[25.001650165,57.000898456],[25,57.000898456],[25,57]];
   var _h=[[25.00066,57.00036],[25.00066,57.00054],[25.00099,57.00054],[25.00099,57.00036],[25.00066,57.00036]];
@@ -232,7 +250,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(holeHa<outerHa-0.03,"jauns formāts (gredzenu saraksts): caurums atskaitīts no platības (ārējais "+outerHa+" ha, ar caurumu "+holeHa+" ha)");
  ok(outerHa>0.9&&outerHa<1.1,"vecais plakanais gredzens joprojām strādā (merFeature atpazīst abus formātus) (got "+outerHa+" ha)");
  // 11. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
  ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
