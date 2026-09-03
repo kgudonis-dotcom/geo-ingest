@@ -648,7 +648,7 @@ async function addZV(pid,kad){kad=String(kad).replace(/\D/g,"");if(kad.length!==
 async function loadInfra(p){const zvList=(p.zv&&p.zv.length?p.zv:(p.kadastrs?[p.kadastrs]:[])).map(k=>String(k).replace(/\D/g,"")).filter(k=>k.length===11);
  if(!zvList.length||!p.mer.some(m=>m.geom))return;
  const pagCodes=[...new Set(zvList.map(k=>k.slice(0,4)))]; // #44: NĪ var stiepties vairākos pagastos — infra ielādē no visiem
- const pts=p.mer.filter(m=>m.geom).flatMap(m=>m.geom);const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]);const dx=0.01,dy=0.006;const bb=[Math.min(...xs)-dx,Math.min(...ys)-dy,Math.max(...xs)+dx,Math.max(...ys)+dy];
+ const pts=p.mer.filter(m=>m.geom).flatMap(m=>outerRingOf(m.geom));const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]);const dx=0.01,dy=0.006;const bb=[Math.min(...xs)-dx,Math.min(...ys)-dy,Math.max(...xs)+dx,Math.max(...ys)+dy];
  const inBB=g=>g.some(([x,y])=>x>=bb[0]&&x<=bb[2]&&y>=bb[1]&&y<=bb[3]);
  const roads=[],water=[],usik=[],watera=[];let updated=null,any=false;
  for(const pc of pagCodes){const r=await cachedFetch(`${geoBase()}/infra/${pc}.json.gz`);if(!r.ok)continue;any=true;const d=await gunzipJson(r);updated=d.updated||updated;
@@ -657,7 +657,7 @@ async function loadInfra(p){const zvList=(p.zv&&p.zv.length?p.zv:(p.kadastrs?[p.
  p.infra={updated,roads,water,usik,watera};
  for(const c of p.cirsmas)rebuildCirsma(c,p.mer.filter(m=>m.cirsma===c.id));save(S.cur);}
 /* ---------- CIRŠANAS APLIECINĀJUMI ---------- */
-function lksTiles(p){const t=new Set();for(const m of p.mer)if(m.geom)for(const [lo,la] of m.geom){const [x,y]=wgsToLks(lo,la);t.add(`${Math.floor(x/10000)}_${Math.floor(y/10000)}`);}return [...t];}
+function lksTiles(p){const t=new Set();for(const m of p.mer)if(m.geom)for(const [lo,la] of outerRingOf(m.geom)){const [x,y]=wgsToLks(lo,la);t.add(`${Math.floor(x/10000)}_${Math.floor(y/10000)}`);}return [...t];}
 function aplProp(props,re){for(const k in props)if(re.test(k))return props[k];return "";}
 function aplDate(v){if(!v)return "";if(typeof v==="number"){const d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString("lv-LV");}return String(v);}
 async function loadAplieci(p){if(typeof turf==="undefined")return 0;const tiles=lksTiles(p);p.aplieci=[];const seen=new Set();
@@ -861,18 +861,23 @@ function buildFromGeo(groups){const p=newProp();
  S.view="dash";save(p.id);toast(`${p.mer.length} nogabali no VMD, ${p.cirsmas.length} cirsmas, ${p.zv.length} ZV`);}
 
 /* ---------- ROBEŽU PLĀNS AR BUFERIEM ---------- */
-function merFeature(m){return {type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[m.geom]}};}
+// #22: m.geom var būt vecs plakans gredzens [[lon,lat],...] vai jauns gredzenu saraksts [ārējais,caurums1,...] (SCHEMA_VERSION 2, GeoJSON konvencija)
+function ringsOf(geom){if(!geom||!geom.length)return [];return typeof geom[0][0]==="number"?[geom]:geom;}
+function outerRingOf(geom){return ringsOf(geom)[0]||[];} // tikai ārējais (bbox/vienkāršai zīmēšanai — caurumi vienmēr ir ārējā gredzena iekšpusē, neietekmē robežlodziņu)
+function merFeature(m){return {type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:ringsOf(m.geom)}};}
 const PLAN_COLORS=["#2C6A47","#D9A441","#4477AA","#AA4499","#117733","#B4382B","#886633","#33AAAA"];
 function planSvg(p,opts={}){const ms=p.mer.filter(m=>m.geom);if(!ms.length)return "";const r=runChecks(p);
- const pts=ms.flatMap(m=>m.geom.map(([lo,la])=>wgsToLks(lo,la)));const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]);
+ const pts=ms.flatMap(m=>outerRingOf(m.geom).map(([lo,la])=>wgsToLks(lo,la)));const xs=pts.map(a=>a[0]),ys=pts.map(a=>a[1]);
  const minx=Math.min(...xs),maxx=Math.max(...xs),miny=Math.min(...ys),maxy=Math.max(...ys);const W=opts.w||700,pad=30;
  const sc=Math.min((W-2*pad)/(maxx-minx||1),(W-2*pad)/(maxy-miny||1));const H=(maxy-miny)*sc+2*pad+40;
  const X=x=>((x-minx)*sc+pad).toFixed(1),Y=y=>((maxy-y)*sc+pad).toFixed(1);
  const cidx={};p.cirsmas.forEach((c,i)=>cidx[c.id]=i);
  let h=`<svg viewBox="0 0 ${W} ${H.toFixed(0)}" style="width:100%;max-width:${W}px;background:#fff;border:1px solid var(--line,#ccc)">`;
- for(const m of ms){const ring=m.geom.map(([lo,la])=>wgsToLks(lo,la));const ci=m.cirsma&&cidx[m.cirsma]!=null?cidx[m.cirsma]:-1;const col=ci>=0?PLAN_COLORS[ci%PLAN_COLORS.length]:"#bbb";
-  h+=`<polygon points="${ring.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="${col}" fill-opacity="${ci>=0?.45:.12}" stroke="#555" stroke-width="0.8"/>`;
-  const cx=ring.reduce((a,b)=>a+b[0],0)/ring.length,cy=ring.reduce((a,b)=>a+b[1],0)/ring.length;
+ for(const m of ms){const rings=ringsOf(m.geom).map(rg=>rg.map(([lo,la])=>wgsToLks(lo,la)));const outer=rings[0];const ci=m.cirsma&&cidx[m.cirsma]!=null?cidx[m.cirsma]:-1;const col=ci>=0?PLAN_COLORS[ci%PLAN_COLORS.length]:"#bbb";
+  // #22: path + fill-rule evenodd, lai caurumi (ja ir) rādītos kā izgriezumi, ne <polygon> (kas caurumus nevar attēlot)
+  const d=rings.map(rg=>"M"+rg.map(([x,y])=>X(x)+","+Y(y)).join("L")+"Z").join(" ");
+  h+=`<path d="${d}" fill-rule="evenodd" fill="${col}" fill-opacity="${ci>=0?.45:.12}" stroke="#555" stroke-width="0.8"/>`;
+  const cx=outer.reduce((a,b)=>a+b[0],0)/outer.length,cy=outer.reduce((a,b)=>a+b[1],0)/outer.length;
   h+=`<text x="${X(cx)}" y="${Y(cy)}" font-size="10" text-anchor="middle" fill="#222">${esc(m.nogabals)}${m.cirsmaKods?" · "+fmt(num(m.platMezs||m.platKop),2)+" ha":""}</text>`;} // #22: cērtamam nogabalam arī ha
  h+=`<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#c03" stroke-width="2"/></pattern></defs>`;
  const deferYear=new Date().getFullYear()+3;
@@ -976,7 +981,7 @@ function mountMap(){const el=document.getElementById("map");if(!el||typeof L==="
  if(MAP){MAP.remove();MAP=null;}
  MAP=L.map(el,{zoomControl:true});L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri World Imagery"}).addTo(MAP);
  const fg=L.featureGroup();
- for(const m of ms){const cats=nogCategory(m,p);const col=CAT[cats[0]][1];const poly=L.polygon(m.geom.map(([lo,la])=>[la,lo]),{color:col,weight:1.5,fillColor:col,fillOpacity:cats[0]==="j"||cats[0]==="nm"?.15:.4});
+ for(const m of ms){const cats=nogCategory(m,p);const col=CAT[cats[0]][1];const poly=L.polygon(ringsOf(m.geom).map(rg=>rg.map(([lo,la])=>[la,lo])),{color:col,weight:1.5,fillColor:col,fillOpacity:cats[0]==="j"||cats[0]==="nm"?.15:.4}); // #22: gredzeni ar caurumiem
   poly.bindTooltip(`${esc(m.nogabals)}. nog.`,{permanent:true,direction:"center",className:"nogl"});
   poly.bindPopup(`<b>Nog. ${esc(m.nogabals)}</b> ${esc(m.mezaTips)} · ${esc(m.suga)} ${m.vecums||""} g · ${fmt(num(m.platMezs||m.platKop),2)} ha · ${fmt(krajaMer(m))} m³<br>${cats.map(c=>CAT[c][0]).join(", ")}`);fg.addLayer(poly);}
  for(const c of p.cirsmas){/* joslas */}
@@ -1144,7 +1149,7 @@ function mountFundMap(){const el=document.getElementById("map");if(!el||typeof L
  const only=S.fundOnly===undefined?"Nopirkts":S.fundOnly;const props=S.props.filter(p=>!p.archived&&(!only||(p.status||"Vērtēšanā")===only));const fg=L.featureGroup();
  const col={Nopirkts:"#2C6A47",Vērtēšanā:"#D9A441",Piedāvāts:"#e67e22",Atteikts:"#B4382B",Pārdots:"#7b5ea7","Tikai cirsma":"#4477AA"};
  for(const p of props){const ms=p.mer.filter(m=>m.geom);const c=col[p.status||"Vērtēšanā"]||"#999";
-  if(ms.length)for(const m of ms)fg.addLayer(L.polygon(m.geom.map(([lo,la])=>[la,lo]),{color:c,weight:1,fillColor:c,fillOpacity:.35}).bindTooltip(esc(p.name||zvStr(p))).on("click",()=>openProp(p.id,"dash")));}
+  if(ms.length)for(const m of ms)fg.addLayer(L.polygon(ringsOf(m.geom).map(rg=>rg.map(([lo,la])=>[la,lo])),{color:c,weight:1,fillColor:c,fillOpacity:.35}).bindTooltip(esc(p.name||zvStr(p))).on("click",()=>openProp(p.id,"dash")));}
  if(!fg.getLayers().length){el.innerHTML='<div class="muted" style="padding:12px">Kartē redzami objekti ar ģeometriju (izveidoti no kadastra numura).</div>';return;}
  MAP=L.map(el);L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Esri"}).addTo(MAP);fg.addTo(MAP);MAP.fitBounds(fg.getBounds(),{padding:[20,20]});}
 function exportFundXlsx(){const st=fundStats(S.props);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["Objekts","NĪ","ZV","Statuss","ha","Mežs ha","Krāja m³","Cērtamais m³","Cirsmu vērtība €","NĪ vērtība €","IRR %","Cena €","Darījuma datums"],...st.objs.map(o=>[o.p.name,o.p.ni?o.p.ni.nr:"",zvStr(o.p),o.status,+o.ha.toFixed(2),+o.mez.toFixed(2),Math.round(o.kr),Math.round(o.cut),Math.round(o.max),Math.round(o.ni),o.irr==null?"":+(o.irr*100).toFixed(1),o.price||"",o.p.dealDate||""])]),"Fonds");XLSX.writeFile(wb,"NI_fonds.xlsx");}
@@ -1198,18 +1203,18 @@ function vDocs(){const p=P();const geo=p.mer.some(m=>m.geom);let h=objSwitch();
  return h;}
 
 /* ---------- SKICES ---------- */
-function unionRings(mers){ // apvieno nogabalu ģeometrijas ar turf, atgriež LKS-92 gredzenu(s)
- const feats=mers.filter(m=>m.geom).map(m=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[m.geom]}}));
+function unionRings(mers){ // apvieno nogabalu ģeometrijas ar turf, atgriež LKS-92 gredzenu(s) (ieskaitot caurumus, #22)
+ const feats=mers.filter(m=>m.geom).map(m=>merFeature(m));
  if(!feats.length)return null;let u=feats[0];
  try{for(let i=1;i<feats.length;i++)u=turf.union(turf.featureCollection([u,feats[i]]))||u;}catch(e){console.warn(e);}
- const g=u.geometry;const rings=g.type==="MultiPolygon"?g.coordinates.map(c=>c[0]):[g.coordinates[0]];
+ const g=u.geometry;const rings=g.type==="MultiPolygon"?g.coordinates.flatMap(c=>c):g.coordinates;
  return rings.map(r=>r.map(([lo,la])=>wgsToLks(lo,la)));}
 function skiceHtml(c){const p=P();const linked=p.mer.filter(m=>m.cirsma===c.id&&m.geom);if(!linked.length)return null;
  const rings=unionRings(linked);if(!rings)return null;
  const all=rings.flat();const xs=all.map(a=>a[0]),ys=all.map(a=>a[1]);
  const cx=(Math.min(...xs)+Math.max(...xs))/2,cy=(Math.min(...ys)+Math.max(...ys))/2;
  const scale=(S.settings.skiceScale||5000);const wm=0.17*scale,hm=0.20*scale; // ~17×20 cm kartes lauks
- const ctx=p.mer.filter(m=>m.geom&&m.cirsma!==c.id).map(m=>({r:m.geom.map(([lo,la])=>wgsToLks(lo,la)),n:m.nogabals}));
+ const ctx=p.mer.filter(m=>m.geom&&m.cirsma!==c.id).map(m=>({r:outerRingOf(m.geom).map(([lo,la])=>wgsToLks(lo,la)),n:m.nogabals}));
  const X=x=>((x-(cx-wm/2))/wm*640).toFixed(1),Y=y=>((1-(y-(cy-hm/2))/hm)*760).toFixed(1);
  let svg=`<svg viewBox="0 0 640 760" style="width:100%;max-width:640px;border:1px solid #ccc">`;
  for(const o of ctx){svg+=`<polyline points="${o.r.map(([x,y])=>X(x)+","+Y(y)).join(" ")}" fill="none" stroke="#c66" stroke-width="0.7"/>`;const rx=o.r.reduce((a,b)=>a+b[0],0)/o.r.length,ry=o.r.reduce((a,b)=>a+b[1],0)/o.r.length;svg+=`<text x="${X(rx)}" y="${Y(ry)}" font-size="9" fill="#777" text-anchor="middle">${esc(o.n)}</text>`;}
@@ -1431,10 +1436,11 @@ function splitOversizedNogabals(x,lim){
  const m=x.m;if(!m.geom||typeof turf==="undefined")return null;
  try{
   let poly=merFeature(m);try{const cleaned=turf.buffer(poly,0,{units:"kilometers"});if(cleaned&&turf.area(cleaned)>0)poly=cleaned;}catch(e){} // topoloģijas tīrīšana (VMD ģeometrijai reizēm ir mikroskopiski paškrustojumi)
-  const lksRing=m.geom.map(([lo,la])=>wgsToLks(lo,la));
+  const outer=outerRingOf(m.geom);
+  const lksRing=outer.map(([lo,la])=>wgsToLks(lo,la));
   const lxs=lksRing.map(p=>p[0]),lys=lksRing.map(p=>p[1]);const w=Math.max(...lxs)-Math.min(...lxs),h=Math.max(...lys)-Math.min(...lys);
   const byLon=w>=h; // garāks A-R virzienā -> griež ar Z-D līniju (šaurajā virzienā mazāka josla platība)
-  const lons=m.geom.map(p=>p[0]),lats=m.geom.map(p=>p[1]);
+  const lons=outer.map(p=>p[0]),lats=outer.map(p=>p[1]);
   const axMin=byLon?Math.min(...lons):Math.min(...lats),axMax=byLon?Math.max(...lons):Math.max(...lats);
   const crossMin=(byLon?Math.min(...lats):Math.min(...lons))-0.02,crossMax=(byLon?Math.max(...lats):Math.max(...lons))+0.02;
   const bandPoly=(v0,v1)=>({type:"Feature",properties:{},geometry:{type:"Polygon",coordinates:[byLon?

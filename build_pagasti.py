@@ -1,5 +1,7 @@
 """Sagriež VMD nogabalus pa pagastiem (kadastra apz. pirmie 4 cipari) statiskos failos ar iepriekš izrēķinātiem kaimiņiem, ĪADT, LAD lauku blokiem, VZD eksplikāciju un NĪ saiti.
-Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","ladSig":{"n","maxdate","schema":SCHEMA_VERSION},"zv":{kadastrs:{"stands":[...],"adj":[[i,j,len_m]],"iadt":[...],"lad":{"ha","blocks":[...]},"expl":{"liz","krum","mezs",...},"ni":{"nr","name"}}}}"""
+Izvade: pagasti/<PPPP>.json.gz  {"pagasts","updated","ladSig":{"n","maxdate","schema":SCHEMA_VERSION},"zv":{kadastrs:{"stands":[{...,"geom":[[[lon,lat],...],[caurums1,...],...]},...],"adj":[[i,j,len_m]],"iadt":[...],"lad":{"ha","blocks":[...]},"expl":{"liz","krum","mezs",...},"ni":{"nr","name"}}}}
+#22 turpinājums (2026-09-03): stand["geom"] ir GREDZENU SARAKSTS (GeoJSON Polygon konvencija: [ārējais, caurums1, caurums2, ...]),
+NEVIS viens plakans punktu saraksts — nogabaliem ar caurumu (piem. lauces, ūdenstilpes vidū) iepriekš caurums pazuda un platība bija par lielu."""
 import os, io, re, json, gzip, zipfile, tempfile, argparse, requests, datetime, time
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor
@@ -17,7 +19,7 @@ ATTRS=["zkat","mt","izc","p_darbv","p_darbg","p_cirp","p_cirg","saimn_d_ie","jak
 # neviens nesatur apakšvirkni "bon". cols.get("bon") tāpēc vienmēr atgriež None un st["bon"] nekad netiek iestatīts.
 # Kandidātlauki bv10..bv14 (katram no 5 sugas elementiem) satur 3 ciparu kodus (piem. 500, 624, 300),
 # kas NEATBILST 0-6 BON_CODES skalai — to nozīme nav apstiprināta, tāpēc NAV izmantoti. Sk. STATUSS.md.
-SCHEMA_VERSION=1  # pagasta JSON izvades shēmas versija (zv ieraksta lauku struktūra). Paaugstini par 1 katru
+SCHEMA_VERSION=2  # #22: stand["geom"] tagad gredzenu saraksts (ar caurumiem), nevis viens plakans gredzens. Pagasta JSON izvades shēmas versija (zv ieraksta lauku struktūra). Paaugstini par 1 katru
 # reizi, kad pievieno/noņem/pārdēvē lauku zv ierakstā, un ieraksti izmaiņu CLAUDE.md — tas iekļaujas
 # lad_signature() parakstā, tāpēc versijas maiņa vienmēr liek no jauna aprēķināt paraksta-balstīto (LAD) kešu.
 BON_CODES={0:"Ia",1:"I",2:"II",3:"III",4:"IV",5:"V",6:"Va"}
@@ -217,8 +219,10 @@ def process_shp(shp,iadt,store,owners=None,zvgeo=None,expl=None,ni=None):
                 try:st["bon"]=BON_CODES.get(int(float(bx)))
                 except (TypeError,ValueError):pass
                 if st.get("bon") is None:st.pop("bon",None)
-            mp=mapping(gw);ring=max(mp["coordinates"],key=lambda c:len(c[0]))[0] if mp["type"]=="MultiPolygon" else mp["coordinates"][0]
-            st["geom"]=[[round(x,6),round(y,6)] for x,y in ring]
+            # #22 turpinājums: geom = VISI gredzeni [ārējais, caurums1, ...] (GeoJSON Polygon konvencija), ne tikai ārējais —
+            # iepriekš caurumi (piem. lauces, ūdenstilpes nogabala vidū) pazuda, platība bija pārāk liela (60700020059 kv2/15: 7,30 ārējais pret VMD 5,53 ha)
+            mp=mapping(gw);poly=max(mp["coordinates"],key=lambda c:len(c[0])) if mp["type"]=="MultiPolygon" else mp["coordinates"]
+            st["geom"]=[[[round(x,6),round(y,6)] for x,y in ring] for ring in poly]
             stands.append(st)
         geoms=[g if g.is_valid else g.buffer(0) for g in geoms]
         if iadt is not None:
