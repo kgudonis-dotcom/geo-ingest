@@ -28,7 +28,7 @@ jobs:
           echo "kads=$KADS" >> "$GITHUB_OUTPUT"
           echo "SENTINEL_WATCH kadastri: $KADS"
       - if: steps.kads.outputs.kads != ''
-        run: set -o pipefail; python -u sentinel.py --kad "${{ steps.kads.outputs.kads }}" --neighbors 5 2>&1 | tee run.log
+        run: set -o pipefail; python -u sentinel.py --kad "${{ steps.kads.outputs.kads }}" --neighbors 5 --storm-check 2>&1 | tee run.log
         env: {CDSE_ID: "${{ secrets.CDSE_ID }}", CDSE_SECRET: "${{ secrets.CDSE_SECRET }}"}
       - if: steps.kads.outputs.kads == ''
         run: echo "SENTINEL_WATCH tukšs, nekā darīt" | tee run.log

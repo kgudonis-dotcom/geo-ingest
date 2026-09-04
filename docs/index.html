@@ -835,14 +835,21 @@ async function loadSentinel(p){
  const zvList=(p.zv&&p.zv.length?p.zv:(p.kadastrs?[p.kadastrs]:[])).map(k=>String(k).replace(/\D/g,"")).filter(k=>k.length===11);
  if(!zvList.length)return;
  const byPag={};for(const k of zvList)(byPag[k.slice(0,4)]=byPag[k.slice(0,4)]||[]).push(k);
- let any=false;const rows=[];
+ let any=false;const rows=[];const vgRows=[]; // #50/E: vejgaze — Sentinel-1 vējgāzes pārbaude, tikai WATCH kadastriem
  for(const pc in byPag){const r=await cachedFetch(`${geoBase()}/sentinel/${pc}.json.gz`);if(!r.ok)continue;any=true;const d=await gunzipJson(r);
-  for(const k of byPag[pc])for(const row of (d.zv&&d.zv[k])||[])rows.push(Object.assign({kad:k},row));}
+  for(const k of byPag[pc]){for(const row of (d.zv&&d.zv[k])||[])rows.push(Object.assign({kad:k},row));
+   for(const row of (d.vejgaze&&d.vejgaze[k])||[])vgRows.push(Object.assign({kad:k},row));}}
  if(!any)return;
  for(const m of p.mer){const baseNog=String(m.nogabals||"").split(".")[0];
   const hit=rows.find(row=>(row.kad===m.zv||(!m.zv&&zvList.length===1&&row.kad===zvList[0]))&&String(row.kv)===String(m.kvartals)&&String(row.nog)===baseNog);
-  if(hit)m.sentinel=hit;}
+  if(hit)m.sentinel=hit;
+  const vgHit=vgRows.find(row=>(row.kad===m.zv||(!m.zv&&zvList.length===1&&row.kad===zvList[0]))&&String(row.kv)===String(m.kvartals)&&String(row.nog)===baseNog&&row.flag);
+  if(vgHit)m.vejgaze=vgHit;}
  save(S.cur);}
+function sentinelDamageFlag(m){ // #50/E2: obligāta pārbaude — Sentinel (vainaga zudums/kritums) vai Sentinel-1 (iespējama vējgāze) -> "sanitārā cirte pamatota"
+ if(m.sentinel&&(m.sentinel.flag==="zudums"||m.sentinel.flag==="kritums"))return {src:"Sentinel-2",note:`Sentinel vainaga ${m.sentinel.flag==="zudums"?"zudums":"kritums"} (${m.sentinel.checked}) — sanitārā cirte līdz kritiskajam šķērslaukumam pamatota ar augstu drošību`};
+ if(m.vejgaze&&m.vejgaze.flag)return {src:"Sentinel-1",note:`Sentinel-1 ${m.vejgaze.flag} (vētra ${m.vejgaze.stormDate}, pārbaudīts ${m.vejgaze.checked}) — sanitārā cirte līdz kritiskajam šķērslaukumam pamatota, PĀRBAUDĪT ar roku (slieksnis nav validēts)`};
+ return null;}
 const LIDAR_FULL_PCT=50,LIDAR_SPARSE_PCT=30; // #19: "vainags vēl pilns" / "reta audze" slieksnis nesakritības pārbaudei
 function lidarSentinelMismatch(m){ // null = nav datu abiem vai sakrīt; citādi teksts ar piesardzības piezīmi
  if(!m.sentinel||m.lidCover==null)return null;
@@ -1762,6 +1769,7 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
   if(m.cirsmaKods==="KC"&&mo==="?")f.push({t:"ier",s:"meža tips nav zināms, platības limits nav nosakāms"});
   if(num(m.lidH)&&num(m.H)){const dif=num(m.lidH)-num(m.H);if(dif<-Math.max(3,num(m.H)*.15))f.push({t:"bloks",s:`LiDAR vainagu augstums ${m.lidH} m pret taksācijas ${m.H} m: audze zemāka, iespējams jau nocirsta vai retināta, pārbaudīt`});else if(dif>Math.max(3,num(m.H)*.15))f.push({t:"plus",s:`LiDAR augstums ${m.lidH} m pret taksācijas ${m.H} m: audze pāraugusi taksāciju, krāja var būt lielāka`});}
   if(num(m.lidCover)&&m.suga){const bz=num(m.biez)||0;if(num(m.lidCover)<40)f.push({t:"ier",s:`LiDAR vainagu segums ${m.lidCover} %: reta audze, biezība un krāja pārbaudāma`});}
+  {const dmg=sentinelDamageFlag(m);if(dmg)f.push({t:"info",s:`Bojājums (${dmg.src}): ${dmg.note}`});} // #50/E2: obligāta pārbaude katram objektam
   const eco=m.cirsmaKods?RULES.ecoTreesHa[m.cirsmaKods]*ha*RULES.ecoTreeM3:0;
   if(m.cirsmaKods==="KC"){out.kc[mo].ha+=ha;out.kc[mo].m3+=plaus?0:Math.max(kr-eco,0);out.kc[mo].n.push(m);}
   out.nog.push({m,f,kr,krha,mo,eco,exclude:f.some(x=>x.t==="ekon"||x.t==="bloks")});}
@@ -1939,7 +1947,8 @@ function buildScenarios(p){
   const t=calcProp(clone);const r=runChecks(clone);
   const redFlags=[...new Set(r.nog.flatMap(x=>x.f.filter(f=>f.t==="bloks").map(f=>f.s)))];
   const yellowFlags=[...new Set(r.nog.flatMap(x=>x.f.filter(f=>f.t==="warn").map(f=>f.s)))];
-  out.push({key,label:def.label,clone,ha:+t.ha.toFixed(2),m3:Math.round(t.m3),max:Math.round(t.max),red:redFlags.length,yellow:yellowFlags.length,redFlags,yellowFlags,ncirsmas:clone.cirsmas.length});}
+  const damageFlags=[...new Set(r.nog.flatMap(x=>x.f.filter(f=>f.t==="info"&&/^Bojājums/.test(f.s)).map(f=>f.s)))]; // #50/E2: obligāta pārbaude arī scenārijos
+  out.push({key,label:def.label,clone,ha:+t.ha.toFixed(2),m3:Math.round(t.m3),max:Math.round(t.max),red:redFlags.length,yellow:yellowFlags.length,redFlags,yellowFlags,damageFlags,ncirsmas:clone.cirsmas.length});}
  if(out.length){
   const byRiskThenValue=[...out].sort((a,b)=>a.red-b.red||a.yellow-b.yellow||b.max-a.max);
   const safest=byRiskThenValue[0];
@@ -1959,7 +1968,7 @@ function scenariosHtml(p){if(!p.mer.some(m=>m.geom))return "";
   <div class="row" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr));align-items:start">${scs.map(s=>`<div class="card" style="margin:0;${p.scenario===s.key?"border-color:var(--green);border-width:2px":""}"><h3 style="margin-top:0">${esc(s.label)}${s.recommended?' <span class="pill" style="background:var(--green);color:#fff">ieteicams</span>':""}${s.safest&&!s.recommended?' <span class="pill">likumā drošākais</span>':""}${p.scenario===s.key?' <span class="pill" style="background:var(--green);color:#fff">izvēlēts</span>':""}</h3>
    ${p.mer.length<=15?planSvg(s.clone,{w:240}):""}
    <div class="kv"><span>Platība</span><b>${fmt(s.ha,2)} ha</b></div><div class="kv"><span>Apjoms</span><b>${fmt(s.m3)} m³</b></div><div class="kv"><span>Max cena</span><b style="color:var(--green)">${fmt(s.max)} €</b></div><div class="kv"><span>Cirsmu skaits</span><b>${s.ncirsmas}</b></div>
-   ${s.redFlags.length?`<div class="muted pctbad">${s.redFlags.map(esc).join("<br>")}</div>`:""}${s.yellowFlags.length?`<div class="muted pctwarn">${s.yellowFlags.map(esc).join("<br>")}</div>`:""}
+   ${s.redFlags.length?`<div class="muted pctbad">${s.redFlags.map(esc).join("<br>")}</div>`:""}${s.yellowFlags.length?`<div class="muted pctwarn">${s.yellowFlags.map(esc).join("<br>")}</div>`:""}${s.damageFlags&&s.damageFlags.length?`<div class="muted">${s.damageFlags.map(esc).join("<br>")}</div>`:""}
    <button class="btn sm" style="margin-top:6px" onclick="applyScenario('${s.key}')">${p.scenario===s.key?"Pārrēķināt šo scenāriju":"Izvēlēties šo scenāriju"}</button></div>`).join("")}</div>
   <div class="muted" style="margin-top:6px">Noklusējums = lielākā max cena starp scenārijiem bez sarkana karodziņa. Izvēle saglabājas ar vēstures ierakstu un iet visās izvadēs (PDF, Excel, VMD iesniegums, skice).</div></div>`;}
 function cTips(c){return c.tips==="Sanitārā"&&c.sanIzlase?"Sanitārā izlase":c.tips;}
