@@ -362,7 +362,9 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   const stage1Hatch=p.cirsmas.filter(c=>c.stage!==2).reduce((a,c)=>a+(c.parts||[]).filter(pp=>pp.kind==="josla").length,0);
   const totalJoslas=p.cirsmas.reduce((a,c)=>a+(c.parts||[]).filter(pp=>pp.kind==="josla").length,0);
   const t=calcProp(p);
-  return {nOver:r.oversized.length,mode:o&&o.mode,widthM:o&&o.widthM,kcHa:o&&o.kcHa,side:o&&o.side,ier:r.nog.find(x=>x.m===m1).f.find(f=>f.t==="ier").s,
+  const warnFlags=r.nog.find(x=>x.m===m1).f.filter(f=>f.t==="warn").map(f=>f.s);
+  const adjAll13=kaiminiPairs(p,r.nog);const pr13=adjAll13.find(pr=>(pr.xa.m===m1&&pr.xb.m===m3)||(pr.xa.m===m3&&pr.xb.m===m1));
+  return {nOver:r.oversized.length,mode:o&&o.mode,widthM:o&&o.widthM,kcHa:o&&o.kcHa,side:o&&o.side,ier:r.nog.find(x=>x.m===m1).f.find(f=>f.t==="ier").s,warnFlags,fullBoundary13:pr13&&+pr13.len.toFixed(1),sideAutoLen:o&&o.sideAuto&&o.sideAuto.nb&&o.sideAuto.nb.len,
    c1Plat:c1.platiba,c1AtlHa:c1.atliktsHa,c1Atl:Math.round(c1.atlikts),c1Parts:c1.parts.map(pp=>[pp.kind,+pp.ha.toFixed(2)]),
    c2bPlat:c2b&&c2b.platiba,c2bBruto:c2b&&Math.round(c2b.bruto),c2bDPlan:c2b&&p.mer.find(m=>m.cirsma===c2b.id).dPlan,
    c2Plat:c2&&c2.platiba,c2Bruto:c2&&Math.round(c2.bruto),c2DepOk:c2&&c2.dependsOn===c1.id,c2Nog:c2&&c2.nogabali,c2Blocked:c2&&c2.blockedNote,c2Parts:c2&&c2.parts.map(pp=>[pp.kind,+pp.ha.toFixed(2)]),
@@ -371,6 +373,10 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(nal.nOver===1&&nal.mode==="divi"&&nal.widthM===20&&Math.abs(nal.kcHa-2.00)<=0.03,"Nalobnes nog.1 noklusējums: divi piegājieni, KC tagad 2,00 ha (= limits 2 ha, MK935 15.2) (got "+JSON.stringify({mode:nal.mode,widthM:nal.widthM,kcHa:nal.kcHa})+")");
  ok(/divi piegājieni/.test(nal.ier)&&/tiklīdz VMD/.test(nal.ier)&&!/3 g pēc atjaunošanas/.test(nal.ier)&&!/23\.p/.test(nal.ier),"Nalobnes nog.1 karodziņš: 15.p. limits, VMD reģistrācijas gaidīšana (NE 3 g pēc atjaunošanas, #50 labojums), bez 23.p. (got "+nal.ier+")");
  ok(nal.side==="R","Nalobnes nog.1: griezuma virziens R (rietumu) — vienīgais, kas dod VIENU saistītu atlikuma poligonu (#50/A) (got '"+nal.side+"')");
+ // #51: pilnā nog.1↔nog.3 robeža ir pieguloša (≥50 m, fiksēts kā regresijas vērtība ≈55 m, LVM GEO mēra 66,9 m — nedaudz cita ģeometrijas versija/vienkāršošana, tas pats secinājums), bet VIENĪGAIS viengabala griezums (R) to nesasniedz (≈34,5 m) — tāpēc noklusējumā tikai brīdinājums, ne automātiska nog.3 iekļaušana
+ ok(nal.fullBoundary13!=null&&nal.fullBoundary13>=50&&Math.abs(nal.fullBoundary13-55)<=3,"Nalobnes: pilnā nog.1↔nog.3 robeža ≈55 m (regresijas vērtība, ≥50 m — nogabali IR pieguloši) (got "+nal.fullBoundary13+")");
+ ok(nal.sideAutoLen!=null&&nal.sideAutoLen<50,"Nalobnes: R malas atlikums ar nog.3 dala < 50 m (got "+nal.sideAutoLen+")");
+ ok(nal.warnFlags.length===1&&/atlikuma novietojums neļauj saglabāt/.test(nal.warnFlags[0])&&/PĀRBAUDI/.test(nal.warnFlags[0]),"Nalobnes: brīdinājuma karogs 'atlikuma novietojums neļauj saglabāt ≥50 m kontaktu... PĀRBAUDI un izvēlies ar roku' (#51 kārtības 2. solis) (got "+JSON.stringify(nal.warnFlags)+")");
  ok(Math.abs(nal.c1Plat-nal.kcHa)<=0.01,"Nalobnes 1. piegājiena cirsma (nog.1): platība = KC daļas ha ("+nal.c1Plat+")");
  ok(nal.c1Parts.length===2&&nal.c1Parts.some(x=>x[0]==="KC")&&nal.c1Parts.filter(x=>x[0]==="josla").length===1,"Nalobnes nog.1 1. piegājiena cirsmai c.parts = [KC, josla] — josla ŠEIT ir starp-grupu 18.p. josla pret nog.2 (nog.1 PAŠAS sadalīšanas josla tagad ir 2. piegājienā, #50/C1) (got "+JSON.stringify(nal.c1Parts)+")");
  ok(nal.c2Parts&&nal.c2Parts.length===2&&nal.c2Parts.some(x=>x[0]==="KC")&&nal.c2Parts.some(x=>x[0]==="josla"),"Nalobnes 2. piegājiena cirsmai c.parts = [KC (atlikums), josla (pašas sadalīšanas strēle, tagad cērtama kopā, ne atlikta)] (got "+JSON.stringify(nal.c2Parts)+")");
@@ -388,6 +394,11 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(nal.m3.dp&&nal.m3.dp.reach===true&&nal.m3.dp.dc===31,"Nalobnes nog.3 priede D 32 ≥ 31 (7. piel., bon. II): D-ceļš pieejams (got "+JSON.stringify(nal.m3.dp)+")");
  ok(nal.m3.kods!=="KC"&&!nal.m3.cirsma,"Nalobnes nog.3 NEkļūst par KC (nedz 1., nedz 2. piegājienā) — vienīgā viengabala atlikuma puse (R) dala ar nog.3 tikai ≈34 m < 50 m (MK935 18.p. slieksnis), tāpēc nav piegulošs; KC pēc D paliek lietotāja izvēle (chooseDPath) (got kods='"+nal.m3.kods+"', cirsma='"+nal.m3.cirsma+"')");
  ok(Math.abs(nal.m1D-24.9)<=0.1,"Nalobnes nog.1 bērzs: svērtais D 24,9 (D26/G11 + D19/G2), agrāk 26 (got "+nal.m1D+")");
+ // #51 kārtības 2. solis pēc lietotāja izvēles: manuāli izvēlas dienvidu (D) malu (vienīgā, kas dala ≥50 m ar nog.3, kaut fragmentējas) -> 2. piegājiens = atlikums + nog.3 ≈0,94 ha
+ const n1id2=w.eval("P().mer.find(m=>m.nogabals==='1').id");w.eval(`setRestSide('${n1id2}','D')`);
+ const nalD2=JSON.parse(w.eval("JSON.stringify((()=>{const p=P();const r=runChecks(p);const o=r.oversized[0];const c2=p.cirsmas.find(c=>c.stage===2);return {side:o.side,restFrag:fragCount(o.restGeom),c2Plat:c2&&c2.platiba,c2Nog:c2&&c2.nogabali};})())"));
+ ok(nalD2.side==="D"&&nalD2.restFrag===2&&nalD2.c2Plat!=null&&Math.abs(nalD2.c2Plat-0.94)<=0.03&&/3/.test(nalD2.c2Nog||""),"Nalobnes pēc manuālas dienvidu malas izvēles: atlikums fragmentējas (2 gab., pieņemts, jo ar roku izvēlēts), 2. piegājiens = atlikums + nog.3 ≈0,94 ha (got "+JSON.stringify(nalD2)+")");
+ w.eval(`setRestSide('${n1id2}',null)`); // atpakaļ uz automātisko (R, brīdinājums), lai neietekmē tālākos testus
  // 2. piegājiens: ĪSTA cirsma (stage 2), dependsOn = 1. piegājiena cirsmas id = nog.1 atlikums + tās pašas sadalīšanas josla (BEZ nog.3 — sk. iepriekš)
  ok(nal.c2DepOk===true&&nal.c2Nog==="1;1",'Nalobnes 2. piegājiena cirsma: dependsOn = nog.1 1. piegājiena cirsmas id, abas daļas no nog.1 (atlikums + tā josla), BEZ nog.3 (got nog='+nal.c2Nog+", depOk="+nal.c2DepOk+")");
  ok(nal.c2Plat>=0.40&&nal.c2Plat<=0.60&&nal.c2Bruto>90&&nal.c2Bruto<140,"Nalobnes 2. piegājiens ≈0,50 ha / ≈115 m³ (nog.1 atlikums 0,25 ha + tā sadalīšanas josla 0,25 ha, abi tagad cērtami kopā) (got "+nal.c2Plat+" ha, "+nal.c2Bruto+" m³)");
