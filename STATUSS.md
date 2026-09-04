@@ -70,19 +70,21 @@ Atjaunots: 2026-09-04 (#21 izvešanas ceļi, #44 NĪ vairākas ZV UI, #19 LiDAR/
 - ĪADT individuālie noteikumi (#40, #42): Rāzna, GNP, Daugavas loki, Veclaicene ir rokas noteikumos ar MK numuru (Rāznas divām zonām trūkst tiešas panta atsauces piezīmēs — atsevišķs, nelabots datu trūkums). #42 izmeklēts un labots: iadt.yml savs publicēšanas solis 01.09. faktiski nostrādāja (git push apstiprināts logā), bet 21 min vēlāk infra.yml (un tāpat aplieci.yml/remerge.yml) pārraksta visu data zaru ar orphan force-push, kuru checkout saraksts neietver iadt/ — tāpēc tas pazuda; šis ir starp-workflow trūkums, ko nevar pilnībā novērst tikai iadt.yml (nepieciešams papildināt pārējo publicētāju checkout sarakstus, ārpus #42 robežām). iadt.yml tagad beidzas ar kļūdu, ja rules.json nav izveidots/tukšs vai push/publicēšana neizdodas; build_iadt_rules.py publicē tikai spēkā esošos noteikumus (zaudējušos izraksta logā atsevišķi); tests/regress.js 4c pārbauda iadtRulesFor (rokas, auto, zaudējis).
 
 ## 4. Neizpildīts, rindā (secībā)
-1. Sentinel automātiski taviem objektiem + kaimiņiem (kadastru saraksts no lietotnes → nakts darbs → zils karodziņš nogabalā).
-2. LVC ceļi ar šķīdoņa ierobežojumiem, ATIS aizsargjoslas, VMD mizgrauža monitorings, LĢIA INSPIRE hidrogrāfija un reljefs 20 m.
-   Turpat: LAD lauku bloki pa ZV (liz_block_ha) un automātiska "LIZ blokā" / "LIZ parasts" aizpilde eksplikācijā (#41); tagad LIZ blokā ha jāievada ar roku, tāpēc zemes cena PAF ir nepilnīga.
-3. Izvešanas ceļu modelis 1. posms: OSM ceļi + grāvji + mitrums no meža tipiem → trase, pievešanas attālums auto izmaksās; 2. posms reljefs.
-4. Cirsmu sadalījums pēc atrašanās vietas (ne pēc krājas); "Manas cirsmas" plānošana ar filtriem (pie ceļa, sausa/slapja, izvešana, sezona) un mazo cirsmu apvienošanu.
-5. Supabase kopīgā CRM datubāze ar lomām (RLS), pieteikšanās bez parolēm, bezsaistes rinda; kontaktu bāze (pircēji, pārdevēji) ar vēsturi.
-6. Mežizstrāde: StanForD .hpr/.fpr imports, forvardera dati, manuālā ievade; API pēc partneru līgumiem.
-7. Loģistika: šoferu telefona ekrāns (sortiments, m³, no kuras krautuves, kurp), PVZ ģenerēšana, krautuves atlikums.
-8. Analīze: plāns pret faktu, pircēja uzmērījumu (brāķa) imports, rezultāti pa cilvēkiem (pircējs, meistars, operators, izvedējs, šoferis), naudas plūsmas prognoze fondam, investoru atskaite.
-9. Līgumu auto-ģenerēšana no tavām veidnēm; grāmatvedības eksports (Jumis/Moneo).
-10. AI pārskatītājs (teksta atzinums, ~25–35 tūkst. tokenu/vērtējums).
-11. Sīkumi: LKS-2020 skicēs (pāreja 01.10.2026), ortofoto fons skicēm, VMD klasifikatoru tabula, dabas vērtības pa nogabaliem, pircēju portāls (atlikts), nopirkto objektu vērtējuma iesaldēšana ar cenu momentuzņēmumu (tagad tas ir tikai informatīvs).
-12. Publicēšana: lietotne uz Netlify/Cloudflare Pages, lai strādā ārpus priekšskatījuma un telefonā.
+1. Cirsmu stratēģija (#48): divi piegājieni ar 20 m joslu kā noklusējums, viens piegājiens ar 90 m (23.p.) kā izvēle; D-cirtes divi ceļi (izlases cirte līdz kritiskajam G, tad KC; sugas svērtais D pa visiem ierakstiem); ha uz katra nogabala un cirsmas kartē. Diagnoze Nalobnes mežs 78880060148.
+2. LKS-2020 skicēs (#33), termiņš 01.10.2026.
+3. "Manas cirsmas" plānošana ar filtriem (pie ceļa, sausa/slapja, izvešana, sezona) un mazo cirsmu apvienošanu (#23).
+4. Supabase kopīgā CRM datubāze ar lomām (RLS), pieteikšanās bez parolēm, bezsaistes rinda (#24); kontaktu bāze ar vēsturi (#25).
+5. ĪADT atlikušās ~40 teritorijas pa nogabalu pēc ģeometrijas, bloķētājs atskaita (#40).
+6. LVC ceļi ar šķīdoņa ierobežojumiem, ATIS aizsargjoslas, VMD mizgrauža monitorings, LĢIA hidrogrāfija un reljefs 20 m (#20); izvešanas ceļu 2. posms reljefs.
+7. Mežizstrāde: StanForD .hpr/.fpr imports, forvardera dati, manuālā ievade (#27).
+8. Loģistika: šoferu telefona ekrāns, PVZ, krautuves atlikums (#28).
+9. Analīze: plāns pret faktu, brāķa imports, rezultāti pa cilvēkiem (#29); naudas plūsmas prognoze fondam, investoru atskaite (#30).
+10. Līgumu auto-ģenerēšana no veidnēm (#26); grāmatvedības eksports Jumis/Moneo (#31).
+11. AI pārskatītājs (#32).
+12. Sīkumi: novada lauks pagastu failā (#47), ortofoto fons, VMD klasifikatoru tabula, dabas vērtības pa nogabaliem (#34), pircēju portāls (#35), nopirkto objektu vērtējuma iesaldēšana ar cenu momentuzņēmumu.
+13. Publicēšana: Cloudflare Pages ar domēnu app.ff-forest.com (#36).
+
+Izdarīts 02.–04.09.2026 (bija šajā sarakstā): LAD lauku bloki un VZD eksplikācija (#41, #18), Sentinel nakts darbs ar LiDAR/Sentinel karti (#19), izvešanas ceļu 1. posms ar vienu krautuvi un izmaksu matricu (#21), cirsmu sadalījums pēc ģeometrijas (#22), data zara publicēšana (#43), auto ĪADT slānis (#42), OSM ceļi (#16), aizsargjoslas ar ŪSIK (#39), bonitāte pēc MK 384 (#46), ticamības pārbaude (#45), NĪ ar vairākām ZV (#44).
 
 ## 5. Vajag no tevis
 - Līgumu paraugi (visi veidi), viens .hpr harvestera fails, Jumis vai Moneo izvēle + importa faila paraugs, pircēju/pārdevēju saraksts sākumam.
