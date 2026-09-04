@@ -193,19 +193,20 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   return {rawTokenCount:rawTokens.length,resolvedCount:allResolved.length,numPairs:pairs.length,unbuffered,overLimit,numGroups:r.split.length,numBuffers:r.buffers.length,deferredM3:r.deferredM3,
    kcTotal:r.kc.sausie.m3+r.kc.slapjie.m3,blockedM3:r.blockedM3,splitsFailed:r.splits.map(s=>s.nog),
    nog15bloks:nog15.f.some(f=>f.t==="bloks"&&/23\\.p\\./.test(f.s)),nog15warn:nog15.f.find(f=>f.t==="warn"&&/sadalījuma līnija jāprecizē skicē/.test(f.s)),
-   nog15ier:nog15.f.find(f=>f.t==="ier"&&/MK935 23\\.p\\.\\): sadalīts/.test(f.s)),geomRings:ringsOf(nog15.m.geom).length,
-   nog15sp:nog15sp?{kcHa:nog15sp.kcHa,stripHa:nog15sp.stripHa,restHa:nog15sp.restHa,restM3:nog15sp.restM3,proportional:!!nog15sp.proportional}:null};})())`));
+   nog15ier:nog15.f.find(f=>f.t==="ier"&&/divi piegājieni — KC tagad/.test(f.s)),geomRings:ringsOf(nog15.m.geom).length,
+   nog15sp:nog15sp?{kcHa:nog15sp.kcHa,stripHa:nog15sp.stripHa,restHa:nog15sp.restHa,restM3:nog15sp.restM3,proportional:!!nog15sp.proportional,mode:nog15sp.mode,widthM:nog15sp.widthM}:null};})())`));
  ok(r22.rawTokenCount>0&&r22.resolvedCount===r22.rawTokenCount,"60700020059 (2 ZV, NĪ 'Bojāri'): kaiminiPairs atrisina VISUS p.kaimini pārus (agrāk 0, jo atslēgā trūka ZV) (got "+r22.resolvedCount+"/"+r22.rawTokenCount+")");
  ok(r22.numPairs>50,"no tiem piegulošie (robeža > 50 m, MK935 18.p.) ir vairāk par 50 (got "+r22.numPairs+")");
  ok(r22.overLimit.length===0,"neviena cirsma nepārsniedz MK935 15./16.p. limitu (got "+JSON.stringify(r22.overLimit)+")");
  ok(r22.unbuffered.length===0,"nevienam piegulošam cirsmu pārim nav joslas/atlikšanas (got "+JSON.stringify(r22.unbuffered)+")");
  ok(r22.numBuffers>0&&r22.deferredM3>0,"atdalošās joslas izveidotas, atliktie m³ > 0 (got buffers="+r22.numBuffers+", deferredM3="+r22.deferredM3+")");
  // #22 turpinājums: kopš pagastu pārbūves 03.09.2026 12:07 (SCHEMA_VERSION 2, caurumi saglabāti) kv.2 nog.15 ģeometrija ir 2 gredzeni,
- // poligona platība 5,506 ha ≈ VMD 5,53 ha, tāpēc strādā ĢEOMETRISKAIS dalījums (MK935 23.p., 90 m josla), nevis proporcionālais fallback.
- // Vērtības fiksētas pret data zaru 6d4419d: KC daļa 4,14 ha, josla 1,30 ha (487 m³), atlikums 0,06 ha; cirsma 1 = nog. 2/15 + 2/6 = 4,87 ha.
+ // poligona platība 5,506 ha ≈ VMD 5,53 ha, tāpēc strādā ĢEOMETRISKAIS dalījums, nevis proporcionālais fallback.
+ // #48 (04.09.2026): noklusējums vairs NAV 23.p. 90 m josla, bet "divi piegājieni" — KC tagad = limits 5,00 ha, atlikums ≈0,50 ha kā ≥20 m josla (20.p.).
+ // Vecās vērtības (viens piegājiens, 23.p.): KC 4,14 / 90 m josla 1,30 / atlikums 0,06 — tagad tikai pēc stratēģijas izvēles cirsmā (pārbaudīts Nalobnes blokā).
  ok(r22.geomRings===2,"kv.2 nog.15: ģeometrija ar caurumu (2 gredzeni) pēc pagastu pārbūves (got "+r22.geomRings+")");
- ok(!r22.nog15bloks&&!r22.nog15warn&&!!r22.nog15ier,"kv.2 nog.15: ģeometriskais dalījums (ier, MK935 23.p.), nav ne sarkana bloka, ne dzeltena proporcionālā karoga (got bloks="+r22.nog15bloks+", warn="+!!r22.nog15warn+", ier="+!!r22.nog15ier+")");
- ok(r22.nog15sp&&!r22.nog15sp.proportional&&r22.nog15sp.kcHa<=5&&Math.abs(r22.nog15sp.kcHa-4.14)<=0.15&&Math.abs(r22.nog15sp.stripHa-1.30)<=0.15&&r22.nog15sp.restHa<0.2,"kv.2 nog.15: ģeometriski KC daļa ≈4,14 ha (≤5), 90 m josla ≈1,30 ha, atlikums ≈0,06 ha (got "+JSON.stringify(r22.nog15sp)+")");
+ ok(!r22.nog15bloks&&!r22.nog15warn&&!!r22.nog15ier,"kv.2 nog.15: ģeometriskais dalījums 'divi piegājieni' (ier), nav ne sarkana bloka, ne dzeltena proporcionālā karoga (got bloks="+r22.nog15bloks+", warn="+!!r22.nog15warn+", ier="+!!r22.nog15ier+")");
+ ok(r22.nog15sp&&!r22.nog15sp.proportional&&r22.nog15sp.mode==="divi"&&r22.nog15sp.widthM===20&&Math.abs(r22.nog15sp.kcHa-5.0)<=0.05&&Math.abs(r22.nog15sp.stripHa+r22.nog15sp.restHa-0.5)<=0.1,"kv.2 nog.15 (#48 noklusējums): divi piegājieni, KC tagad ≈5,00 ha (= limits), atlikums ≈0,50 ha, josla ≥20 m, nekādas 90 m (got "+JSON.stringify(r22.nog15sp)+")");
  ok(r22.splitsFailed.length===0,"vairs nav neviena 'jāsadala ar roku' sarkanā bloka (proporcionālais fallback aizstāj) (got "+JSON.stringify(r22.splitsFailed)+")");
  const total22=r22.kcTotal+r22.deferredM3+r22.blockedM3;
  ok(Math.abs(total22-9340)<=100,"KC kopā + atliktie + bloķētie ≈ 9340 m³ (pirms-sadalīšanas summa, iekšēji konsekventa; PIEZĪME: issue #22 komentārā minētie 9079 m³ bija no 2 jau izveidotām rokas cirsmām, ne visu 56 nogabalu pilnās KC kopsummas — atskaitē paskaidrots) (got "+total22+")");
@@ -332,8 +333,36 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  w.eval(`(()=>{const mB=P().mer.find(m=>m.id==='${nogB.id}');mB.lidCover=65;mB.sentinel={kv:mB.kvartals,nog:String(mB.nogabals).split(".")[0],ndvi_prev:0.75,ndvi_now:0.40,delta:-0.35,flag:"zudums",checked:"2026-09-04"};})();`);
  const hSent=w.eval("S.mapLayer='sentinel';vDash()");
  ok(new RegExp("nog\\. "+nogB.nogabals).test(hSent)&&/nesakrīt/.test(hSent),"60700020059: pēc LiDAR/Sentinel injekcijas kartes tekstā parādās nesakritības nogabals "+nogB.nogabals+" (got satur nog. numuru: "+new RegExp("nog\\. "+nogB.nogabals).test(hSent)+")");
+ // #48: Nalobnes mežs (NĪ 78880060236, ZV 78880060148, pagasts 7888): cirsmu stratēģija 1/2 piegājieni, D-cirtes ceļi ar G-svērto D un izlases cirti
+ // Reālais 04.09.2026 plāns (1,96 + 0,61 ha) ir ar roku zīmēts, tests to NEpiesien; fiksē likuma noklusējumu: nog.1 2,52 ha Platlapju ārenis = MK935 15.2 (2 ha).
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ const nal=JSON.parse(w.eval(`JSON.stringify((()=>{const r=runChecks(P());const o=r.oversized[0];const c=P().cirsmas.find(c=>c.tips==="Kc");const m1=P().mer.find(m=>m.nogabals==="1"),m2=P().mer.find(m=>m.nogabals==="2"),m3=P().mer.find(m=>m.nogabals==="3");
+  return {nOver:r.oversized.length,mode:o&&o.mode,widthM:o&&o.widthM,kcHa:o&&o.kcHa,defHa:o?+(o.stripHa+o.restHa).toFixed(2):null,deferredM3:r.deferredM3,ier:r.nog.find(x=>x.m===m1).f.find(f=>f.t==="ier").s,
+   cPlat:c.platiba,cAtlHa:c.atliktsHa,cAtl:Math.round(c.atlikts),cStrat:c.strategy||"divi",m1D:m1.D,m2:{kods:m2.cirsmaKods,D:m2.D,Dmean:m2.Dmean,n:m2.Dentries.length,dp:dPaths(m2)},m3:{D:m3.D,dp:dPaths(m3)}};})())`));
+ ok(nal.nOver===1&&nal.mode==="divi"&&nal.widthM===20&&Math.abs(nal.kcHa-2.00)<=0.03&&Math.abs(nal.defHa-0.52)<=0.06,"Nalobnes nog.1 noklusējums: divi piegājieni, KC tagad 2,00 ha (= limits 2 ha, MK935 15.2), atlikums ≈0,52 ha kā ≥20 m josla, ne 90 m (got "+JSON.stringify({mode:nal.mode,widthM:nal.widthM,kcHa:nal.kcHa,defHa:nal.defHa})+")");
+ ok(/divi piegājieni/.test(nal.ier)&&/VMD izdala jaunu nogabalu/.test(nal.ier)&&!/23\.p/.test(nal.ier),"Nalobnes nog.1 karodziņš: 15.p. limits, 20.p. atlikšana, 'VMD izdala jaunu nogabalu', bez 23.p. (got "+nal.ier+")");
+ ok(Math.abs(nal.cPlat-nal.kcHa)<=0.01&&nal.cAtl>0&&Math.abs(nal.cAtlHa-(2.52-nal.kcHa))<=0.02,"Nalobnes cirsma: kartīte rāda to pašu ha, ko pārbaude (KC tagad "+nal.cPlat+" ha), atlikts "+nal.cAtl+" m³ / "+nal.cAtlHa+" ha (dalījums ir noklusējums, ne priekšlikums)");
+ ok(nal.deferredM3>0&&nal.cStrat==="divi","Nalobnes: atliktais > 0 m³, stratēģija noklusēti 'divi' (got deferredM3="+nal.deferredM3+")");
+ // D-cirte: valdošās sugas D = G-svērtais pa visiem sugas ierakstiem (nog.2 egle: D25/G11 un D32/G5 -> 27,2 cm), nevis lielākā G ieraksta 25 cm
+ ok(nal.m2.n===2&&Math.abs(nal.m2.D-27.2)<=0.05&&nal.m2.dp.dc===29&&nal.m2.dp.reach===false,"Nalobnes nog.2 egle: G-svērtais D 27,2 cm (2 ieraksti) < 29 cm (MK935 7. piel., bon. I) -> 1. ceļš (got D="+nal.m2.D+", dc="+nal.m2.dp.dc+")");
+ ok(Math.abs(nal.m2.Dmean-28.5)<=0.05&&nal.m2.dp.mean14===29,"Nalobnes nog.2: nesvērtais vidējais 28,5 -> 29 (MK935 14.p.) rādās tikai informatīvi (got "+nal.m2.Dmean+" -> "+nal.m2.dp.mean14+")");
+ const iz=nal.m2.dp.izlase;
+ ok(iz&&iz.ok===true&&Math.abs(iz.removeG-7.25)<=0.05&&Math.abs(iz.removeM3-101)<=4&&iz.gAfter>=iz.gkrit&&iz.newD===29,"Nalobnes nog.2 1. ceļš: izlases cirte izcērt tievāko egles ≈7,25 m²/ha (≈101 m³), G pēc tam "+(iz&&iz.gAfter)+" ≥ Gkrit "+(iz&&iz.gkrit)+" (MK935 1. piel., H 22 m), D -> 29 (got "+JSON.stringify(iz)+")");
+ ok(nal.m2.kods!=="KC","Nalobnes nog.2 nav KC (ne pēc vecuma 63<81, ne pēc svērtā D) (got '"+nal.m2.kods+"')");
+ ok(nal.m3.dp&&nal.m3.dp.reach===true&&nal.m3.dp.dc===31,"Nalobnes nog.3 priede D 32 ≥ 31 (7. piel., bon. II): 2. ceļš pieejams (got "+JSON.stringify({D:nal.m3.D,dc:nal.m3.dp.dc,reach:nal.m3.dp.reach})+")");
+ ok(Math.abs(nal.m1D-24.9)<=0.1,"Nalobnes nog.1 bērzs: svērtais D 24,9 (D26/G11 + D19/G2), agrāk 26 (got "+nal.m1D+")");
+ // pārslēgšana uz vienu piegājienu -> 23.p., 90 m, KC daļa < limits; atpakaļ uz divi
+ const kcId=w.eval("P().cirsmas.find(c=>c.tips==='Kc').id");
+ w.eval(`setStrategy('${kcId}','viens')`);
+ const nalV=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());const o=r.oversized[0];const c=P().cirsmas.find(c=>c.tips==='Kc');return {mode:o.mode,widthM:o.widthM,kcHa:o.kcHa,stripHa:o.stripHa,cPlat:c.platiba,ier:r.nog.find(x=>x.m.nogabals==='1').f.find(f=>f.t==='ier').s};})())"));
+ ok(nalV.mode==="viens"&&nalV.widthM===90&&nalV.kcHa<2&&Math.abs(nalV.kcHa-1.63)<=0.05&&Math.abs(nalV.stripHa-0.81)<=0.05&&/23\.p/.test(nalV.ier)&&Math.abs(nalV.cPlat-nalV.kcHa)<=0.01,"Nalobnes 'Viens piegājiens': 23.p., 90 m josla, KC daļa ≈1,63 ha, cirsma rāda to pašu (got "+JSON.stringify(nalV)+")");
+ w.eval(`setStrategy('${kcId}','divi')`);
+ // 1. ceļa izvēle nog.2: atsevišķa cirsma 'Izlase' (ne KC, limits neattiecas) ar aplēstajiem m³
+ const n2id=w.eval("P().mer.find(m=>m.nogabals==='2').id");w.eval(`chooseDPath('${n2id}','izlase')`);
+ const nalI=JSON.parse(w.eval("JSON.stringify((()=>{const m2=P().mer.find(m=>m.nogabals==='2');const c=P().cirsmas.find(c=>c.tips==='Izlase');return {kods:m2.cirsmaKods,plan:m2.dPlan&&m2.dPlan.path,cTips:c&&c.tips,cBruto:c&&Math.round(c.bruto),cPlat:c&&c.platiba,kcOver:runChecks(P()).oversized.length};})())"));
+ ok(nalI.kods==="Izlase"&&nalI.plan==="izlase"&&nalI.cTips==="Izlase"&&Math.abs(nalI.cBruto-101)<=4&&nalI.kcOver===1,"Nalobnes nog.2 pēc izvēles: cirsmaKods 'Izlase', atsevišķa cirsma Izlase ≈101 m³ / "+nalI.cPlat+" ha, KC dalījums nog.1 nemainās (got "+JSON.stringify(nalI)+")");
  // 11. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve","loadSentinel","lidarSentinelMismatch","sentinelCol","lidarCol"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve","loadSentinel","lidarSentinelMismatch","sentinelCol","lidarCol","dPaths","chooseDPath","strategyOfM","setStrategy","recalcProp"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
  ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
