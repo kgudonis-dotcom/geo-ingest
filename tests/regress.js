@@ -378,6 +378,18 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  w.eval("(()=>{const p=P();p.splitVer=undefined;const c=p.cirsmas.find(c=>c.tips==='Kc');c.manual=true;c.platiba=1.96;})()");
  const mig2=JSON.parse(w.eval("JSON.stringify((()=>{const ch=migrateSplit(P());return {ch,plat:P().cirsmas.find(c=>c.tips==='Kc').platiba};})())"));
  ok(mig2.ch===false&&mig2.plat===1.96,"Esošs objekts: ar roku labota cirsma (1,96 ha) pārrēķinā netiek aiztikta (got "+JSON.stringify(mig2)+")");
+ // #48 hotfix (04.09.2026): b88919d ražošanā Cirsmu sadaļa krita ar "CSTAT is not defined" (rindas komentārs aprija const CSTAT), regress to nenoķēra, jo
+ // neviens tests nerenderēja cilnes ar ATVĒRTU cirsmas kartīti. Renderē visas cilnes reāliem objektiem; jebkurš ReferenceError/TypeError krīt šeit.
+ const viewErr=(view,openId)=>w.eval(`(()=>{S.view='${view}';S.open=${openId?"'"+openId+"'":"null"};try{const fn={dash:vDash,cirs:vCirs,mer:vMer,val:vVal,docs:vDocs}[S.view];const h=fn();return h.length>500?"":"tukšs ("+h.length+")";}catch(e){return e.constructor.name+": "+e.message;}})()`);
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ for(const v of ["dash","cirs","mer","val","docs"]){const e=viewErr(v,null);ok(e==="","Nalobnes cilne '"+v+"' renderējas bez kļūdas"+(e?" (got "+e+")":""));}
+ const cids=JSON.parse(w.eval("JSON.stringify(P().cirsmas.map(c=>c.id+'|'+cTips(c)))"));
+ for(const cid of cids){const [id,tips]=cid.split("|");const e=viewErr("cirs",id);ok(e==="","Nalobnes Cirsmas ar atvērtu kartīti ("+tips+") renderējas — CSTAT, stratēģija, atlikuma puse"+(e?" (got "+e+")":""));}
+ const rendered=w.eval("(()=>{S.view='cirs';S.open=P().cirsmas[0].id;render();return document.getElementById('main').innerHTML;})()");
+ ok(!/Kļūda attēlojot sadaļu/.test(rendered)&&/Statuss/.test(rendered),"Nalobnes render(): Cirsmu sadaļa nav tukša un bez 'Kļūda attēlojot sadaļu'");
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,2500));
+ for(const v of ["dash","cirs","mer","val","docs"]){const e=viewErr(v,null);ok(e==="","60700020059 cilne '"+v+"' renderējas bez kļūdas"+(e?" (got "+e+")":""));}
+ {const cid=w.eval("P().cirsmas[0].id");const e=viewErr("cirs",cid);ok(e==="","60700020059 Cirsmas ar atvērtu kartīti renderējas"+(e?" (got "+e+")":""));}
  // 11. Koda sadaļu integritāte
  const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve","loadSentinel","lidarSentinelMismatch","sentinelCol","lidarCol","dPaths","chooseDPath","strategyOfM","setStrategy","recalcProp","migrateSplit","autoCirsmas","bestRestSide","restSideAuto","sharedBoundaryM","futureKC","setRestSide","cTips"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");

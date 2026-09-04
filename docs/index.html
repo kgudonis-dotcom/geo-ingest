@@ -150,7 +150,7 @@ const DEFAULT_SORT_BY_D={
 };
 function sortSharesForD(sp,D){const tbl=(S.sortByD||DEFAULT_SORT_BY_D)[sp]||DEFAULT_SORT_BY_D[sp]||[[0,{"Malka":1}]];let row=tbl[0];for(const r of tbl)if(num(D)>=r[0])row=r;
  const out={};for(const [sort] of S.prices[sp])out[sort]=0;for(const k in row[1]){if(k in out)out[k]+=row[1][k];else out["Malka"]=(out["Malka"]||0)+row[1][k];}return out;}
-const CUT_TYPES=["Kc","KKC","Izlase","Sanitārā","Rekonstruktīvā"];const SPLIT_VER=2; // #48: cirsmu dalījuma noteikumu versija; objektam ar citu versiju atverot pārrēķina (migrateSplit)const CSTAT=["Plānota","Iesniegta VMD","Apliecinājums","Izstrādē","Pabeigta"];
+const CUT_TYPES=["Kc","KKC","Izlase","Sanitārā","Rekonstruktīvā"];const SPLIT_VER=2;/* #48: cirsmu dalījuma noteikumu versija; objektam ar citu versiju atverot pārrēķina (migrateSplit) */const CSTAT=["Plānota","Iesniegta VMD","Apliecinājums","Izstrādē","Pabeigta"];
 function finishCirsma(cid,faktM3){const p=P();const c=C(cid);const linked=p.mer.filter(m=>m.cirsma===cid);const yr=new Date().getFullYear();
  for(const m of linked){m.man=m.man||{};const before=krajaMer(m);
   if(c.tips==="Kc"||c.tips==="Rekonstruktīvā"){m.krajaImp=0;m.veids="Izcirtums";m.vecums=0;m.cirsmaKods="";m.pedCirte=`${c.tips} ${yr}`;m.jaatjauno=true;["krajaImp","veids","vecums","cirsmaKods","pedCirte"].forEach(k=>m.man[k]="auto: cirsma pabeigta "+yr);}
