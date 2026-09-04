@@ -333,51 +333,71 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  w.eval(`(()=>{const mB=P().mer.find(m=>m.id==='${nogB.id}');mB.lidCover=65;mB.sentinel={kv:mB.kvartals,nog:String(mB.nogabals).split(".")[0],ndvi_prev:0.75,ndvi_now:0.40,delta:-0.35,flag:"zudums",checked:"2026-09-04"};})();`);
  const hSent=w.eval("S.mapLayer='sentinel';vDash()");
  ok(new RegExp("nog\\. "+nogB.nogabals).test(hSent)&&/nesakrīt/.test(hSent),"60700020059: pēc LiDAR/Sentinel injekcijas kartes tekstā parādās nesakritības nogabals "+nogB.nogabals+" (got satur nog. numuru: "+new RegExp("nog\\. "+nogB.nogabals).test(hSent)+")");
- // #48: Nalobnes mežs (NĪ 78880060236, ZV 78880060148, pagasts 7888): cirsmu stratēģija 1/2 piegājieni, D-cirtes ceļi ar G-svērto D un izlases cirti
+ // #49: cirsmas kā nogabalu DAĻAS (poligoni), piegājieni kā ĪSTAS cirsmas ar parts[]/stage/dependsOn. Nalobnes mežs (NĪ 78880060236, ZV 78880060148, pagasts 7888).
  // Reālais 04.09.2026 plāns (1,96 + 0,61 ha) ir ar roku zīmēts, tests to NEpiesien; fiksē likuma noklusējumu: nog.1 2,52 ha Platlapju ārenis = MK935 15.2 (2 ha).
  w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
- const nal=JSON.parse(w.eval(`JSON.stringify((()=>{const r=runChecks(P());const o=r.oversized[0];const c=P().cirsmas.find(c=>c.tips==="Kc");const m1=P().mer.find(m=>m.nogabals==="1"),m2=P().mer.find(m=>m.nogabals==="2"),m3=P().mer.find(m=>m.nogabals==="3");
-  return {nOver:r.oversized.length,mode:o&&o.mode,widthM:o&&o.widthM,kcHa:o&&o.kcHa,defHa:o?+(o.stripHa+o.restHa).toFixed(2):null,deferredM3:r.deferredM3,ier:r.nog.find(x=>x.m===m1).f.find(f=>f.t==="ier").s,
-   cPlat:c.platiba,cAtlHa:c.atliktsHa,cAtl:Math.round(c.atlikts),cStrat:c.strategy||"divi",m1D:m1.D,m2:{kods:m2.cirsmaKods,D:m2.D,Dmean:m2.Dmean,n:m2.Dentries.length,dp:dPaths(m2)},m3:{D:m3.D,dp:dPaths(m3)},
-   sanAuto:!!(P().cirsmas.find(c=>c.sanIzlase)&&m2.dPlan&&m2.dPlan.auto)};})())`));
+ const nal=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const r=runChecks(p);const o=r.oversized[0];const c1=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2);const c2=p.cirsmas.find(c=>c.stage===2);const san=p.cirsmas.find(c=>c.sanIzlase);
+  const m1=p.mer.find(m=>m.nogabals==="1"),m2=p.mer.find(m=>m.nogabals==="2"),m3=p.mer.find(m=>m.nogabals==="3");
+  const totalJoslas=p.cirsmas.reduce((a,c)=>a+(c.parts||[]).filter(pp=>pp.kind==="josla").length,0);
+  const joslaMulti=p.cirsmas.flatMap(c=>(c.parts||[])).filter(pp=>pp.kind==="josla").some(pp=>pp.poly&&pp.poly.type==="MultiPolygon");
+  const t=calcProp(p);
+  return {nOver:r.oversized.length,mode:o&&o.mode,widthM:o&&o.widthM,kcHa:o&&o.kcHa,side:o&&o.side,nbNog:o&&o.sideAuto&&o.sideAuto.nb&&o.sideAuto.nb.x.m.nogabals,ier:r.nog.find(x=>x.m===m1).f.find(f=>f.t==="ier").s,
+   c1Plat:c1.platiba,c1AtlHa:c1.atliktsHa,c1Atl:Math.round(c1.atlikts),c1Parts:c1.parts.map(pp=>[pp.kind,+pp.ha.toFixed(2)]),
+   c2Plat:c2&&c2.platiba,c2Bruto:c2&&Math.round(c2.bruto),c2DepOk:c2&&c2.dependsOn===c1.id,c2Nog:c2&&c2.nogabali,c2Blocked:c2&&c2.blockedNote,
+   totalJoslas,joslaMulti,m1D:m1.D,m2:{kods:m2.cirsmaKods,D:m2.D,Dmean:m2.Dmean,n:m2.Dentries.length,dp:dPaths(m2)},m3:{kods:m3.cirsmaKods,dp:dPaths(m3)},
+   sanAuto:!!(san&&m2.dPlan&&m2.dPlan.auto),sanTips:san&&cTips(san),sanBruto:san&&Math.round(san.bruto),sanPlat:san&&san.platiba,
+   tHa:t.ha,tM3:t.m3,def2:t.deferred2,summary:summaryTable(p,t),svgHatch:(planSvg(p).match(/<path[^>]*fill="url\\(#hatch\\)"/g)||[]).length};})())`));
  ok(nal.sanAuto===true,"Nalobnes nog.2: sanitārā izlase piedāvāta AUTOMĀTISKI jau izveidē (dPlan.auto), pirms jebkādas izvēles");
- ok(nal.nOver===1&&nal.mode==="divi"&&nal.widthM===20&&Math.abs(nal.kcHa-2.00)<=0.03&&Math.abs(nal.defHa-0.52)<=0.06,"Nalobnes nog.1 noklusējums: divi piegājieni, KC tagad 2,00 ha (= limits 2 ha, MK935 15.2), atlikums ≈0,52 ha kā ≥20 m josla, ne 90 m (got "+JSON.stringify({mode:nal.mode,widthM:nal.widthM,kcHa:nal.kcHa,defHa:nal.defHa})+")");
+ ok(nal.nOver===1&&nal.mode==="divi"&&nal.widthM===20&&Math.abs(nal.kcHa-2.00)<=0.03,"Nalobnes nog.1 noklusējums: divi piegājieni, KC tagad 2,00 ha (= limits 2 ha, MK935 15.2) (got "+JSON.stringify({mode:nal.mode,widthM:nal.widthM,kcHa:nal.kcHa})+")");
  ok(/divi piegājieni/.test(nal.ier)&&/VMD izdala jaunu nogabalu/.test(nal.ier)&&!/23\.p/.test(nal.ier),"Nalobnes nog.1 karodziņš: 15.p. limits, 20.p. atlikšana, 'VMD izdala jaunu nogabalu', bez 23.p. (got "+nal.ier+")");
- ok(Math.abs(nal.cPlat-nal.kcHa)<=0.01&&nal.cAtl>0&&Math.abs(nal.cAtlHa-(2.52-nal.kcHa))<=0.02,"Nalobnes cirsma: kartīte rāda to pašu ha, ko pārbaude (KC tagad "+nal.cPlat+" ha), atlikts "+nal.cAtl+" m³ / "+nal.cAtlHa+" ha (dalījums ir noklusējums, ne priekšlikums)");
- ok(nal.deferredM3>0&&nal.cStrat==="divi","Nalobnes: atliktais > 0 m³, stratēģija noklusēti 'divi' (got deferredM3="+nal.deferredM3+")");
+ ok(Math.abs(nal.c1Plat-nal.kcHa)<=0.01&&nal.c1Atl>0&&nal.c1AtlHa>0,"Nalobnes 1. piegājiena cirsma: platība = KC daļas ha ("+nal.c1Plat+"), atlikts "+nal.c1Atl+" m³ / "+nal.c1AtlHa+" ha joslas daļā");
+ ok(nal.c1Parts.length===2&&nal.c1Parts.some(x=>x[0]==="KC")&&nal.c1Parts.some(x=>x[0]==="josla"),"Nalobnes 1. piegājiena cirsmai c.parts = [KC, josla] (got "+JSON.stringify(nal.c1Parts)+")");
+ ok(nal.totalJoslas===1,"Nalobnes: tikai VIENA josla (nog.1 pašas sadalīšanas strēle) — nog.3 vairs NAV sava KC grupa, tāpēc nav starp-grupu 18.p. joslas (got "+nal.totalJoslas+")");
+ ok(nal.joslaMulti===true,"Nalobnes josla ir MultiPolygon (turf.intersect fragmenti) — pārbauda, ka tā tomēr ir VIENA c.parts rinda, nevis vairākas");
+ ok(nal.svgHatch===nal.totalJoslas,"planSvg zīmē tieši tik hatch <path> elementu, cik ir josla daļu ("+nal.totalJoslas+") — arī MultiPolygon josla ir VIENS <path>, nevis atsevišķs <polygon> pa fragmentiem (#49 precizējums 4) (got "+nal.svgHatch+")");
  // D-cirte: valdošās sugas D = G-svērtais pa visiem sugas ierakstiem (nog.2 egle: D25/G11 un D32/G5 -> 27,2 cm), nevis lielākā G ieraksta 25 cm
  ok(nal.m2.n===2&&Math.abs(nal.m2.D-27.2)<=0.05&&nal.m2.dp.dc===29&&nal.m2.dp.reach===false,"Nalobnes nog.2 egle: G-svērtais D 27,2 cm (2 ieraksti) < 29 cm (MK935 7. piel., bon. I) -> 1. ceļš (got D="+nal.m2.D+", dc="+nal.m2.dp.dc+")");
  ok(Math.abs(nal.m2.Dmean-28.5)<=0.05&&nal.m2.dp.mean14===29,"Nalobnes nog.2: nesvērtais vidējais 28,5 -> 29 (MK935 14.p.) rādās tikai informatīvi (got "+nal.m2.Dmean+" -> "+nal.m2.dp.mean14+")");
  const iz=nal.m2.dp.izlase;
  ok(iz&&iz.ok===true&&Math.abs(iz.removeG-7.25)<=0.05&&Math.abs(iz.removeM3-101)<=4&&iz.gAfter>=iz.gkrit&&iz.newD===29,"Nalobnes nog.2 1. ceļš: izlases cirte izcērt tievāko egles ≈7,25 m²/ha (≈101 m³), G pēc tam "+(iz&&iz.gAfter)+" ≥ Gkrit "+(iz&&iz.gkrit)+" (MK935 1. piel., H 22 m), D -> 29 (got "+JSON.stringify(iz)+")");
  ok(nal.m2.kods!=="KC","Nalobnes nog.2 nav KC (ne pēc vecuma 63<81, ne pēc svērtā D) (got '"+nal.m2.kods+"')");
- ok(nal.m3.dp&&nal.m3.dp.reach===true&&nal.m3.dp.dc===31,"Nalobnes nog.3 priede D 32 ≥ 31 (7. piel., bon. II): 2. ceļš pieejams (got "+JSON.stringify({D:nal.m3.D,dc:nal.m3.dp.dc,reach:nal.m3.dp.reach})+")");
+ ok(nal.m3.dp&&nal.m3.dp.reach===true&&nal.m3.dp.dc===31,"Nalobnes nog.3 priede D 32 ≥ 31 (7. piel., bon. II): D-ceļš pieejams (got "+JSON.stringify(nal.m3.dp)+")");
+ ok(nal.m3.kods!=="KC","Nalobnes nog.3 NEkļūst par savu 1. piegājiena KC cirsmu tikai tāpēc, ka D sasniegts — KC pēc D paliek lietotāja izvēle (chooseDPath), automātiski to izmanto tikai 2. piegājiena piegulošā-nogabala pārbaude (got '"+nal.m3.kods+"')");
  ok(Math.abs(nal.m1D-24.9)<=0.1,"Nalobnes nog.1 bērzs: svērtais D 24,9 (D26/G11 + D19/G2), agrāk 26 (got "+nal.m1D+")");
- // pārslēgšana uz vienu piegājienu -> 23.p., 90 m, KC daļa < limits; atpakaļ uz divi
- const kcId=w.eval("P().cirsmas.find(c=>c.tips==='Kc').id");
- w.eval(`setStrategy('${kcId}','viens')`);
- const nalV=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());const o=r.oversized[0];const c=P().cirsmas.find(c=>c.tips==='Kc');return {mode:o.mode,widthM:o.widthM,kcHa:o.kcHa,stripHa:o.stripHa,cPlat:c.platiba,ier:r.nog.find(x=>x.m.nogabals==='1').f.find(f=>f.t==='ier').s};})())"));
+ // 2. piegājiens: ĪSTA cirsma (stage 2), dependsOn = 1. piegājiena cirsmas id, = atlikums (nog.1 daļa) + nog.3 (nākotnes KC pēc D, piegulošs ≥ 50 m)
+ ok(nal.nbNog==="3"&&nal.side==="D","Nalobnes atlikuma puse: nog.1 atlikums piegulošs nog.3 (nākotnes KC pēc D) dienvidu malā (got mala '"+nal.side+"', kaimiņš "+nal.nbNog+")");
+ ok(nal.c2DepOk===true&&nal.c2Nog==="1;3",'Nalobnes 2. piegājiena cirsma: dependsOn = 1. piegājiena cirsmas id, nogabali "1;3" (nog.1 atlikums + nog.3) (got nog='+nal.c2Nog+", depOk="+nal.c2DepOk+")");
+ ok(nal.c2Plat>=0.65&&nal.c2Plat<=0.80&&nal.c2Bruto>150&&nal.c2Bruto<220,"Nalobnes 2. piegājiens ≈0,72 ha / ≈187 m³ (nog.1 atlikums ≈0,29 ha + nog.3 0,43 ha) (got "+nal.c2Plat+" ha, "+nal.c2Bruto+" m³)");
+ ok(!nal.c2Blocked,"Nalobnes 2. piegājiens: nog.3 NAV bloķēts (pēdējā darbība 2021, >3 g, MK935 7.piel. piezīme neattiecas) (got '"+nal.c2Blocked+"')");
+ ok(nal.sanTips==="Sanitārā izlase"&&Math.abs(nal.sanBruto-101)<=4&&Math.abs(nal.sanPlat-1.35)<=0.02,"Nalobnes nog.2 cirsma 'Sanitārā izlase' ≈101 m³ / 1,35 ha (got "+nal.sanTips+", "+nal.sanBruto+" m³, "+nal.sanPlat+" ha)");
+ ok(/Sanitārā izlase/.test(nal.summary)&&/2\. piegājiens/.test(nal.summary)&&/D pēc tam 29 cm, KC iespējama/.test(nal.summary)&&/pēc 1\. piegājiena CA noslēgšanas/.test(nal.summary),"Nalobnes Kopsavilkums: sanitārā izlase ar piezīmi un 2. piegājiena rinda ar 'pēc 1. piegājiena CA noslēgšanas' gada kolonnā");
+ ok(Math.abs(nal.tHa-3.35)<=0.01&&nal.tM3>0,"Nalobnes: KOPĀ (1. piegājiens) ha = KC tagad 2,00 + sanitārā 1,35 = 3,35 ha (got "+nal.tHa+")");
+ ok(nal.def2&&Math.abs(nal.def2.ha-0.72)<=0.03&&nal.def2.m3>150&&nal.def2.m3<220,"Nalobnes: #49 precizējums 2 — 2. piegājiens (0,72 ha / ≈187 m³) skaitās calcProp t.deferred2 (atliktā vērtība), NAV ieskaitīts t.ha/t.m3 (got "+JSON.stringify(nal.def2)+")");
+ // pārslēgšana uz vienu piegājienu -> 23.p., 90 m, KC daļa < limits; atpakaļ uz divi. Strategy tagad dzīvo uz NOGABALA (m.strategy), ne cirsmas — cirsma katru buildParts atjaunojas.
+ const nog1Id=w.eval("P().mer.find(m=>m.nogabals==='1').id");
+ w.eval(`setStrategy('${nog1Id}','viens')`);
+ const nalV=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());const o=r.oversized[0];const c=P().cirsmas.find(c=>c.tips==='Kc'&&c.stage!==2);return {mode:o.mode,widthM:o.widthM,kcHa:o.kcHa,stripHa:o.stripHa,cPlat:c.platiba,ier:r.nog.find(x=>x.m.nogabals==='1').f.find(f=>f.t==='ier').s};})())"));
  ok(nalV.mode==="viens"&&nalV.widthM===90&&nalV.kcHa<2&&Math.abs(nalV.kcHa-1.63)<=0.05&&Math.abs(nalV.stripHa-0.81)<=0.05&&/23\.p/.test(nalV.ier)&&Math.abs(nalV.cPlat-nalV.kcHa)<=0.01,"Nalobnes 'Viens piegājiens': 23.p., 90 m josla, KC daļa ≈1,63 ha, cirsma rāda to pašu (got "+JSON.stringify(nalV)+")");
- w.eval(`setStrategy('${kcId}','divi')`);
- // 1. ceļa izvēle nog.2: atsevišķa cirsma 'Izlase' (ne KC, limits neattiecas) ar aplēstajiem m³
+ w.eval(`setStrategy('${nog1Id}','divi')`);
+ const nalD=JSON.parse(w.eval("JSON.stringify((()=>{const c=P().cirsmas.find(c=>c.tips==='Kc'&&c.stage!==2);return {cPlat:c.platiba};})())"));
+ ok(Math.abs(nalD.cPlat-2.00)<=0.01,"Nalobnes: atpakaļ uz 'divi piegājieni' -> KC daļa atkal 2,00 ha (got "+nalD.cPlat+")");
+ // 1. ceļa izvēle nog.2 ar roku (chooseDPath): m.cirsmaManual, cirsma c.manual -> assignAutoCirtesVeids/buildParts to vairs neaiztiek
  const n2id=w.eval("P().mer.find(m=>m.nogabals==='2').id");w.eval(`chooseDPath('${n2id}','izlase')`);
- const nalI=JSON.parse(w.eval("JSON.stringify((()=>{const m2=P().mer.find(m=>m.nogabals==='2');const c=P().cirsmas.find(c=>c.sanIzlase);return {kods:m2.cirsmaKods,plan:m2.dPlan&&m2.dPlan.path,cTips:c&&cTips(c),cBruto:c&&Math.round(c.bruto),cPlat:c&&c.platiba,kcOver:runChecks(P()).oversized.length};})())"));
- ok(nalI.kods==="Izlase"&&nalI.plan==="izlase"&&nalI.cTips==="Sanitārā izlase"&&Math.abs(nalI.cBruto-101)<=4&&nalI.kcOver===1,"Nalobnes nog.2 pēc izvēles: cirsmaKods 'Izlase', atsevišķa cirsma 'Sanitārā izlase' ≈101 m³ / "+nalI.cPlat+" ha, KC dalījums nog.1 nemainās (got "+JSON.stringify(nalI)+")");
- // #48 labojumi (04.09.2026): atlikuma puse pēc ≥ 50 m piegulības ar nākotnes KC nogabalu (nog. 3, priede D 32 ≥ 31), 2. piegājiens, auto sanitārā izlase, pārrēķins esošiem objektiem
- const nalS=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());const o=r.oversized[0];const s=r.secondPass[0];const nb=s&&s.nbs.find(n=>n.x.m.nogabals==='3');const san=P().cirsmas.find(c=>c.sanIzlase);const lb=legalBlocks(P());const m=lb.match(/Realistiskais apjoms<\\/h2>.*?<b>([^<]*)<\\/b>/);return {side:o.side,nbNog:o.sideAuto&&o.sideAuto.nb&&o.sideAuto.nb.x.m.nogabals,cutLenM:o.cutLenM,stripHa:o.stripHa,sharedM:nb&&nb.sharedM,nbOk:nb&&nb.ok,sp2ha:s&&s.ha,sp2year:s&&s.year,sanTips:san&&cTips(san),sanBruto:san&&Math.round(san.bruto),sanAuto:!!(san&&P().mer.find(x=>x.cirsma===san.id&&x.dPlan&&x.dPlan.auto)),summary:summaryTable(P(),calcProp(P())),realistic:m&&m[1],tHa:calcProp(P()).ha};})())"));
- ok(nalS.nbNog==="3"&&nalS.sharedM>=50&&nalS.nbOk===true,"Nalobnes atlikuma puse: mala, kur atlikums ar nog. 3 (nākotnes KC pēc D) dala ≥ 50 m — nog. 3 ir dienvidrietumos, robeža gar dienvidu malu (got mala "+nalS.side+", robeža "+nalS.sharedM+" m)");
- ok(nalS.sp2ha>=0.9&&nalS.sp2ha<=1.0&&nalS.sp2year===new Date().getFullYear()+3,"Nalobnes 2. piegājiens = atlikums + nog. 3 ≈0,95 ha (dabā plānoti 1,03) (got "+nalS.sp2ha+" ha, "+nalS.sp2year+")");
- ok(nalS.cutLenM>50&&nalS.stripHa>0,"Nalobnes: KC un atlikuma saskare "+nalS.cutLenM+" m > 50 -> 20 m josla ir (stripHa "+nalS.stripHa+")");
- ok(nalS.sanTips==="Sanitārā izlase"&&Math.abs(nalS.sanBruto-101)<=4,"Nalobnes nog.2 piedāvātā cirsma 'Sanitārā izlase' ≈101 m³ (got "+nalS.sanTips+", "+nalS.sanBruto+" m³)");
- ok(/Sanitārā izlase/.test(nalS.summary)&&/2\. piegājiens/.test(nalS.summary)&&/D pēc tam 29 cm, KC iespējama/.test(nalS.summary),"Nalobnes Kopsavilkums: sanitārā izlase ar piezīmi un 2. piegājiena rinda");
- ok(/3,35 ha/.test(nalS.realistic||"")&&Math.abs(nalS.tHa-3.35)<=0.01,"Nalobnes: Realistiskais apjoms (KC tagad 2,00 + sanitārā 1,35 = 3,35 ha) = Kopsavilkuma ha (got '"+nalS.realistic+"', t.ha "+nalS.tHa+")");
- // pārrēķins esošam (saglabātam) objektam: simulē veco stāvokli (bez dalījuma, bez sanitārās), tad migrateSplit
- w.eval("(()=>{const p=P();p.splitVer=undefined;p.cirsmas=p.cirsmas.filter(c=>!c.sanIzlase);for(const m of p.mer){if(m.cirsmaKods==='Izlase'){m.cirsmaKods='';delete m.dPlan;m.cirsma='';}m.buferPct=0;delete m.kcHaEff;}const c=p.cirsmas.find(c=>c.tips==='Kc');c.platiba=2.52;c.atlikts=0;})()");
- const mig=JSON.parse(w.eval("JSON.stringify((()=>{const ch=migrateSplit(P());const c=P().cirsmas.find(c=>c.tips==='Kc');return {ch,plat:c.platiba,san:P().cirsmas.filter(c=>c.sanIzlase).length,log:P().log[0].text,ver:P().splitVer};})())"));
- ok(mig.ch===true&&Math.abs(mig.plat-2.00)<=0.01&&mig.san===1&&/pārrēķinātas pēc jaunajiem noteikumiem/.test(mig.log)&&mig.ver===2,"Esošs objekts: atverot pārrēķina (2,52 -> 2,00 ha, sanitārā pievienota, ieraksts vēsturē) (got "+JSON.stringify(mig)+")");
- w.eval("(()=>{const p=P();p.splitVer=undefined;const c=p.cirsmas.find(c=>c.tips==='Kc');c.manual=true;c.platiba=1.96;})()");
- const mig2=JSON.parse(w.eval("JSON.stringify((()=>{const ch=migrateSplit(P());return {ch,plat:P().cirsmas.find(c=>c.tips==='Kc').platiba};})())"));
- ok(mig2.ch===false&&mig2.plat===1.96,"Esošs objekts: ar roku labota cirsma (1,96 ha) pārrēķinā netiek aiztikta (got "+JSON.stringify(mig2)+")");
+ const nalI=JSON.parse(w.eval("JSON.stringify((()=>{const m2=P().mer.find(m=>m.nogabals==='2');const c=P().cirsmas.find(c=>c.sanIzlase);return {kods:m2.cirsmaKods,plan:m2.dPlan&&m2.dPlan.path,manual:!!m2.cirsmaManual,cManual:!!(c&&c.manual)};})())"));
+ ok(nalI.kods==="Izlase"&&nalI.plan==="izlase"&&nalI.manual===true&&nalI.cManual===true,"Nalobnes nog.2 pēc izvēles ar roku: cirsmaKods 'Izlase', m.cirsmaManual un cirsmas c.manual iestatīti (got "+JSON.stringify(nalI)+")");
+ // pārrēķins esošam (saglabātam) objektam: simulē objektu no PIRMS #49 (bez parts, sanitārā/2.piegājiens vēl nav atvasināti), tad migrateSplit
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ w.eval("(()=>{const p=P();p.splitVer=undefined;p.cirsmas=[];for(const m of p.mer){m.cirsma='';if(m.cirsmaKods==='Izlase'){m.cirsmaKods='';delete m.dPlan;}delete m.strategy;delete m.restSide;delete m.cirsmaManual;}})()");
+ const mig=JSON.parse(w.eval("JSON.stringify((()=>{const ch=migrateSplit(P());const p=P();return {ch,ncirsmas:p.cirsmas.length,ver:p.splitVer,log:p.log[0].text,stages:p.cirsmas.map(c=>c.stage).sort(),partsVer:PARTS_VER};})())"));
+ ok(mig.ch===true&&mig.ncirsmas===3&&JSON.stringify(mig.stages)==="[1,1,2]"&&/pārrēķinātas pēc jaunajiem noteikumiem/.test(mig.log)&&mig.ver===mig.partsVer,"Esošs objekts: atverot pārbūvē uz #49 modeli (3 cirsmas: KC 1. piegājiens + sanitārā + 2. piegājiens, versija atjaunota) (got "+JSON.stringify(mig)+")");
+ w.eval("(()=>{const p=P();p.splitVer=undefined;const c=p.cirsmas.find(c=>c.tips==='Kc'&&c.stage!==2);c.manual=true;c.platiba=1.96;})()");
+ const mig2=JSON.parse(w.eval("JSON.stringify((()=>{const ch=migrateSplit(P());return {plat:P().cirsmas.find(c=>c.tips==='Kc'&&c.stage!==2&&c.manual).platiba};})())"));
+ ok(mig2.plat===1.96,"Esošs objekts: ar roku labota cirsma (1,96 ha, c.manual) pārrēķinā netiek aiztikta (got "+JSON.stringify(mig2)+")");
+ // sintētisks nogabals: valdošā suga (augstākais G) egle D25, otra suga bērzs D32 -> valdošās sugas D paliek egles D (≈25), nesajaucas ar bērza D32 (#49 diagnoze: kods jau pareizs, testā nofiksēts)
+ const dTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p={zv:[],mer:[],cirsmas:[],log:[]};
+  mergeZvInto(p,"9999",[{props:{kvartals:"1",nogabals:"99",platiba_ha:1,mt:24,s10:3,a10:60,h10:22,d10:25,g10:20,s11:4,a11:40,h11:18,d11:32,g11:5}}]);
+  const m=p.mer[0];return {suga:m.suga,D:m.D};})())`));
+ ok(dTest.suga==="Egle"&&Math.abs(dTest.D-25)<0.5,"Sintētisks nogabals: valdošā suga egle D25/G20 + bērzs D32/G5 (mazāks G) -> valdošās sugas D paliek ≈25, NEsajaucas ar bērza 32 (got "+JSON.stringify(dTest)+")");
  // #48 hotfix (04.09.2026): b88919d ražošanā Cirsmu sadaļa krita ar "CSTAT is not defined" (rindas komentārs aprija const CSTAT), regress to nenoķēra, jo
  // neviens tests nerenderēja cilnes ar ATVĒRTU cirsmas kartīti. Renderē visas cilnes reāliem objektiem; jebkurš ReferenceError/TypeError krīt šeit.
  const viewErr=(view,openId)=>w.eval(`(()=>{S.view='${view}';S.open=${openId?"'"+openId+"'":"null"};try{const fn={dash:vDash,cirs:vCirs,mer:vMer,val:vVal,docs:vDocs}[S.view];const h=fn();return h.length>500?"":"tukšs ("+h.length+")";}catch(e){return e.constructor.name+": "+e.message;}})()`);
@@ -391,7 +411,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  for(const v of ["dash","cirs","mer","val","docs"]){const e=viewErr(v,null);ok(e==="","60700020059 cilne '"+v+"' renderējas bez kļūdas"+(e?" (got "+e+")":""));}
  {const cid=w.eval("P().cirsmas[0].id");const e=viewErr("cirs",cid);ok(e==="","60700020059 Cirsmas ar atvērtu kartīti renderējas"+(e?" (got "+e+")":""));}
  // 11. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve","loadSentinel","lidarSentinelMismatch","sentinelCol","lidarCol","dPaths","chooseDPath","strategyOfM","setStrategy","recalcProp","migrateSplit","autoCirsmas","bestRestSide","restSideAuto","sharedBoundaryM","futureKC","setRestSide","cTips"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve","loadSentinel","lidarSentinelMismatch","sentinelCol","lidarCol","dPaths","chooseDPath","strategyOfM","setStrategy","recalcProp","migrateSplit","autoCirsmas","bestRestSide","restSideAuto","sharedBoundaryM","futureKC","setRestSide","cTips","buildParts","finalizePartsCirsma","assignAutoCirtesVeids","recentActivity","partSvgPath","partLatLngs","partCentroid","partFeature","rebuildAutoParts"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
  ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");
