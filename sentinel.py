@@ -1,6 +1,10 @@
 """Sentinel-2 vainaga zudums pa nogabaliem (Copernicus Data Space, Sentinel Hub Statistical API).
 Salīdzina vasaras (jūn-aug) vidējo NDVI pērn un šogad; kritums > 0.25 = vainaga zudums (izcirtums, vējgāze, mizgrauzis).
-Tests: python sentinel.py --kad 70600050074 ; Pilns: --pagasts 7060 (visas ZV) -> sentinel/<PPPP>.json.gz"""
+Tests: python sentinel.py --kad 70600050074 ; Pilns: --pagasts 7060 (visas ZV) -> sentinel/<PPPP>.json.gz
+#19: --kad pieņem arī komatu atdalītu sarakstu (var aptvert vairākus pagastus vienā palaidienā); --neighbors N katram
+--kad ZV papildus apstrādā tās top-N kaimiņus (pēc robežas garuma, no zvd["kaimini"], tikai tā paša pagasta ietvaros —
+nakts darbam (sentinel-nightly.yml, SENTINEL_WATCH). Izvade APVIENOJAS ar iepriekšējo sentinel/<PPPP>.json.gz, nevis
+pārraksta — citādi katra nākamā palaišana dzēstu iepriekšējo vēsturi (bija kļūda pirms #19)."""
 import os, sys, json, gzip, argparse, datetime, requests, time
 TOKEN_URL="https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
 STATS_URL="https://sh.dataspace.copernicus.eu/api/v1/statistics"
@@ -34,20 +38,50 @@ def analyse(tok,kad,zv,yr):
         a,e1=stats(tok,rings,f"{yr-1}-06-01",f"{yr-1}-08-31");b,e2=stats(tok,rings,f"{yr}-06-01",f"{yr}-08-31")
         d=None if a is None or b is None else round(b-a,3)
         flag="zudums" if d is not None and d<-0.25 else ("kritums" if d is not None and d<-0.12 else "")
-        out.append({"kv":st.get("kv"),"nog":st.get("nog"),"ndvi_prev":a and round(a,3),"ndvi_now":b and round(b,3),"delta":d,"flag":flag,"err":e1 or e2})
+        out.append({"kv":st.get("kv"),"nog":st.get("nog"),"ndvi_prev":a and round(a,3),"ndvi_now":b and round(b,3),"delta":d,"flag":flag,"err":e1 or e2,"checked":datetime.date.today().isoformat()}) # #19: katram ierakstam sava pārbaudes diena (apvienotā failā ieraksti no dažādām naktīm)
         print(f"  {kad} kv{st.get('kv')} nog{st.get('nog')}: {a and round(a,2)} -> {b and round(b,2)} {flag} {e1 or e2 or ''}",flush=True)
     return out
-def main():
-    ap=argparse.ArgumentParser();ap.add_argument("--kad");ap.add_argument("--pagasts");ap.add_argument("--limit",type=int,default=0);a=ap.parse_args()
-    yr=datetime.date.today().year;tok=token();print("Copernicus autorizācija OK",flush=True)
-    pg=(a.kad or a.pagasts)[:4]
-    with gzip.open(f"pagasti/{pg}.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
-    res={};kads=[a.kad] if a.kad else list(d["zv"].keys())
-    if a.limit:kads=kads[:a.limit]
-    for k in kads:
-        if k not in d["zv"]:print("nav pagasta failā:",k);continue
-        res[k]=analyse(tok,k,d["zv"][k],yr)
+def load_merge_write(pg,yr,res):
+    # #19: apvieno ar iepriekšējo sentinel/<pg>.json.gz (ja ir), nevis pārraksta -- šī palaidiena atjauno tikai to ZV, ko tā apstrādāja
+    old={}
+    try:
+        with gzip.open(f"sentinel/{pg}.json.gz","rt",encoding="utf-8") as f:old=json.load(f).get("zv",{})
+    except (FileNotFoundError,OSError,json.JSONDecodeError):pass
+    merged=dict(old);merged.update(res)
     os.makedirs("sentinel",exist_ok=True)
-    with gzip.open(f"sentinel/{pg}.json.gz","wt",encoding="utf-8") as f:json.dump({"pagasts":pg,"year":yr,"updated":datetime.date.today().isoformat(),"zv":res},f,ensure_ascii=False)
-    n=sum(1 for v in res.values() for x in v if x["flag"]);print(f"gatavs: {len(res)} ZV, {n} nogabali ar vainaga zudumu",flush=True)
+    with gzip.open(f"sentinel/{pg}.json.gz","wt",encoding="utf-8") as f:json.dump({"pagasts":pg,"year":yr,"updated":datetime.date.today().isoformat(),"zv":merged},f,ensure_ascii=False)
+    return merged
+def main():
+    ap=argparse.ArgumentParser();ap.add_argument("--kad");ap.add_argument("--pagasts");ap.add_argument("--limit",type=int,default=0)
+    ap.add_argument("--neighbors",type=int,default=0,help="#19: katram --kad papildus apstrādā tā top-N kaimiņus (zvd.kaimini, tikai tā paša pagasta)")
+    a=ap.parse_args()
+    yr=datetime.date.today().year;tok=token();print("Copernicus autorizācija OK",flush=True)
+    if a.kad:
+        kads_in=[k.strip() for k in a.kad.split(",") if k.strip()] # #19: --kad tagad pieņem arī komatu atdalītu sarakstu, var aptvert vairākus pagastus
+        by_pg={}
+        for k in kads_in:by_pg.setdefault(k[:4],[]).append(k)
+    else:
+        pg0=(a.pagasts or "")[:4]
+        by_pg={pg0:None} # None = visas ZV šajā pagastā (vecā --pagasts uzvedība)
+    totalZV=0;totalFlag=0
+    for pg,klist in by_pg.items():
+        with gzip.open(f"pagasti/{pg}.json.gz","rt",encoding="utf-8") as f:d=json.load(f)
+        kads=list(klist) if klist else list(d["zv"].keys())
+        if a.neighbors and klist: # kaimiņu paplašināšana tikai --kad (nakts) ceļā, ne --pagasts (viss pagasts jau ir viss)
+            seen=set(kads)
+            for k in list(kads):
+                zvd=d["zv"].get(k)
+                if not zvd:continue
+                for nb in (zvd.get("kaimini") or [])[:a.neighbors]:
+                    nk=nb.get("kad")
+                    if nk and nk not in seen and nk[:4]==pg:seen.add(nk);kads.append(nk)
+        if a.limit:kads=kads[:a.limit]
+        res={}
+        for k in kads:
+            if k not in d["zv"]:print("nav pagasta failā:",k);continue
+            res[k]=analyse(tok,k,d["zv"][k],yr)
+        merged=load_merge_write(pg,yr,res)
+        totalZV+=len(res);totalFlag+=sum(1 for v in res.values() for x in v if x["flag"])
+        print(f"  {pg}: {len(res)} ZV šajā palaidienā ({len(merged)} kopā failā)",flush=True)
+    print(f"gatavs: {totalZV} ZV apstrādātas, {totalFlag} nogabali ar vainaga zudumu/kritumu",flush=True)
 if __name__=="__main__":main()

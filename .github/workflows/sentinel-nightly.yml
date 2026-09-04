@@ -1,11 +1,15 @@
-name: sentinel
+name: sentinel-nightly
+# #19: katru nakti apstrādā SENTINEL_WATCH kadastrus + katra top 5 kaimiņus (pēc robežas garuma). Rezultāti
+# apvienojas ar iepriekšējo sentinel/<PPPP>.json.gz (sentinel.py load_merge_write), nevis pārraksta.
 on:
-  push: {branches: [main], paths: [SENTINEL_RUN]}
+  schedule:
+    - cron: "30 1 * * *"
+  push: {branches: [main], paths: [SENTINEL_WATCH]}
 permissions: {contents: write}
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     outputs:
       has_result: ${{ steps.check.outputs.has_result }}
     steps:
@@ -18,18 +22,25 @@ jobs:
           git fetch --force origin data:data || true
           git --work-tree=. checkout data -- pagasti || true
           git --work-tree=. checkout data -- sentinel || true
-          ls pagasti | head -3
-      - run: set -o pipefail; python -u sentinel.py $(cat SENTINEL_RUN) 2>&1 | tee run.log
+      - id: kads
+        run: |
+          KADS=$(grep -vE '^\s*#|^\s*$' SENTINEL_WATCH 2>/dev/null | tr -d ' \r' | paste -sd, -)
+          echo "kads=$KADS" >> "$GITHUB_OUTPUT"
+          echo "SENTINEL_WATCH kadastri: $KADS"
+      - if: steps.kads.outputs.kads != ''
+        run: set -o pipefail; python -u sentinel.py --kad "${{ steps.kads.outputs.kads }}" --neighbors 5 2>&1 | tee run.log
         env: {CDSE_ID: "${{ secrets.CDSE_ID }}", CDSE_SECRET: "${{ secrets.CDSE_SECRET }}"}
+      - if: steps.kads.outputs.kads == ''
+        run: echo "SENTINEL_WATCH tukšs, nekā darīt" | tee run.log
       - if: always()
         run: |
           git config user.name bot; git config user.email b@l
-          mkdir -p logs; cp run.log "logs/sentinel_$(date -u +%F_%H%M).md"; git add logs; git commit -m "sentinel log" && git pull --rebase origin main && git push || true
+          mkdir -p logs; cp run.log "logs/sentinel_nightly_$(date -u +%F_%H%M).md"; git add logs; git commit -m "sentinel nightly log" && git pull --rebase origin main && git push || true
       - id: check
         run: (ls sentinel/*.json.gz >/dev/null 2>&1 && echo "has_result=true" || echo "has_result=false") >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@v4
         if: steps.check.outputs.has_result == 'true'
-        with: {name: sentinel-result, path: "sentinel/", retention-days: 3}
+        with: {name: sentinel-nightly-result, path: "sentinel/", retention-days: 3}
   publish:
     needs: build
     if: needs.build.outputs.has_result == 'true'
@@ -39,5 +50,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
-        with: {name: sentinel-result, path: sentinel}
+        with: {name: sentinel-nightly-result, path: sentinel}
       - run: bash scripts/publish_data.sh sentinel

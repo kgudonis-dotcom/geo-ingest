@@ -306,8 +306,34 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(Math.abs(c21r.avgDist-1248.8)<2,"60700020059: svērtais vidējais izvešanas attālums ≈1249 m pa ceļu tīklu uz vienu krautuvi (got "+c21r.avgDist.toFixed(1)+")");
  const iz21r=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(P()))"));
  ok(iz21r.ok&&Math.abs(iz21r.cost-80689)<50,"60700020059: izvešanas izmaksas ≈80 689 € (bāzes likmes, #21) (got "+iz21r.cost.toFixed(0)+")");
+ // #19: LiDAR/Sentinel salīdzinājums — sintētisks zināms pāris (sakrīt un nesakrīt), karodziņš un izcēlums
+ w=await app();
+ w.eval(`var _sMatch={kv:"2",nog:"5",ndvi_prev:0.75,ndvi_now:0.74,delta:-0.01,flag:"",checked:"2026-09-01"};
+  var _sLoss={kv:"2",nog:"6",ndvi_prev:0.75,ndvi_now:0.40,delta:-0.35,flag:"zudums",checked:"2026-09-01"};
+  var _mOk={id:"o1",kvartals:"2",nogabals:"5",lidCover:70,sentinel:_sMatch}; // LiDAR pilns (70%) + Sentinel bez izmaiņām -> sakrīt
+  var _mMismatch1={id:"o2",kvartals:"2",nogabals:"6",lidCover:65,sentinel:_sLoss}; // Sentinel zudums, bet LiDAR vēl pilns (65%) -> NESAKRĪT
+  var _sNoLoss={kv:"2",nog:"7",ndvi_prev:0.75,ndvi_now:0.73,delta:-0.02,flag:"",checked:"2026-09-01"};
+  var _mMismatch2={id:"o3",kvartals:"2",nogabals:"7",lidCover:15,sentinel:_sNoLoss}; // LiDAR reti (15%), bet Sentinel zudumu nerāda -> NESAKRĪT (otra puse)
+  var _mNoData={id:"o4",kvartals:"2",nogabals:"8",lidCover:null,sentinel:_sMatch}; // nav LiDAR -> nav salīdzinājuma
+ `);
+ ok(w.eval("lidarSentinelMismatch(_mOk)")===null,"#19 LiDAR 70% + Sentinel bez izmaiņām: sakrīt, nav karodziņa (got "+JSON.stringify(w.eval("lidarSentinelMismatch(_mOk)"))+")");
+ const mm1=w.eval("lidarSentinelMismatch(_mMismatch1)");
+ ok(typeof mm1==="string"&&/zudum/.test(mm1)&&/65/.test(mm1)&&/piesardzīgi/.test(mm1),"#19 Sentinel zudums + LiDAR 65% (pilns): nesakrīt, teksts min zudumu, LiDAR % un piesardzības piezīmi (got "+mm1+")");
+ const mm2=w.eval("lidarSentinelMismatch(_mMismatch2)");
+ ok(typeof mm2==="string"&&/15/.test(mm2)&&/piesardzīgi/.test(mm2),"#19 LiDAR 15% (reti) + Sentinel bez zuduma: nesakrīt otrā virzienā (got "+mm2+")");
+ ok(w.eval("lidarSentinelMismatch(_mNoData)")===null,"#19 bez LiDAR datiem: nav salīdzinājuma, nav kļūdas (got "+JSON.stringify(w.eval("lidarSentinelMismatch(_mNoData)"))+")");
+ ok(w.eval("sentinelCol(_mMismatch1)")==="#c0392b"&&w.eval("sentinelCol(_mOk)")==="#2c6a47","#19 sentinelCol: sarkans zudumam, zaļš bez izmaiņām (got "+w.eval("sentinelCol(_mMismatch1)")+", "+w.eval("sentinelCol(_mOk)")+")");
+ ok(w.eval("lidarCol(_mMismatch2)")==="#c0392b"&&w.eval("lidarCol(_mOk)")==="#2c6a47","#19 lidarCol: sarkans <30%, zaļš ≥50% (got "+w.eval("lidarCol(_mMismatch2)")+", "+w.eval("lidarCol(_mOk)")+")");
+ // reāls objekts: karte rāda nesakritības izcēlumu un LiDAR "nav pieejams" pogu, kad neviens nogabals to nenorāda
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ const hBase=w.eval("S.mapLayer=null;vDash()");
+ ok(/LiDAR šim apgabalam nav pieejams/.test(hBase),"60700020059: bez ievadīta LiDAR seguma poga LiDAR segums ir atspējota ar paskaidrojumu (nogabaliem nav LiDAR)");
+ const nogB=w.eval("P().mer.filter(m=>m.geom)[1]");
+ w.eval(`(()=>{const mB=P().mer.find(m=>m.id==='${nogB.id}');mB.lidCover=65;mB.sentinel={kv:mB.kvartals,nog:String(mB.nogabals).split(".")[0],ndvi_prev:0.75,ndvi_now:0.40,delta:-0.35,flag:"zudums",checked:"2026-09-04"};})();`);
+ const hSent=w.eval("S.mapLayer='sentinel';vDash()");
+ ok(new RegExp("nog\\. "+nogB.nogabals).test(hSent)&&/nesakrīt/.test(hSent),"60700020059: pēc LiDAR/Sentinel injekcijas kartes tekstā parādās nesakritības nogabals "+nogB.nogabals+" (got satur nog. numuru: "+new RegExp("nog\\. "+nogB.nogabals).test(hSent)+")");
  // 11. Koda sadaļu integritāte
- const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
+ const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve","loadSentinel","lidarSentinelMismatch","sentinelCol","lidarCol"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");
  ok(fs.existsSync("data/mk384_bonitate.json"),"data/mk384_bonitate.json eksistē");
  ok(!/onchange="vf\('(sale|buy)\./.test(src)&&/setLandPrice\('\$\{r\.k\}','sale'/.test(src),"Novērtējumā nav cenu lauku; cenas €/ha ir sadaļā Cenas (setLandPrice)");

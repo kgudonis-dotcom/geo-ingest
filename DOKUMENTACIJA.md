@@ -76,7 +76,7 @@ Lauku nozīme (VMD Meža valsts reģistra struktūra):
 | `build_pagasti.py` | Novelk VMD MVR SHP pa virsmežniecībām (data.gov.lv CKAN API), DAP 6 datu kopas, LVM īpašniekus (no Release "mirror"), LAD lauku blokus (`karte.lad.gov.lv`), VZD eksplikāciju un NĪ saiti (`parcel.zip`/`property.zip`); katram nogabalam vienkāršo ģeometriju, katrai ZV rēķina kaimiņus, ĪADT pārklājumu, lielos īpašniekus; raksta `pagasti/*.json.gz` | `--index N` (viens VMD fails, matricas darbam), `--filter vidzem`, `--no-owners`, `--no-iadt`, `--no-lad`, `--no-expl`, `--no-ni`, `--first` | `pagasti/` mape |
 | `merge_pagasti.py` | Apvieno vairāku paralēlo darbu artefaktus ar esošo datu zaru (esošais + jaunais, jaunais uzvar) | `artifacts/**` | `pagasti/` |
 | `build_infra.py` | OSM (Geofabrik) ceļi un ūdensteces pa pagastiem (pagasta aptvērums + 2 km). #39: `watera[].geom` MultiPolygon.coordinates formātā (visi bbox-apgriešanas fragmenti + caurumi, ne tikai lielākais) Pagasta bbox no `stands[].geom` caur `geom_points()` — lasa gan SCHEMA_VERSION 2 gredzenu sarakstu, gan veco plakano gredzenu (03.09.2026 pēc pagastu pārbūves būve krita ar TypeError). | `pagasti/` | `infra/PPPP.json.gz` |
-| `sentinel.py` | Copernicus Sentinel-2: vasaras NDVI pērn pret šogad katram nogabalam; kritums > 0,25 = vainaga zudums Nogabala ģeometriju sūta kā GeoJSON Polygon ar caurumiem (SCHEMA_VERSION 2 gredzeni; vecais plakanais gredzens arī der) — caurumu platība NDVI netiek ieskaitīta. | `--kad` vai `--pagasts`, noslēpumi `CDSE_ID`, `CDSE_SECRET` | `sentinel/PPPP.json.gz` |
+| `sentinel.py` | Copernicus Sentinel-2: vasaras NDVI pērn pret šogad katram nogabalam; kritums > 0,25 = vainaga zudums Nogabala ģeometriju sūta kā GeoJSON Polygon ar caurumiem (SCHEMA_VERSION 2 gredzeni; vecais plakanais gredzens arī der) — caurumu platība NDVI netiek ieskaitīta. #19: `--kad` pieņem arī komatu atdalītu sarakstu (vairāki pagasti vienā palaidienā); `--neighbors N` katram `--kad` papildus apstrādā tā top-N kaimiņus (`zvd.kaimini`, tikai tā paša pagasta). Rezultāts apvieno ar iepriekšējo `sentinel/PPPP.json.gz` (`load_merge_write`), nevis pārraksta; katram ierakstam sava `checked` diena. | `--kad` (viens vai vairāki) vai `--pagasts`, `--neighbors`, noslēpumi `CDSE_ID`, `CDSE_SECRET` | `sentinel/PPPP.json.gz` |
 | `export_geo.py` | Vienas ZV ģeometrija (no DB vai tieši no VMD zip) | `EXPORT_REQ` fails: `<kadastrs> <filtrs>` | `geo/<kadastrs>.json` |
 | `ingest.py`, `schema.sql` | Rezerves ceļš: tie paši dati Supabase PostGIS datubāzē ar RPC `geo_by_kadastrs` | `DATABASE_URL` | tabulas `stands`, `protected`, `expl`, `classifiers` |
 | `discover.py` | Izlūkošana: kuras datu kopas ir, kādi lauki, kuri serveri no GitHub sasniedzami | `DISCOVER` fails | logs |
@@ -94,7 +94,7 @@ Lauku nozīme (VMD Meža valsts reģistra struktūra):
 | **VZD `parcel.zip`** (data.gov.lv, "kadastra-informacijas-sistemas-atvertie-dati") | `expl` (lietošanas mērķu eksplikācija) | reizi ceturksnī, kopā ar VMD būvi |
 | VZD `property.zip` (tā pati datu kopa) | `ni {nr, name}` | reizi ceturksnī, kopā ar VMD būvi |
 | OSM (Geofabrik) | `infra/PPPP.json.gz` (ceļi, grāvji) | reizi mēnesī (7. datumā) |
-| Copernicus Sentinel-2 | `sentinel/PPPP.json.gz` (NDVI kritums) | pēc pieprasījuma, tikai saviem objektiem |
+| Copernicus Sentinel-2 | `sentinel/PPPP.json.gz` (NDVI kritums) | pēc pieprasījuma (`SENTINEL_RUN`) UN katru nakti (`SENTINEL_WATCH`, #19) — abi apvieno rezultātus, nevis pārraksta, tikai saviem/sekojamiem objektiem |
 
 ### 3.3. Darbplūsmas (GitHub Actions, mape `.github/workflows`)
 Palaišana notiek ar "trigera failiem": izmainot failu repo, sākas darbs. Tas izvēlēts tāpēc, ka piekļuves talonam nav tiesību palaist darbus tieši.
@@ -105,6 +105,7 @@ Palaišana notiek ar "trigera failiem": izmainot failu repo, sākas darbs. Tas i
 | `remerge.yml` | `REMERGE` (saturs = run id) | Atkārto apvienošanu no esošiem artefaktiem bez pārbūves | pēc pieprasījuma |
 | `infra.yml` | `INFRA_RUN` | OSM ceļi un grāvji | 7. datumā katru mēnesi |
 | `sentinel.yml` | `SENTINEL_RUN` (saturs = argumenti) | Sentinel-2 | pēc pieprasījuma |
+| `sentinel-nightly.yml` (#19) | `SENTINEL_WATCH` (kadastri, viens rindā, ar roku uzturēts kā `PAGASTI_ARGS`) | Sentinel-2 tikai SENTINEL_WATCH kadastriem + katra top 5 kaimiņiem (`--neighbors 5`, no `kaimini`, tikai tā paša pagasta ietvaros) | katru nakti (01:30 UTC) |
 | `export.yml` | `EXPORT_REQ` | vienas ZV eksports | pēc pieprasījuma |
 | `discover.yml` | `DISCOVER` | izlūkošana | pēc pieprasījuma |
 | `ingest.yml` | `RUN_ARGS` | Supabase ielāde (rezerve) | 5. janv., apr., jūl., okt. |
@@ -112,7 +113,7 @@ Palaišana notiek ar "trigera failiem": izmainot failu repo, sākas darbs. Tas i
 
 Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vienmēr var redzēt, kas notika.
 
-**Datu publicēšana `data` zarā (#43).** Visas sešas darbplūsmas, kas raksta uz `data` zaru (`pagasti.yml`, `remerge.yml`, `infra.yml`, `aplieci.yml`, `sentinel.yml`, `iadt.yml`), publicēšanai izmanto vienu kopīgu skriptu `scripts/publish_data.sh <apakšmape> [<apakšmape> ...]`, nevis katra savu kopiju. Tas:
+**Datu publicēšana `data` zarā (#43).** Visas septiņas darbplūsmas, kas raksta uz `data` zaru (`pagasti.yml`, `remerge.yml`, `infra.yml`, `aplieci.yml`, `sentinel.yml`, `sentinel-nightly.yml`, `iadt.yml`), publicēšanai izmanto vienu kopīgu skriptu `scripts/publish_data.sh <apakšmape> [<apakšmape> ...]`, nevis katra savu kopiju. Tas:
 - aizvieto TIKAI norādīto(-ās) apakšmapi(-es) (piem. `pagasti`, `infra`, `iadt`) ar parastu commit uz `data` zaru — pārējais zara saturs (citu avotu apakšmapes) paliek neskarts;
 - ja `push` tiek noraidīts, jo kāds cits darbs starplaikā jau publicējis (divas darbplūsmas mēģina rakstīt vienlaicīgi) — fetch + rebase + push mēģina vēlreiz līdz 3 reizēm;
 - tukšas apakšmapes drošinātājs: ja norādītajā apakšmapē nav neviena faila, skripts beidzas ar kļūdu un nekas nepublicējas (nekad nepublicē tukšu rezultātu);
@@ -156,6 +157,7 @@ Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vien
 | VMD OBJEKTS | `buildFromGeo`, `MT_CODES`, `SP_CODES`, `wgsToLks` | kodu atšifrēšana, LKS-92 projekcija |
 | KAIMIŅU IZCIRTUMI | `neighbourCuts` | svaigie izcirtumi kaimiņu ZV |
 | IZVEŠANAS CEĻI (#21) | `roadGraph`, `dijkstraPath`, `krautuveAuto`, `izvedCalc`, `izvedIzmaksas`, `moveKrautuve`, `resetKrautuve` | viena krautuve objektam (auto/rediģējama), Dijkstra pa ceļu tīklu katram cērtamajam nogabalam, svērtais vidējais attālums, izvešanas izmaksu formula |
+| LIDAR / SENTINEL (#19) | `loadSentinel`, `lidarSentinelMismatch`, `sentinelCol`, `lidarCol` | Sentinel datu ielāde pa nogabalu (`m.sentinel`), LiDAR (`m.lidH`/`m.lidCover`, ar roku, bez datuma) un Sentinel salīdzinājums, nesakritības teksts un krāsas Pārskata kartes slāņiem |
 | ROBEŽU PLĀNS | `planSvg` | SVG plāns ar cirsmām, joslām, izcirtumiem |
 | DASTOJUMS | `treeVol` (Liepa), `tallyCalc`, `parseMezverte`, `parsePielikums10`, `applyTally` | koku uzmērīšanas imports |
 | EXCEL / IESNIEGUMS | `exportXlsx`, `iesniegumsHtml`, `CIRTES_VEIDI` | eksports un VMD veidlapa |
@@ -185,11 +187,13 @@ Katrs darbs ieraksta savu izdruku mapē `logs/` (galvenajā zarā), tāpēc vien
 
 **Izvešanas ceļi (#21, 1. posms).** Objektam ir VIENA krautuve (`p.krautuve = {lon,lat,manual}`): ja lietotājs to nav pārvietojis kartē, `krautuveAuto` piedāvā tuvāko/loģiskāko publiskā ceļa pieslēgumu objekta robežas tuvumā (dod priekšroku īstiem ceļiem — motorway...residential — pār track/path). Katram cērtamajam nogabalam (KC/KKC, kas jau grupēts cirsmā) `izvedCalc` rēķina efektīvāko ceļu uz krautuvi: ceļu segmentu virsotnes (LKS-92 metros) veido grafu, Dijkstra atrod īsāko ceļu starp nogabala un krautuves tuvākajiem grafa mezgliem, pieskaitot taisnās līnijas posmus no nogabala centroīda un krautuves līdz šiem mezgliem; ja ceļu tīkls konkrētajai daļai nav savienots (bieži OSM retumā), rezultāts ir taisnās līnijas tuvinājums. Objekta vidējais attālums = svērtais vidējais (svars = nogabala m³) no visiem šiem attālumiem. Izmaksu formula (`izvedIzmaksas`, Iestatījumi → Izvešanas izmaksas): bāzes likme + max(0, vidējais − bāzes attālums) / 100 × papildu likme, × cērtamais m³; summējas `calcProp` kopējās izmaksās (Novērtējums, Cenas, augšējā rīkjosla). Ja infra dati nav ielādēti vai krautuve nav norādīta: izmaksa 0, dzeltens karodziņš "izvešanas attālums nav aprēķināts". Karte (Pārskats): krautuves marķieris (velkams) un katra nogabala maršruta līnija.
 
+**LiDAR/Sentinel salīdzinājums (#19).** LiDAR (`m.lidH`, `m.lidCover`) ir un paliek TIKAI ar roku ievadīti lauki bez datuma — šajā projektā nav automātiska LiDAR seguma darba/kešā. Sentinel (`sentinel/PPPP.json.gz`) tagad ielādējas objektā (`loadSentinel`) un piesaistās nogabalam pēc kvartāla + nogabala numura (`m.sentinel`). `lidarSentinelMismatch(m)` salīdzina abus, kur abiem ir dati: Sentinel zudums/kritums + LiDAR segums ≥ 50 % ("vēl pilns"), vai otrādi — LiDAR < 30 % ("reta audze"), bet Sentinel zudumu nerāda; teksts vienmēr satur piesardzības piezīmi par LiDAR datuma trūkumu. Pārskata kartē (`mountMap`/`vDash`, tā pati vienīgā interaktīvā nogabalu karte — Vērtējumā/Cirsmās tādas nav) divi pārslēdzami slāņi (`S.mapLayer`: `null`/`"lidar"`/`"sentinel"`) maina nogabalu krāsojumu un legendu; nesakritība — raustīts sarkans kontūrs neatkarīgi no aktīvā slāņa, un teksts ar nogabala numuru zem kartes. Tā pati `lidarSentinelMismatch` pārbaude paceļ "Dabas apskate" uzdevumu uz 2 dienu (nevis 7) termiņu `setStatus`. Nakts darbs: `sentinel-nightly.yml` (`SENTINEL_WATCH`).
+
 ### 4.4. Lietošana soli pa solim
 1. Atver https://kgudonis-dotcom.github.io/geo-ingest/ (telefonā: "Pievienot sākuma ekrānam"). Pirmajā reizē izvēlies valodu.
 2. Iestatījumi: īpašnieka rekvizīti (iesniegumam), komanda un lomas, naudas izmaksas %, mērķa bruto %, buferjoslas platums. Cenas: sortimentu cenas, zemes cenas, izmaksas.
 3. Objekti → kadastra numurs(-i) → Izveidot (vairākus ZV atdala ar atstarpi, komatu vai jaunu rindu — ielādējas vienā objektā uzreiz). Ja NĪ ietver vēl citas ZV tajā pašā pagasta failā, tās piedāvā modālī (kadastrs, ha, nogabalu skaits, krāja m³; ievadītā ZV vienmēr atzīmēta). Vai Importēt (Kadastra atskaite, VMD PDF); ģeometrija pieliekas pati. Katrā objekta kartītē "+ ZV" pievieno vēl kadastrus (arī citā pagastā) ar to pašu modāli; ZV noņemšana (× pie kadastra Cirsmās) atstāj nogabalus objektā ar atzīmi "bez ZV". Arhivēšana un dzēšana (tikai jaunam objektam bez vērtējuma/vēstures) ir Objektu sarakstā, abas ar apstiprinājumu (#44).
-4. Pārskats: KPI, karte, uzdevumi, komentāri, vēsture, rezultāts šodien. Statusa maiņa objekta kartītē (Cirsmas) rada uzdevumus.
+4. Pārskats: KPI, karte (poga LiDAR/Sentinel slāņu pārslēgšanai, #19), uzdevumi, komentāri, vēsture, rezultāts šodien. Statusa maiņa objekta kartītē (Cirsmas) rada uzdevumus.
 5. Cirsmas: NĪ numurs/nosaukums (tikai lasāms, no VZD datiem) un ZV saraksts galvenē; pārbaudi likumdošanas bloku (sarkans = nedrīkst), robežu plānu, katrai cirsmai sortimentus, izmaksas, brīvā teksta izvešanas ceļa/krautuves piezīmi (VMD iesniegumam); "Importēt dastojumu", ja mežā uzmērīts; "Pabeigt cirsmu" ar faktu, kad nocirsts. Objekta VIENU faktisko krautuvi un aprēķinātos izvešanas attālumus skaties Pārskatā, kartē (#21).
 6. Mērījumi: labo to, ko redz dabā (lauks kļūst dzeltens); viss pārrēķinās.
 7. Novērtējums: zemes rindas, darījums, nodeva, IRR, bruto peļņa, prasītās cenas, "Kāpēc šie skaitļi".
