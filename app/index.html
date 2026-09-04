@@ -891,14 +891,15 @@ function neighboursCard(p){if(!(p.kaimZV&&p.kaimZV.length)&&!(p.lielie&&p.lielie
 /* ---------- ĪADT INDIVIDUĀLIE NOTEIKUMI (pēc likumi.lv, 2026-09-01) ----------
    Atslēga: ĪADT nosaukums (kā DAP datos) -> zona (kā zonējuma NAME) -> noteikumi. "*" = visās zonās / bez zonējuma.
    Lauki: kcMax (ha, null = KC aizliegta), kcWet (ha slapjiem tipiem), galvena (false = galvenā cirte aizliegta), kopsanaAge {suga:gadi} (KKC aizliegta virs),
-   season "15.03-31.07" (mežsaimnieciskā darbība aizliegta), bigD (cm, kokus resnākus par to necērt), eco (eko koki/ha), izlase (galvenā cirte tikai izlases veidā), notes[] */
+   season "15.03-31.07" (mežsaimnieciskā darbība aizliegta), bigD (cm, kokus resnākus par to necērt), eco (eko koki/ha), izlase (galvenā cirte tikai izlases veidā),
+   dCirte (false = KC pēc caurmēra pirms cirtmeta [MK935 7.piel.] aizliegta/piesardzīgi neiekļauj automātiskajā scenārijā, #60), notes[] */
 const IADT_RULES={
  "Rāznas nacionālais parks":{src:"MK 447 (2007, red. 2024)",
   "dabas lieguma zona":{kcMax:null,galvena:false,kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Apse:30},season:"15.04-31.07",notes:["sausos kokus un kritalas >25 cm neizvāc","sanitārajā cirtē necērt augtspējīgus","atjaunošana stādot tikai ar DAP atļauju"]},
   "dabas parka zona":{kcMax:1,kcWet:1,kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Apse:30},notes:["rekonstruktīvā cirte aizliegta","kopšanā necērt valdaudzes kokus virs vecuma limita","sanitārajā cirtē necērt augtspējīgus"]},
   "neitrālā zona":{notes:["vispārējie MK935 noteikumi"]}},
  "Gaujas nacionālais parks":{src:"MK 317 (2012); jauni noteikumi projektā (VARAM), gaidāma stingrāka dabas lieguma zona",
-  "*":{bigD:{Ozols:50,Priede:65,Egle:70,Osis:60,Goba:60,Vīksna:60,Liepa:30,Melnalksnis:45,Vītols:60,Bērzs:60,Apse:65},eco:10,notes:["galvenā cirte pēc caurmēra un rekonstruktīvā aizliegta visā parkā (9.22)","mežsaimnieciskā darbība aizliegta dumbrājā, liekņā, palienēs, nogāzēs >25°, ozolu/ošu/liepu/kļavu audzēs >40 % un >60 g (9.26)","celmus atstāj mežaudzē; pievešanas ceļi ne taisnās līnijās (9.25)","sausus kokus >50 cm un kritalas >50 cm neizvāc"]},
+  "*":{bigD:{Ozols:50,Priede:65,Egle:70,Osis:60,Goba:60,Vīksna:60,Liepa:30,Melnalksnis:45,Vītols:60,Bērzs:60,Apse:65},eco:10,dCirte:false,notes:["galvenā cirte pēc caurmēra un rekonstruktīvā aizliegta visā parkā (9.22)","mežsaimnieciskā darbība aizliegta dumbrājā, liekņā, palienēs, nogāzēs >25°, ozolu/ošu/liepu/kļavu audzēs >40 % un >60 g (9.26)","celmus atstāj mežaudzē; pievešanas ceļi ne taisnās līnijās (9.25)","sausus kokus >50 cm un kritalas >50 cm neizvāc"]},
   "dabas lieguma zona":{kcMax:null,izlase:true,season:"15.03-31.07",notes:["galvenā cirte tikai izlases veidā ≤25 % krājas paņēmienā, nākamais pēc 10 g (24.p.); baltalksnim ≤50 % un 4 g","meža apsaimniekošanas plāns obligāts","kopšanā šķērslaukums ne zem: P80g 28, E60g 34, B60g 22, Ma60g 28 (20.22)","vismaz 20 m³/ha mirušās koksnes >25 cm"]},
   "kultūrvēsturiskā zona":{kcMax:0.2,izlase:true,season:"15.03-31.07",notes:["kailcirte ≤0,2 ha, min. attālums starp KC 90 m, piegulošās = izcirtumi līdz 3 g","galvenā cirte izlases veidā ≤25 % paņēmienā"]},
   "ainavu aizsardzības zona":{kcMax:2,kcWet:1,notes:["jaukta cirsma ar slapjiem tipiem ≤1 ha kopā (41.p.)","atlikums ≤0,1 ha iekļaujams (43.p.)","min. attālums starp KC 90 m (45.p.); gar ainaviskiem ceļiem 10/5 g (46.p.)","KC aizliegta valsts un pašvaldību mežos"]},
@@ -915,7 +916,7 @@ const IADT_RULES={
  // vispārējie pēc kategorijas, ja ĪADT nav savu noteikumu (MK 264)
  "_dabas parks":{src:"MK 264 6. nod.","*":{kcMax:null,season:"15.03-31.07",bigD:{"*":60},eco:15,notes:["kailcirte aizliegta; galvenajā cirtē biezība ≥0,4, atvērumi ≤0,1 ha"]}},
  "_dabas liegums":{src:"MK 264 5. nod.","*":{kcMax:null,galvena:false,season:"15.03-31.07",kopsanaAge:{Priede:60,Ozols:60,Egle:50,Bērzs:50,Melnalksnis:50,Osis:50,Liepa:50,Apse:30},bigD:{"*":60},eco:15,notes:["galvenā un rekonstruktīvā cirte aizliegta; atjaunošana stādot aizliegta"]}},
- "_aizsargājamo ainavu apvidus":{src:"MK 264 7. nod.","*":{kcMax:3,season:"15.03-31.07",notes:["KC aizliegta dumbrājā/liekņā egļu un melnalkšņu audzēs un visās ozolu/ošu audzēs (33.3)","rekonstruktīvā aizliegta (33.2)","gar ainaviskiem ceļiem 10/5 g (35.p.)"]}},
+ "_aizsargājamo ainavu apvidus":{src:"MK 264 7. nod.","*":{kcMax:3,season:"15.03-31.07",dCirte:false,notes:["KC aizliegta dumbrājā/liekņā egļu un melnalkšņu audzēs un visās ozolu/ošu audzēs (33.3)","rekonstruktīvā aizliegta (33.2)","gar ainaviskiem ceļiem 10/5 g (35.p.)","katram AAA var būt savi individuālie MK noteikumi, kas ierobežo KC pēc caurmēra pirms cirtmeta — piesardzības pēc automātiskajā scenārijā neiekļauj, pārbaudīt ar DAP/VMD (#60)"]}},
 };
 let IADT_AUTO=null; // automātiski no likumi.lv (iadt/rules.json datu zarā), 114 noteikumi
 async function loadIadtAuto(){if(IADT_AUTO)return IADT_AUTO;try{const r=await cachedFetch(`${geoBase()}/iadt/rules.json`);if(r.ok){IADT_AUTO=await r.json();render();}}catch(e){}return IADT_AUTO;}
@@ -943,6 +944,9 @@ function iadtChecks(p,out){const sets=iadtRulesFor(p);out.iadtRules=sets;if(!set
    if(m.cirsmaKods==="KKC"&&r.kopsanaAge){const lim=r.kopsanaAge[m.suga]??r.kopsanaAge["*"];if(lim!=null&&num(m.vecums)>lim)x.f.push({t:"bloks",s:`${st.iadt} ${st.zone}: kopšanas cirte aizliegta, ${m.suga} ${m.vecums} g > ${lim} g`});}
    if(r.bigD&&num(m.D)){const lim=r.bigD[m.suga]??r.bigD["*"];if(lim&&num(m.D)>=lim)x.f.push({t:"ier",s:`${st.iadt}: kokus resnākus par ${lim} cm necērt (vid. D ${m.D})`});}}
   if(r.eco)out.global.push(`${st.iadt}: ekoloģiskie koki vismaz ${r.eco}/ha (lieto ${r.eco} MK935 8 vietā).`);}}
+// #60: ĪADT individuālie noteikumi, kas liedz (vai piesardzīgi neiekļauj) KC pēc caurmēra pirms cirtmeta automātiskajā scenārijā — pati galvenā cirte jau
+// tāpat bloķēta caur kcMax===null/galvena===false (iadtChecks), dCirte===false aptver papildu gadījumus (piem. AAA), kur galvenā cirte pēc vecuma paliek atļauta.
+function dCirteBlocked(p){return iadtRulesFor(p).some(st=>st.r.kcMax===null||st.r.galvena===false||st.r.dCirte===false);}
 
 /* ---------- AIZSARGJOSLAS (Aizsargjoslu likums, red. 03.07.2026) ---------- */
 // Joslu platumi (7. un 7.1 pants) un aprobežojumi (37. pants): KC aizliegta 50 m joslā (vai visā joslā, ja šaurāka), galvenā cirte aizliegta 10 m joslā,
@@ -1561,7 +1565,10 @@ function parsePdfLines(lines){ // lines: array of strings (cells joined by singl
  return null;}
 // #46: bez bonitātes cirtmetu NENOSAKA (agrāk tukšs bon klusi deva Priedei 121 g, Bērzam 51 g — sk. #46)
 function cirtmetsKC(sp,age,bon){const b=String(bon||"").trim();if(!b)return "";
- const t={Priede:/^(Ia|I|II|III)$/.test(b)?101:121,Egle:81,Bērzs:/^(Ia|I|II|III)$/.test(b)?71:51,Melnalksnis:71,Apse:41,Ozols:101,Osis:81};return t[sp]&&age>=t[sp]?"KC":"";}
+ // #60: baltalksnim MK935 1.pielikumā NAV noteikts minimālais cirtmets (likumi.lv/mezataksacija.lv: "meža īpašnieks galvenajā cirtē baltalksni var cirst pēc saviem ieskatiem") — 25 g sakrīt ar RULES.youngKeep praktisko slieksni
+ const t={Priede:/^(Ia|I|II|III)$/.test(b)?101:121,Egle:81,Bērzs:/^(Ia|I|II|III)$/.test(b)?71:51,Melnalksnis:71,Apse:41,Ozols:101,Osis:81,Baltalksnis:25};return t[sp]&&age>=t[sp]?"KC":"";}
+// #60: KC cirtes izpildes veids — "vecuma" (cirtmets sasniegts) vai "caurmēra" (MK935 7.piel. slieksnis pirms cirtmeta, incl. sanitārā izlase+KC un riskantais nesvērtais D ceļš). Viena cirsma nekad nesatur abus (MK935 15./16.p. grupēšana/limits ir pa veidam).
+function kcVeids(m){return cirtmetsKC(m.suga,m.vecums,bonOf(m).bon)==="KC"?"vecuma":"caurmēra";}
 function firstSp(formula){const m=String(formula).match(/\d+\s*(Ba|Ma|Ap|Oz|Os|Bl|Ie|Kr|P|E|B|A|M|K|L)/);return m?SPC[m[1]]:"";}
 /* Formāts A: "Nogabalu raksturojošie rādītāji" (MVR izdruka) */
 function parseFormatA(lines){const recs=[];let kad="",propKad="",kv="",inv="",cur=null,buf=null;
@@ -1740,6 +1747,7 @@ function splitOversizedProportional(x,lim){
  return {x,kcHa:lim,kcGeom:null,restHa,restGeom:null,restM3:Math.round(x.kr*(restHa/ha)),
   stripHa:0,stripGeom:null,stripM3:0,year:new Date().getFullYear()+3,widthM:bufM(),proportional:true};}
 function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.iadt||""]||RULES.iadt[""];const out={nog:[],kc:{sausie:{ha:0,m3:0,n:[]},slapjie:{ha:0,m3:0,n:[]},"?":{ha:0,m3:0,n:[]}},global:[]};
+ const dIadtBlocked=dCirteBlocked(p); // #60: ĪADT individuālie noteikumi liedz KC pēc caurmēra automātiskajā scenārijā
  if(!zone.kc)out.global.push("ĪADT zona: kailcirte aizliegta, plāns jāraksta kā izlases/kopšanas programma.");
  if(p.iadt)out.global.push("ĪADT sezona: darbi aizliegti 15.03 līdz 31.07, reāli viens ziemas logs. Atjaunošanā nedrīkst citzemju sugas.");
  if(p.dapList)for(const d of p.dapList){const k=d.kind;if(k==="mikroliegums")out.global.push(`Mikroliegums "${d.name}" ${d.ha} ha: koku ciršana aizliegta vai ierobežota, buferzona; pārbaudīt Ozolā.`);
@@ -1759,7 +1767,10 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
   if(RULES.youngKeep[m.suga]&&num(m.vecums)&&num(m.vecums)<RULES.youngKeep[m.suga]&&m.cirsmaKods==="KC")f.push({t:"iet",s:`${m.suga} ${m.vecums} g, legāli cērtams, bet ieteicams saglabāt pieaugumam`});
   if(num(m.D)&&num(m.D)>RULES.protectedD)f.push({t:"bloks",s:`vid. caurmērs ${m.D} cm virs ${RULES.protectedD}, aizsargājamie koki, izstaigāt`});
   if(RULES.sawlogMinD[m.suga]&&num(m.D)>=RULES.sawlogMinD[m.suga]&&m.cirsmaKods==="KC")f.push({t:"plus",s:"zāģbaļķu kandidāts, cirst pirmo"});
-  const dc=MK935.dCirte(m.suga,bo.bon);if(dc&&num(m.D)>=dc&&!m.cirsmaKods)f.push({t:"plus",s:`sasniedz galvenās cirtes caurmēru ${dc} cm (MK935 7.piel.), KC iespējama pirms cirtmeta; nedrīkst, ja pēdējos 3 g bijusi kopšana`});
+  const dc=MK935.dCirte(m.suga,bo.bon);
+  if(dc&&num(m.D)>=dc&&!m.cirsmaKods){ // #60: sasniegts 7.piel. slieksnis, bet nav (vai nedrīkst būt) automātiski piedāvāts kā KC — pasaka, kāpēc
+   if(dIadtBlocked)f.push({t:"warn",s:`sasniedz galvenās cirtes caurmēru ${dc} cm (MK935 7.piel.), BET ĪADT individuālie noteikumi šajā zonā liedz (vai piesardzīgi neiekļauj) kailcirti pēc caurmēra pirms cirtmeta — nav noklusējuma scenārijā, jāpārbauda ar DAP/VMD ar roku`});
+   else f.push({t:"plus",s:`sasniedz galvenās cirtes caurmēru ${dc} cm (MK935 7.piel.), KC iespējama pirms cirtmeta; nedrīkst, ja pēdējos 3 g bijusi kopšana`});}
   if(m.dPlan&&m.dPlan.path==="kcMean")f.push({t:"warn",s:`KC pamatojums pēc NESVĒRTĀ vidējā D (MK935 14.p. noapaļots, ${m.dPlan.mean14} cm ≥ ${m.dPlan.dc} cm) — G-svērtais D nesasniedz slieksni; VMD var neatzīt šo pamatojumu, jāpārbauda ar roku (#50 scenārijs A)`}); // #50/D: scenārijs A — riskantāks pamatojums
   if(MK935.kcForbiddenSpecies.includes(m.suga)&&m.cirsmaKods==="KC")f.push({t:"bloks",s:"KC aizliegta: valdošā suga "+m.suga+" (MK935 65.2)"});
   if(m.cirsmaKods==="KKC"&&!(m.hasCert&&m.certamais>0)){const kc=kkcCertamais(m);if(kc.note)f.push({t:"ier",s:"kopšana: "+kc.note});}
@@ -1820,6 +1831,7 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
    queue.sort((ka,kb)=>{const xa=byKey(ka),xb=byKey(kb);return (xb?xb.kr:0)-(xa?xa.kr:0);});
    const k=queue.shift();if(inThis.has(k)||!remaining.has(k))continue;const x=byKey(k);if(!x)continue;
    if(nogIn.length&&x.m.zv!==seed.m.zv)continue; // #44: nogabalus grupē tikai vienas ZV ietvaros
+   if(nogIn.length&&kcVeids(x.m)!==kcVeids(seed.m))continue; // #60: viena cirsma nekad nesatur dažādus cirtes izpildes veidus, arī ja pieguloši
    const ha=effHa.has(k)?effHa.get(k):num(x.m.platMezs||x.m.platKop);
    const addS=x.mo==="sausie"?ha:0,addW=x.mo==="slapjie"?ha:0;
    if(nogIn.length&&(sausie+addS+slapjie+addW>5+1e-9||slapjie+addW>2+1e-9))continue;
@@ -1829,17 +1841,23 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
   groups.push({mo,zv:seed.m.zv,ha:+(sausie+slapjie).toFixed(2),sausieHa:+sausie.toFixed(2),slapjieHa:+slapjie.toFixed(2),
    m3:nogIn.reduce((a,e)=>a+Math.round(e.x.kr*(e.ha/num(e.x.m.platMezs||e.x.m.platKop)||1)),0),nog:nogIn.map(e=>e.x)});}
  out.split=groups;
- {const limS=zone.limit!==null?zone.limit:RULES.kcLimitHa.sausie,limW=zone.limit!==null?zone.limit:RULES.kcLimitHa.slapjie;
-  out.kc.sausie.limit=limS;out.kc.sausie.minCirsmas=limS?Math.ceil(out.kc.sausie.ha/limS-1e-9):0;
-  out.kc.slapjie.limit=limW;out.kc.slapjie.minCirsmas=limW?Math.ceil(out.kc.slapjie.ha/limW-1e-9):0;}
- // 4) starp DAŽĀDĀM galīgajām cirsmām, kas piegulas (> 50 m, MK935 18.p.): MK935 pants NENOSAKA konkrētu joslas platumu šai situācijai
+ const limS=zone.limit!==null?zone.limit:RULES.kcLimitHa.sausie,limW=zone.limit!==null?zone.limit:RULES.kcLimitHa.slapjie;
+ out.kc.sausie.limit=limS;out.kc.sausie.minCirsmas=limS?Math.ceil(out.kc.sausie.ha/limS-1e-9):0;
+ out.kc.slapjie.limit=limW;out.kc.slapjie.minCirsmas=limW?Math.ceil(out.kc.slapjie.ha/limW-1e-9):0;
+ // 4) starp DAŽĀDĀM galīgajām cirsmām, kas piegulas (> 50 m, MK935 18.p.): vispirms pārbauda KOPĒJO platību (16.p.) — ja abas kopā nepārsniedz limitu,
+ // tās nav jāatdala (abas cērtamas vienlaikus, josla nav vajadzīga, #60). Tikai tad, ja kopā pārsniedz limitu, MK935 pants NENOSAKA konkrētu joslas platumu šai situācijai
  // (19./20.p. tikai nosaka, ka piegulošā platība skaitās kopā limitā un jāgaida 3 g pēc atjaunošanas) — tāpēc josla ir PRAKSE VMD saskaņošanai, ne likuma prasība: dzeltens karogs.
  // Noklusējums: 20 m (bufM()) josla pusē, kas zaudē mazāk m³. Alternatīva (p.deferPairs pāra atslēga): otro cirsmu atliek uz vēlāku periodu bez joslas (tas gan IR likumā balstīts ceļš, MK935 20.p.).
  const grpOf=k=>groups.findIndex(g=>g.nog.some(e=>mKey(e.m)===k));
- out.buffers=[];const deferSet=new Set(p.deferPairs||[]);
+ out.buffers=[];const deferSet=new Set(p.deferPairs||[]);const fitSeen=new Set();
  for(const pr of adjPairs){const ka=mKey(pr.xa.m),kb=mKey(pr.xb.m);const ga=grpOf(ka),gb=grpOf(kb);if(ga<0||gb<0||ga===gb)continue;
   const pairKey=[ka,kb].sort().join("|");
   if(deferSet.has(pairKey)){out.global.push(`nog. ${pr.xa.m.nogabals}-${pr.xb.m.nogabals}: piegulošas cirsmas (MK935 18.p.), lietotājs izvēlējies otro atlikt uz vēlāku periodu (pēc 3 g atjaunošanas, MK935 20.p.) bez joslas, nevis ${bufM()} m joslu.`);continue;}
+  {const A=groups[ga],B=groups[gb],sausieTot=+(A.sausieHa+B.sausieHa).toFixed(2),slapjieTot=+(A.slapjieHa+B.slapjieHa).toFixed(2);
+   if(sausieTot<=limS+1e-9&&slapjieTot<=limW+1e-9){ // #60 (MK935 16.p.): piegulošu cirsmu KOPĒJĀ platība nepārsniedz limitu — abas vienlaikus, josla nav vajadzīga
+    const gk=[ga,gb].sort().join("|");if(!fitSeen.has(gk)){fitSeen.add(gk);
+     out.global.push(`nog. ${pr.xa.m.nogabals}-${pr.xb.m.nogabals}: piegulošas cirsmas ar dažādu cirtes izpildes veidu (kontakts ${pr.len} m > 50 m, MK935 18.p.), bet kopējā platība ${fmt(sausieTot+slapjieTot,2)} ha nepārsniedz limitu (MK935 16.p.) — abas cērtamas vienlaikus, josla nav vajadzīga.`);}
+    continue;}}
   const victim=pr.xa.krha<=pr.xb.krha?pr.xa:pr.xb,other=victim===pr.xa?pr.xb:pr.xa;
   const vha=num(victim.m.platMezs||victim.m.platKop);const stripHa=Math.min(vha,+Math.max(SEP_MIN_HA,bufM()*pr.len/10000).toFixed(2));const m3=Math.round(stripHa*victim.krha);
   out.buffers.push({a:pr.xa.m.nogabals,b:pr.xb.m.nogabals,pairKey,L:pr.len,practice:true,nog:victim.m.nogabals,grp:grpOf(mKey(victim.m))+1,stripHa,m3,year:new Date().getFullYear()+3,victim:victim.m,other:other.m});}
@@ -2075,9 +2093,14 @@ function partFeature(part){return {type:"Feature",properties:{},geometry:part.po
 // Pilna kailcirte VIENMĒR dod lielāku vērtību par daļēju sanitāro izciršanu (tas pats sortiments/cena), tāpēc "vērtību salīdzina" praksē ir prioritātes secība a->b->c, nevis atsevišķs €/m³ aprēķins šeit (cenas paliek neaiztiktas Cenu sadaļā).
 function assignAutoCirtesVeids(p,dPolicy){ // #50/D: dPolicy="combined" (noklusējums, scenārijs B) | "meanD" (scenārijs A, riskantāks — nesvērtais D)
  dPolicy=dPolicy||"combined";
+ const dBlocked=dCirteBlocked(p); // #60: ĪADT individuālie noteikumi liedz KC pēc caurmēra šajā zonā
  for(const m of p.mer){
   if(m.cirsma||m.cirsmaManual||m.cirsmaKods||m.hasCert||!m.geom||/aizliegts/i.test(m.ierob||""))continue; // (a) vecums jau iestatīts mergeZvInto; ar roku izvēlētos/jau iestatītos neaiztiek
-  const d=dPaths(m);if(!d||d.reach||d.ageKC)continue; // KC pēc D (b) un pēc vecuma paliek lietotāja izvēle / mergeZvInto, ne šī funkcija
+  const d=dPaths(m);if(!d||d.ageKC)continue; // pēc vecuma paliek mergeZvInto, ne šī funkcija
+  if(d.reach){ // #60: (b) KC pēc caurmēra (MK935 7. piel.) — automātisks scenārijs, kad nogabals sasniedz slieksni, bet nav sasniedzis cirtmetu
+   if(dBlocked||d.blockedRecent)continue; // ĪADT individuālie noteikumi (dCirteBlocked) vai pēdējos 3 g bijusi kopšana (7.piel. piezīme) — paliek lietotāja izvēle (dPathText poga)
+   if(num(m.platMezs||m.platKop)<REMNANT_HA)continue; // pārāk maza platība (< MK935 17.p. 0,3 ha) patstāvīgai KC ierosināšanai noklusējuma scenārijā — paliek lietotāja izvēle
+   m.cirsmaKods="KC";m.dPlan={path:"kcD",dc:d.dc,Dw:d.Dw,entries:d.entries.length,auto:true};continue;}
   if(dPolicy==="meanD"){if(d.mean14>=d.dc){m.cirsmaKods="KC";m.dPlan={path:"kcMean",dc:d.dc,mean14:d.mean14,auto:true};}continue;} // scenārijs A: nesvērtais vidējais (MK935 14.p.) sasniedz slieksni, VMD var neatzīt
   if(d.izlase&&d.izlase.ok){m.cirsmaKods="KC";m.dPlan=Object.assign({path:"izlaseKc",dc:d.dc,auto:true},d.izlase);} // (c) sanitārā, tad KC — viena KC cirsma
  }}
