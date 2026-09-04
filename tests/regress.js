@@ -397,6 +397,9 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  w.eval(`setStrategy('${nog1Id}','viens')`);
  const nalV=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());const o=r.oversized[0];const c=P().cirsmas.find(c=>c.tips==='Kc'&&c.stage!==2);return {mode:o.mode,widthM:o.widthM,kcHa:o.kcHa,stripHa:o.stripHa,cPlat:c.platiba,ier:r.nog.find(x=>x.m.nogabals==='1').f.find(f=>f.t==='ier').s};})())"));
  ok(nalV.mode==="viens"&&nalV.widthM===90&&nalV.kcHa<2&&Math.abs(nalV.kcHa-1.63)<=0.05&&Math.abs(nalV.stripHa-0.81)<=0.05&&/23\.p/.test(nalV.ier)&&Math.abs(nalV.cPlat-nalV.kcHa)<=0.01,"Nalobnes 'Viens piegājiens': 23.p., 90 m josla, KC daļa ≈1,63 ha, cirsma rāda to pašu (got "+JSON.stringify(nalV)+")");
+ // #50/D labojums: "viens piegājiens" atlikums (otra puse) TAGAD arī ir sava īsta 1. piegājiena cirsma (agrāk trūka — bija zināms robs)
+ const nalV2=JSON.parse(w.eval("JSON.stringify((()=>{const p=P();const restC=p.cirsmas.filter(c=>c.tips==='Kc'&&c.stage===1&&c.nogabali==='1');return {n:restC.length,haSum:+restC.reduce((a,c)=>a+c.platiba,0).toFixed(2)};})())"));
+ ok(nalV2.n===2&&Math.abs(nalV2.haSum-1.70)<=0.05,"Nalobnes 'Viens piegājiens': nog.1 TAGAD ir 2 cirsmas tajā pašā piegājienā (KC daļa + atlikuma daļa), kopā ≈1,70 ha — abas uzreiz cērtamas (got "+JSON.stringify(nalV2)+")");
  w.eval(`setStrategy('${nog1Id}','divi')`);
  const nalD=JSON.parse(w.eval("JSON.stringify((()=>{const c=P().cirsmas.find(c=>c.tips==='Kc'&&c.stage!==2);return {cPlat:c.platiba};})())"));
  ok(Math.abs(nalD.cPlat-2.00)<=0.01,"Nalobnes: atpakaļ uz 'divi piegājieni' -> KC daļa atkal 2,00 ha (got "+nalD.cPlat+")");
@@ -417,6 +420,17 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   mergeZvInto(p,"9999",[{props:{kvartals:"1",nogabals:"99",platiba_ha:1,mt:24,s10:3,a10:60,h10:22,d10:25,g10:20,s11:4,a11:40,h11:18,d11:32,g11:5}}]);
   const m=p.mer[0];return {suga:m.suga,D:m.D};})())`));
  ok(dTest.suga==="Egle"&&Math.abs(dTest.D-25)<0.5,"Sintētisks nogabals: valdošā suga egle D25/G20 + bērzs D32/G5 (mazāks G) -> valdošās sugas D paliek ≈25, NEsajaucas ar bērza 32 (got "+JSON.stringify(dTest)+")");
+ // #50/D: cirsmu plāna scenāriji — vismaz A/B/C, noklusējums (lielākā vērtība bez sarkana karodziņa) = B, objekts NAV mainīts pirms applyScenario
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ const scenTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const before=JSON.stringify(p.cirsmas);const scs=buildScenarios(p);const afterUnchanged=JSON.stringify(p.cirsmas)===before;
+  return {n:scs.length,keys:scs.map(s=>s.key).sort(),recommendedKey:(scs.find(s=>s.recommended)||{}).key,allZeroRed:scs.every(s=>s.red===0),afterUnchanged,scenarioC:scs.find(s=>s.key==="C")};})())`));
+ ok(scenTest.n>=3&&JSON.stringify(scenTest.keys)==='["A","B","C"]',"Nalobnes: buildScenarios dod vismaz 3 scenārijus A/B/C (got "+JSON.stringify(scenTest.keys)+")");
+ ok(scenTest.afterUnchanged,"Nalobnes: buildScenarios NEMAINA reālo objektu (klons, ne tiešā mutācija) (got afterUnchanged="+scenTest.afterUnchanged+")");
+ ok(scenTest.recommendedKey==="B","Nalobnes: noklusējuma (ieteicamais) scenārijs ir 'B' (lielākā max cena bez sarkana karodziņa; A dod to pašu vērtību, bet ar dzeltenu 'VMD var neatzīt' karodziņu) (got "+scenTest.recommendedKey+")");
+ ok(scenTest.scenarioC&&scenTest.scenarioC.ha<3.35&&scenTest.scenarioC.m3>0,"Nalobnes scenārijs C (viens piegājiens 90 m): mazāka kopējā ha nekā B (90 m josla 'apēd' vairāk) (got "+JSON.stringify(scenTest.scenarioC)+")");
+ w.eval("applyScenario('C')");
+ const afterC=JSON.parse(w.eval("JSON.stringify((()=>{const p=P();return {scenario:p.scenario,log:p.log[0].text,ha:calcProp(p).ha};})())"));
+ ok(afterC.scenario==="C"&&/scenārijs: C/.test(afterC.log)&&Math.abs(afterC.ha-scenTest.scenarioC.ha)<=0.01,"Nalobnes: applyScenario('C') iestata p.scenario, ieraksta vēsturē, un reālais objekts tagad dod TO PAŠU ha, ko rādīja scenārija priekšskats (got "+JSON.stringify(afterC)+")");
  // #48 hotfix (04.09.2026): b88919d ražošanā Cirsmu sadaļa krita ar "CSTAT is not defined" (rindas komentārs aprija const CSTAT), regress to nenoķēra, jo
  // neviens tests nerenderēja cilnes ar ATVĒRTU cirsmas kartīti. Renderē visas cilnes reāliem objektiem; jebkurš ReferenceError/TypeError krīt šeit.
  const viewErr=(view,openId)=>w.eval(`(()=>{S.view='${view}';S.open=${openId?"'"+openId+"'":"null"};try{const fn={dash:vDash,cirs:vCirs,mer:vMer,val:vVal,docs:vDocs}[S.view];const h=fn();return h.length>500?"":"tukšs ("+h.length+")";}catch(e){return e.constructor.name+": "+e.message;}})()`);
