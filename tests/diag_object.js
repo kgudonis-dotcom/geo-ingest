@@ -10,15 +10,90 @@ const get=u=>new Promise((res,rej)=>{const req=https.get(u,{family:4,timeout:300
 const BASE="https://raw.githubusercontent.com/kgudonis-dotcom/geo-ingest/data";
 const FIXDIR=path.join(__dirname,"fixtures","pagasti");
 
+let __lastWindow=null; // #72: katrs w=await app() rada JAUNU pilnu jsdom logu — bez iepriekšējā slēgšanas tie uzkrājas atmiņā (--scan rada 14, sk. tests/regress.js #79 tā paša labojuma)
 async function app(){
+ if(__lastWindow){try{__lastWindow.close();}catch(e){}__lastWindow=null;}
  const html=fs.readFileSync("app/index.html","utf8").replace(/<script src="https:[^"]+"><\/script>/g,"").replace(/<link rel="stylesheet" href="https:[^"]+">/g,"");
- const dom=new JSDOM(html,{runScripts:"dangerously",pretendToBeVisual:true,url:"http://localhost/"});const w=dom.window;
+ const dom=new JSDOM(html,{runScripts:"dangerously",pretendToBeVisual:true,url:"http://localhost/"});const w=dom.window;__lastWindow=w;
  w.turf=require(root+"/@turf/turf");w.XLSX=require(root+"/xlsx");w.pako={ungzip:(u8)=>zlib.gunzipSync(Buffer.from(u8)).toString()};
  w.fetch=async(url)=>{const m=url.match(/\/(pagasti|infra)\/(\d{4})\.json\.gz/);if(!m)return {ok:false,status:404};const k=m[1]+m[2];
   const fixPath=m[1]==="pagasti"?path.join(FIXDIR,m[2]+".json.gz"):null;
   let buf;if(fixPath&&fs.existsSync(fixPath))buf=fs.readFileSync(fixPath);else{try{buf=await get(`${BASE}/${m[1]}/${m[2]}.json.gz`);}catch(e){return {ok:false,status:404};}}
   if(buf.length<100)return {ok:false,status:404};return {ok:true,arrayBuffer:async()=>buf.buffer.slice(buf.byteOffset,buf.byteOffset+buf.byteLength)};};
  w.eval("setLang('lv')");return w;}
+
+// #72: --scan režīms — cik plaši gāja dPaths()/assignAutoCirtesVeids() agrā-return kļūda (labota commit 945f067), pār VISIEM regresijas etaloniem.
+// NEKO app/index.html nemaina — "pirms" logs pārraksta window.dPaths/window.assignAutoCirtesVeids uz PRE-945f067 kodu (git show c315de1) TIKAI šī loga globālajā
+// scope, PIRMS createFromPagasts izsaukuma; "pēc" logs ir parasts, pašreizējais (fixed) kods. Abi logi ir NEATKARĪGI (--scan neatstāj nevienu app funkciju mainītu).
+const OLD_DPATHS_ASSIGN_945F067=`
+window.dPaths=function(m){
+ const dc=MK935.dCirte(m.suga,bonOf(m).bon);if(!dc)return null;
+ const Dw=num(m.D);const ents=(m.Dentries&&m.Dentries.length?m.Dentries:[{d:Dw,g:num(m.G),h:num(m.H)}]).map(e=>({d:num(e.d),g:num(e.g),h:num(e.h)||num(m.H)}));
+ const mean=m.Dmean!=null?num(m.Dmean):Dw;const mean14=Math.floor(mean+0.5);
+ const out={dc,Dw,reach:Dw>=dc,mean,mean14,entries:ents,ageKC:cirtmetsKC(m.suga,m.vecums,bonOf(m).bon)==="KC",izlase:null,blockedRecent:recentActivity(m)};
+ if(out.reach)return out; // PIRMS 945f067: neaplēš izlasi, ja D jau sasniegts, NEATKARĪGI no platības — šī bija kļūda
+ const ha=num(m.platMezs||m.platKop),Gtot=num(m.G),gl=MK935.gLimits(m.suga,m.H);
+ if(!gl){out.izlase={ok:false,why:"H < 12 m vai nav H: kritisko šķērslaukumu (MK935 1. piel.) nevar noteikt"};return out;}
+ const sorted=ents.slice().sort((a,b)=>a.d-b.d);let removedG=0,removedM3=0,reached=false;
+ for(let i=0;i<sorted.length;i++){const e=sorted[i];if(e.d>=dc){reached=true;break;}
+  const rest=sorted.slice(i+1);const rg=rest.reduce((t,z)=>t+z.g,0),rdg=rest.reduce((t,z)=>t+z.d*z.g,0);
+  const keep=(rdg-dc*rg)/(dc-e.d);
+  const hf=veidaugstums(m.suga,e.h)??0;
+  if(keep<=0){removedG+=e.g;removedM3+=e.g*hf*ha;continue;}
+  const cut=e.g-Math.min(e.g,keep);removedG+=cut;removedM3+=cut*hf*ha;reached=true;break;}
+ const gAfter=+(Gtot-removedG).toFixed(1);
+ if(!reached)out.izlase={ok:false,why:"pat izcērtot visus tievākos "+m.suga+" ierakstus svērtais D "+dc+" cm netiek sasniegts"};
+ else if(Gtot<=gl.gkrit)out.izlase={ok:false,why:"G "+Gtot+" m²/ha jau pie kritiskā "+gl.gkrit+" (MK935 1. piel., H "+Math.round(num(m.H))+" m) — izlases cirte nav iespējama",gkrit:gl.gkrit};
+ else if(gAfter<gl.gkrit)out.izlase={ok:false,why:"lai D sasniegtu "+dc+" cm, jāizcērt "+removedG.toFixed(1)+" m²/ha, bet tad G "+gAfter+" < kritiskais "+gl.gkrit+" (MK935 1. piel.)",removeG:+removedG.toFixed(2),removeM3:Math.round(removedM3),gAfter,gkrit:gl.gkrit};
+ else out.izlase={ok:true,removeG:+removedG.toFixed(2),removeM3:Math.round(removedM3),gAfter,gkrit:gl.gkrit,newD:dc};
+ return out;
+};
+window.assignAutoCirtesVeids=function(p,dPolicy){
+ dPolicy=dPolicy||"combined";
+ const dBlocked=dCirteBlocked(p);
+ for(const m of p.mer){
+  if(m.cirsma||m.cirsmaManual||m.cirsmaKods||m.hasCert||!m.geom||/aizliegts/i.test(m.ierob||""))continue;
+  const d=dPaths(m);if(!d||d.ageKC)continue;
+  if(d.reach){
+   if(dBlocked||d.blockedRecent)continue;
+   if(num(m.platMezs||m.platKop)<REMNANT_HA)continue; // PIRMS 945f067: platība par mazu -> vienkārši izmests, izlase nekad nemēģināta
+   m.cirsmaKods="KC";m.dPlan={path:"kcD",dc:d.dc,Dw:d.Dw,entries:d.entries.length,auto:true};continue;
+  }
+  if(dPolicy==="meanD"){if(d.mean14>=d.dc){m.cirsmaKods="KC";m.dPlan={path:"kcMean",dc:d.dc,mean14:d.mean14,auto:true};}continue;}
+  if(d.izlase&&d.izlase.ok){m.cirsmaKods="KC";m.dPlan=Object.assign({path:"izlaseKc",dc:d.dc,auto:true},d.izlase);}
+ }
+};
+`;
+const SCAN_BENCHMARKS=[ // tests/regress.js izsaukumu formas (ar/bez pickedZv) — precīzi tās pašas, lai objekts būtu identisks regresijas etalonam
+ {kad:"36680080031",picked:false,label:"Zapasnaja"},
+ {kad:"70600050074",picked:false,label:"Ezermuiža"},
+ {kad:"70420080041",picked:false,label:"70420080041"},
+ {kad:"60700020059",picked:true,label:"60700020059"},
+ {kad:"78880060148",picked:true,label:"Nalobnes"},
+ {kad:"68840080082",picked:true,label:"Marija"},
+ {kad:"68840020027",picked:false,label:"Runcīši"},
+];
+const SNAP_EXPR="JSON.stringify({n:P().mer.length,ha:+calcProp(P()).ha.toFixed(2),m3:Math.round(calcProp(P()).m3),"
+ +"perNog:P().mer.map(m=>({k:(m.zv||'')+'/'+m.kvartals+'/'+m.nogabals,kods:m.cirsmaKods||'',path:m.dPlan&&m.dPlan.path||''}))})";
+async function scanOne(b){
+ const call=b.picked?`createFromPagasts('${b.kad}',['${b.kad}'])`:`createFromPagasts('${b.kad}')`;
+ const wAfter=await app();
+ try{await wAfter.eval(call);}catch(e){return {kad:b.kad,label:b.label,error:"PĒC: "+String(e&&e.message||e)};}
+ const after=JSON.parse(wAfter.eval(SNAP_EXPR));
+ const wBefore=await app();
+ wBefore.eval(OLD_DPATHS_ASSIGN_945F067);
+ try{await wBefore.eval(call);}catch(e){return {kad:b.kad,label:b.label,error:"PIRMS: "+String(e&&e.message||e)};}
+ const before=JSON.parse(wBefore.eval(SNAP_EXPR));
+ const beforeMap=new Map(before.perNog.map(x=>[x.k,x]));
+ const affected=after.perNog.filter(x=>{const bx=beforeMap.get(x.k);return !bx||bx.kods!==x.kods||bx.path!==x.path;});
+ return {kad:b.kad,label:b.label,n:after.n,before,after,dHa:+(after.ha-before.ha).toFixed(2),dM3:after.m3-before.m3,
+  affected:affected.map(x=>x.k.split("/").pop())};
+}
+async function scan(){
+ const rows=[];
+ for(const b of SCAN_BENCHMARKS)rows.push(await scanOne(b));
+ return rows;
+}
 
 async function diag(kadastrs,pagCode){
  pagCode=pagCode||kadastrs.slice(0,4);
@@ -95,7 +170,23 @@ function fmt2(n){return n==null?"–":(+n).toFixed(2).replace(".00","");}
 
 (async()=>{
  const kad=process.argv[2];const pag=process.argv[3];
- if(!kad){console.error("Lietošana: node tests/diag_object.js <kadastrs> [pagasta kods]");process.exit(1);}
+ if(kad==="--scan"){
+  const rows=await scan();
+  const cols=["kadastrs","objekts","nogabali kopā","pirms 945f067 (ha / m³)","pēc 945f067 (ha / m³)","starpība (ha / m³, tikai 1. piegājiens)","ietekmētie nogabali (cirsmaKods/dPlan mainījies)"];
+  console.log(cols.join(" | "));console.log("-".repeat(160));
+  for(const r of rows){
+   if(r.error){console.log(r.kad+" | "+r.label+" | – | KĻŪDA: "+r.error+" | – | – | –");continue;}
+   console.log([r.kad,r.label,r.n,fmt2(r.before.ha)+" ha / "+r.before.m3+" m³",fmt2(r.after.ha)+" ha / "+r.after.m3+" m³","+"+fmt2(r.dHa)+" ha / +"+r.dM3+" m³",
+    r.affected.length?r.affected.length+" (nog. "+r.affected.join(", ")+")":"0"].join(" | "));
+  }
+  console.log("-".repeat(160));
+  console.log("PIEZĪME: 'starpība ha/m³' skaita TIKAI 1. piegājiena cirsmas (calcProp() konvencija, tāpat kā app 'Sistēma: X ha' rāda). Ja ietekmētais nogabals pēc labojuma nonāk 2. piegājienā (atliktā vērtība), starpība var rādīt +0, kaut nogabals reāli mainīja klasifikāciju — tāpēc pievienota atsevišķa 'ietekmētie nogabali' kolonna, kas skaita KATRU cirsmaKods/dPlan.path izmaiņu neatkarīgi no piegājiena.");
+  const errs=rows.filter(r=>r.error);
+  if(errs.length)console.log("KĻŪDAS: "+errs.length+" no "+rows.length+" etaloniem neielādējās (sk. augšā) — skaitlis NAV pilnīgs.");
+  else console.log("Visi "+rows.length+" etaloni veiksmīgi ielādēti abos (pirms/pēc) režīmos.");
+  process.exit(0);
+ }
+ if(!kad){console.error("Lietošana: node tests/diag_object.js <kadastrs> [pagasta kods] VAI node tests/diag_object.js --scan");process.exit(1);}
  const d=await diag(kad,pag);
  if(!d)process.exit(1);
  const cols=["nog","kv","ha","suga","vecums","H","D","G","bonitāte(avots)","krāja_m³","cirtmets(g,9.p.)","vec>=cirtmets?","D_slieksnis(7.piel.)","D>=slieksnis?","aizliegumi","IEKĻAUTS/IZSLĒGTS"];

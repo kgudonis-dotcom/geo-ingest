@@ -487,7 +487,7 @@ function vObj(){const hay=p=>(p.name+" "+(p.ni?p.ni.nr+" "+(p.ni.name||""):"")+"
   const zvCtl=p.archived?"":(S.addZvFor===p.id?`<input id="zvq${p.id}" inputmode="numeric" placeholder="ZV kadastrs" style="width:140px" onkeydown="if(event.key==='Enter')addZVGo('${p.id}',this.value)"><button class="btn sm sec" onclick="addZVGo('${p.id}',document.getElementById('zvq${p.id}').value)">Pievienot</button><button class="btn sm sec" onclick="addZVCancel()">×</button>`:`<button class="btn sm sec" onclick="addZVOpen('${p.id}')">+ ZV</button>`);
   const rulesStale=p.mer.some(m=>m.geom)&&(p.rulesVersion||0)<RULES_VERSION; // #72
   return `<div class="item"><div onclick="openProp('${p.id}')" style="flex:1;cursor:pointer"><div class="t"><b>${esc(p.name)||"(bez nosaukuma)"} <span class="pill" style="background:${STATUS_COL[p.status]||"#eee"}">${esc(p.status||"Vērtēšanā")}</span>${rulesStale?' <span class="pill off" title="Aprēķināts pēc vecākiem noteikumiem">novecojis</span>':""}</b><small>${esc(objLabel(p))} · ${p.cirsmas.length} cirsmas · ${fmt(t.m3)} m³ · max ${p.dataLoading?"ielādē…":fmt(t.max)+" €"}${p.dealPrice?" · "+fmt(p.dealPrice)+" €":""}</small></div></div><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${zvCtl}${p.archived?`<button class="btn sm sec" onclick="restoreProp('${p.id}')">Atjaunot</button>`:armBtn("a"+p.id,"Arhivēt",`archiveProp('${p.id}')`,"btn sm sec","Tiešām arhivēt? Spied vēlreiz")}${canDel?armBtn("p"+p.id,"Dzēst",`delProp('${p.id}')`,"btn sm danger","Tiešām dzēst? Spied vēlreiz"):""}</div></div>`;}).join("");
- return newObjCard()+`<div class="card"><h2>Objekti <span class="sp"></span><button class="btn sm sec" onclick="S.view='imp';save()">Importēt</button><button class="btn sm" onclick="addProp()">+ Jauns objekts</button></h2><div class="list">${list||'<div class="empty">Nav objektu. Pievieno pirmo.</div>'}</div></div>`;}
+ return staleFundBox()+newObjCard()+`<div class="card"><h2>Objekti <span class="sp"></span><button class="btn sm sec" onclick="S.view='imp';save()">Importēt</button><button class="btn sm" onclick="addProp()">+ Jauns objekts</button></h2><div class="list">${list||'<div class="empty">Nav objektu. Pievieno pirmo.</div>'}</div></div>`;}
 function addProp(){const p=newProp();S.props.unshift(p);S.cur=p.id;S.view="cirs";save(p.id);}
 function openProp(id,view){S.cur=id;S.view=view||"dash";const pr=S.props.find(x=>x.id===id);migrateSplit(pr);ensureDataLoaded(pr);S.open=pr&&pr.cirsmas&&pr.cirsmas.length?pr.cirsmas[0].id:null;save();} // #48: atverot pārrēķina, ja dalījuma noteikumi mainījušies; #49: pirmā cirsmas kartīte atvērta pēc noklusējuma
 // #85: ja objekts saglabāts, kamēr infra ielāde vēl nebija pabeigta (pārtraukta sesija, aizvērts logs) — atverot to pabeidz, nevis paliek uz visiem laikiem ar Max cenu bez izvešanas izmaksām
@@ -2243,11 +2243,37 @@ function rulesCompareHtml(p){const c=rulesCompareData(p);const row=(l,a,b)=>`<tr
   ${row("Apjoms, m³",fmt(c.old.m3),fmt(c.new.m3))}
   ${row("Max cena, €",fmt(c.old.max)+" €",fmt(c.new.max)+" €")}
  </table>`;}
-function recalcRules(){const p=P();const oldT=calcProp(p);
- (p.rulesHistory=p.rulesHistory||[]).unshift({date:new Date().toISOString().slice(0,10),rulesVersion:p.rulesVersion||0,ncirsmas:p.cirsmas.filter(c=>!c.excluded).length,ha:+oldT.ha.toFixed(2),m3:Math.round(oldT.m3),max:Math.round(oldT.max)}); // #72: vecā versija paliek vēsturē ar datumu un rulesVersion
+function recalcRulesFor(p){const oldT=calcProp(p); // #72: viena objekta pārrēķina kodols, bez save()/toast() — lieto gan recalcRules() (viens objekts), gan recalcAllRules() (fonda līmenī, #56)
+ (p.rulesHistory=p.rulesHistory||[]).unshift({date:new Date().toISOString().slice(0,10),rulesVersion:p.rulesVersion||0,ncirsmas:p.cirsmas.filter(c=>!c.excluded).length,ha:+oldT.ha.toFixed(2),m3:Math.round(oldT.m3),max:Math.round(oldT.max)}); // vecā versija paliek vēsturē ar datumu un rulesVersion
  applyCurrentRules(p);p.rulesVersion=RULES_VERSION;
  logIt(p,`cirsmas pārrēķinātas pēc jaunākajiem noteikumiem (rulesVersion ${RULES_VERSION})`);
- p.updatedAt=Date.now();S.showRulesCompare=false;save(S.cur);toast("Cirsmas pārrēķinātas pēc jaunākajiem noteikumiem");}
+ p.updatedAt=Date.now();}
+function recalcRules(){recalcRulesFor(P());S.showRulesCompare=false;save(S.cur);toast("Cirsmas pārrēķinātas pēc jaunākajiem noteikumiem");}
+// #72: FONDA LĪMEŅA pārrēķins — TIKAI ar lietotāja pogu UN apstiprinājumu (tabula, sk. staleFundBox), NEKAD automātiski.
+function staleProps(){return S.props.filter(p=>!p.archived&&p.mer.some(m=>m.geom)&&(p.rulesVersion||0)<RULES_VERSION);}
+function staleFundData(){return staleProps().map(p=>({id:p.id,name:p.name||objLabel(p)||"(bez nosaukuma)",...(()=>{const c=rulesCompareData(p);return {old:c.old,new:c.new};})()}));} // objekts NEMAINĀS (rulesCompareData — klons)
+function toggleFundRulesCompare(){S.showFundRulesCompare=!S.showFundRulesCompare;save();}
+function recalcAllRulesAsk(){S.fundRecalcConfirm=true;S.showFundRulesCompare=true;save();} // pirmais klikšķis: parāda tabulu + apstiprinājumu, NEPĀRRĒĶINA
+function recalcAllRulesCancel(){S.fundRecalcConfirm=false;save();}
+function recalcAllRules(){ // otrais klikšķis (apstiprinājums) — TIKAI TAGAD izpilda
+ const targets=staleProps();for(const p of targets)recalcRulesFor(p);
+ S.fundRecalcConfirm=false;S.showFundRulesCompare=false;save();toast(targets.length+" objekti pārrēķināti pēc jaunākajiem noteikumiem");}
+function staleFundBox(){
+ const stale=staleProps();if(!stale.length)return "";
+ const totalMax=Math.round(stale.reduce((a,p)=>a+calcProp(p).max,0));
+ return `<div class="card" style="border-color:var(--amber)"><h2><span class="pctwarn">⚠ ${stale.length} objekti aprēķināti pēc vecākiem noteikumiem</span> <span class="muted">· ${fmt(totalMax)} € max cenā</span></h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+   <button class="btn sm sec" onclick="toggleFundRulesCompare()">${S.showFundRulesCompare&&!S.fundRecalcConfirm?"Paslēpt salīdzinājumu":"Salīdzināt visus"}</button>
+   ${S.fundRecalcConfirm?"":`<button class="btn sm" onclick="recalcAllRulesAsk()">Pārrēķināt visus</button>`}
+  </div>
+  ${(S.showFundRulesCompare||S.fundRecalcConfirm)?fundRulesCompareHtml():""}
+  ${S.fundRecalcConfirm?`<div class="pctbad" style="margin-top:8px">Šis PĀRRAKSTĪS ${stale.length} objektu cirsmas uz "Jaunais" kolonnas vērtībām (vecā versija paliek katra objekta vēsturē). Turpināt?</div>
+   <div style="display:flex;gap:8px;margin-top:6px"><button class="btn sm danger" onclick="recalcAllRules()">Jā, pārrēķināt ${stale.length} objektus</button><button class="btn sm sec" onclick="recalcAllRulesCancel()">Atcelt</button></div>`:""}
+ </div>`;}
+function fundRulesCompareHtml(){const rows=staleFundData();
+ return `<table style="margin-top:8px"><tr><th style="text-align:left">Objekts</th><th>Vecais (ha / m³ / max €)</th><th>Jaunais (ha / m³ / max €)</th><th>Starpība (max €)</th></tr>
+  ${rows.map(r=>{const diff=r.new.max-r.old.max;return `<tr><td style="text-align:left">${esc(r.name)}</td><td>${fmt(r.old.ha,2)} / ${fmt(r.old.m3)} / ${fmt(r.old.max)}</td><td>${fmt(r.new.ha,2)} / ${fmt(r.new.m3)} / ${fmt(r.new.max)}</td><td>${diff>=0?"+":""}${fmt(diff)}</td></tr>`;}).join("")}
+ </table>`;}
 // #50/D: vairāki cirsmu plāna scenāriji — objekts NAV mainīts, kamēr lietotājs neizvēlas (JSON klons + buildParts uz klona)
 const SCENARIO_DEFS={
  B:{label:"Sanitārā + KC (drošākais)",dPolicy:"combined",strategy:"divi"},

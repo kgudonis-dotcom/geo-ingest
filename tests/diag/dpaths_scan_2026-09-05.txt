@@ -1,0 +1,12 @@
+kadastrs | objekts | nogabali kopā | pirms 945f067 (ha / m³) | pēc 945f067 (ha / m³) | starpība (ha / m³, tikai 1. piegājiens) | ietekmētie nogabali (cirsmaKods/dPlan mainījies)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+36680080031 | Zapasnaja | 9 | 6.82 ha / 1660 m³ | 6.82 ha / 1660 m³ | +0 ha / +0 m³ | 0
+70600050074 | Ezermuiža | 28 | 12.39 ha / 2844 m³ | 12.39 ha / 2844 m³ | +0 ha / +0 m³ | 0
+70420080041 | 70420080041 | 38 | 12.15 ha / 1405 m³ | 12.15 ha / 1405 m³ | +0 ha / +0 m³ | 0
+60700020059 | 60700020059 | 56 | 30.53 ha / 8762 m³ | 30.53 ha / 8762 m³ | +0 ha / +0 m³ | 0
+78880060148 | Nalobnes | 3 | 3.78 ha / 880 m³ | 3.78 ha / 880 m³ | +0 ha / +0 m³ | 0
+68840080082 | Marija | 12 | 11.50 ha / 2552 m³ | 11.64 ha / 2590 m³ | +0.14 ha / +38 m³ | 1 (nog. 11)
+68840020027 | Runcīši | 15 | 12.69 ha / 2064 m³ | 12.69 ha / 2064 m³ | +0 ha / +0 m³ | 1 (nog. 7)
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+PIEZĪME: 'starpība ha/m³' skaita TIKAI 1. piegājiena cirsmas (calcProp() konvencija, tāpat kā app 'Sistēma: X ha' rāda). Ja ietekmētais nogabals pēc labojuma nonāk 2. piegājienā (atliktā vērtība), starpība var rādīt +0, kaut nogabals reāli mainīja klasifikāciju — tāpēc pievienota atsevišķa 'ietekmētie nogabali' kolonna, kas skaita KATRU cirsmaKods/dPlan.path izmaiņu neatkarīgi no piegājiena.
+Visi 7 etaloni veiksmīgi ielādēti abos (pirms/pēc) režīmos.

@@ -207,6 +207,34 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  ok(!!afterRecalc.hist0&&afterRecalc.hist0.rulesVersion===0,"#72 Runcīši: vecā versija (rulesVersion=0) saglabāta p.rulesHistory ar datumu (got "+JSON.stringify(afterRecalc.hist0)+")");
  ok(afterRecalc.ha>=12.5&&afterRecalc.m3>=1900,"#72 Runcīši pēc pārrēķina: >=12,5 ha un >=1900 m³ (got "+afterRecalc.ha+" ha, "+afterRecalc.m3+" m³)");
  ok(Math.abs(afterRecalc.nog7ha-0.24)<0.01&&afterRecalc.nog7kods==="KC"&&afterRecalc.nog7path==="izlaseKc"&&afterRecalc.nog7cirsma,"#72 nog.7 (0,24 ha, bērzs, VMD sanitārā izlases cirte): pēc pārrēķina VAIRS NAV izmests REMNANT_HA (0,3 ha) dēļ — tas ir kailcirtes noteikums, ne sanitārās izlases (#52) (got kods="+afterRecalc.nog7kods+", path="+afterRecalc.nog7path+", ha="+afterRecalc.nog7ha+", cirsma="+afterRecalc.nog7cirsma+")");
+ // 8d2. #72/#56: fonda līmeņa pārrēķins — divi objekti VIENĀ S.props: Runcīši (svaigs) + Marija (simulēta veca rulesVersion=0)
+ w=await app();await w.eval("createFromPagasts('68840020027')");
+ await w.eval("createFromPagasts('68840080082',['68840080082'])");
+ const marijaId=w.eval("P().id"); // pēdējais izveidotais (Marija) ir S.cur/P() uzreiz pēc buildFromGeo
+ w.eval("P().rulesVersion=0");
+ const fund1=JSON.parse(w.eval("JSON.stringify({nprops:S.props.length,staleN:staleProps().length,boxShown:staleFundBox()!==''})"));
+ ok(fund1.nprops===2&&fund1.staleN===1&&fund1.boxShown===true,"#72 Fonds: 2 objekti, 1 novecojis (Marija) — staleFundBox() rādās (got "+JSON.stringify(fund1)+")");
+ w.eval("S.props.forEach(p=>p.rulesVersion=RULES_VERSION)");
+ ok(w.eval("staleFundBox()")==="","#72 Fonds: staleFundBox() tukšs, ja NEVIENS objekts nav novecojis");
+ w.eval(`S.props.find(p=>p.id==="${marijaId}").rulesVersion=0`); // Marija atkal veca
+ ok(w.eval("staleProps().length")===1,"#72 Fonds: pēc atjaunošanas atkal tieši 1 novecojis objekts");
+ const beforeCmp=w.eval("JSON.stringify(S.props)");
+ w.eval("toggleFundRulesCompare();fundRulesCompareHtml();");
+ ok(w.eval("JSON.stringify(S.props)")===beforeCmp,"#72 Fonds: 'Salīdzināt visus' (toggleFundRulesCompare/fundRulesCompareHtml) NEMAINA nevienu objektu");
+ const beforeAsk=JSON.parse(w.eval("JSON.stringify(S.props.map(p=>({rulesVersion:p.rulesVersion,ncirsmas:p.cirsmas.length,histLen:(p.rulesHistory||[]).length})))"));
+ w.eval("recalcAllRulesAsk()"); // pirmais klikšķis — TIKAI apstiprinājuma UI, nedrīkst pārrēķināt
+ const afterAsk=JSON.parse(w.eval("JSON.stringify(S.props.map(p=>({rulesVersion:p.rulesVersion,ncirsmas:p.cirsmas.length,histLen:(p.rulesHistory||[]).length})))"));
+ ok(JSON.stringify(beforeAsk)===JSON.stringify(afterAsk)&&w.eval("!!S.fundRecalcConfirm")===true,"#72 Fonds: 'Pārrēķināt visus' BEZ apstiprinājuma (recalcAllRulesAsk) nemaina NEVIENU objektu, tikai uzstāda apstiprinājuma karogu (got "+JSON.stringify({beforeAsk,afterAsk})+")");
+ w.eval("recalcAllRules()"); // otrais klikšķis — apstiprināts, TAGAD izpilda
+ const afterConfirm=JSON.parse(w.eval("JSON.stringify(S.props.map(p=>({name:p.name,rulesVersion:p.rulesVersion,histLen:(p.rulesHistory||[]).length})))"));
+ const runcAfter=afterConfirm.find(x=>x.name==="Runcīši"),marAfter=afterConfirm.find(x=>x.name==="Marija");
+ ok(marAfter.rulesVersion===w.eval("RULES_VERSION")&&marAfter.histLen===1&&runcAfter.histLen===0,"#72 Fonds: pēc apstiprinātas recalcAllRules() TIKAI novecojušais objekts (Marija) pārrēķināts un dabū rulesHistory ierakstu, svaigais (Runcīši) neaiztikts (got "+JSON.stringify(afterConfirm)+")");
+ ok(w.eval("staleProps().length")===0,"#72 Fonds: pēc apstiprinātas recalcAllRules() vairs nav neviena novecojuša objekta");
+ // 8d3. #72: --scan izvade eksistē, nav tukša, satur visus 7 etalonus (paša skena palaišana šeit dārga — pārbauda jau ģenerēto failu)
+ {const scanPath="tests/diag/dpaths_scan_2026-09-05.txt";
+  const scanTxt=fs.existsSync(scanPath)?fs.readFileSync(scanPath,"utf8"):"";
+  const needKad=["36680080031","70600050074","70420080041","60700020059","78880060148","68840080082","68840020027"];
+  ok(scanTxt.length>200&&needKad.every(k=>scanTxt.includes(k)),"#72 tests/diag/dpaths_scan_2026-09-05.txt eksistē, nav tukšs un satur visus 7 etalonu kadastrus (got length="+scanTxt.length+", trūkst: "+needKad.filter(k=>!scanTxt.includes(k)).join(",")+")");}
  // 8c. #88: nenoteiktības diapazons, jutīgums, jaunaudžu bonitāte pēc meža tipa (VMD 7.tabula)
  w=await app();
  w.eval(`var _mTaks={id:"ut1",suga:"Priede",H:20,G:25,vecums:60,platMezs:1,platKop:1,mezaTips:"Damaksnis",krajaImp:null,formula:[{s:"Priede",k:10,h:20,g:25}],src:"VMD atvērtie dati"};
