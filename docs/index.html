@@ -679,9 +679,14 @@ async function createFromPagasts(kad,pickedZv){toast("Ielādē pagasta "+kad.sli
  if(!groups.length)throw new Error("Neviena atzīmētā ZV pagasta failā nav");
  buildFromGeo(groups);P().geoUpdated=data.updated;P().pagCode=kad.slice(0,4);
  try{P().kaimCuts=neighbourCuts(data,P().zv,P());if(P().kaimCuts.length)toast(`${P().kaimCuts.length} svaigi izcirtumi kaimiņu īpašumos`);save(S.cur);}catch(e){console.warn("kaimCuts",e);}
- loadInfra(P()).catch(e=>console.warn("infra",e));
- loadSentinel(P()).catch(e=>console.warn("sentinel",e)); // #19
- loadAplieci(P()).then(n=>{if(n)toast(`Atrasti ${n} ciršanas apliecinājumi tuvumā`);save(S.cur);}).catch(e=>console.warn("aplieci",e));}
+ // #78: agrāk "fire-and-forget" (nekad neawaitēts) — createFromPagasts atgriezās, kamēr infra/sentinel/aplieci vēl ielādējās fonā; regresa testiem
+ // tāpēc bija jāuzmin fiksēts gaidīšanas laiks (1,5-4 s) pēc katra izsaukuma. Neviens UI izsaukums (onclick) neawaitē createFromPagasts atgriezto Promise,
+ // tāpēc šī gaidīšana lietotājam NAV redzama (poga jau atgriežas uzreiz pēc onclick); testā `await w.eval("createFromPagasts(...)")` tagad ir pietiekams.
+ await Promise.allSettled([
+  loadInfra(P()).catch(e=>console.warn("infra",e)),
+  loadSentinel(P()).catch(e=>console.warn("sentinel",e)), // #19
+  loadAplieci(P()).then(n=>{if(n)toast(`Atrasti ${n} ciršanas apliecinājumi tuvumā`);save(S.cur);}).catch(e=>console.warn("aplieci",e))
+ ]);}
 async function createFromKadastrsMulti(raw){ // #44: "Jauns objekts" pieņem vairākus kadastrus uzreiz (atstarpe/komats/jauna rinda)
  const kads=[...new Set((String(raw).match(/\d{11}/g)||[]))];
  if(!kads.length)return toast("Kadastra apzīmējumam jābūt 11 cipariem");
@@ -1810,11 +1815,12 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
  // #22: cirsmas veido pēc REĀLAS ģeometriskas piegulības (MK935 18.p., robeža > 50 m), nevis pēc krājas summas.
  // 1) vienu nogabalu, kas PATS > limits+0,3 ha, sadala ģeometriski (MK935 23.p., 90 m josla pa šaurāko virzienu)
  out.splits=[];out.oversized=[];out.secondPass=[];const effHa=new Map();const failedSplit=new Set();const adjAll=kaiminiPairs(p,out.nog); // mKey -> efektīvā KC platība (samazināta, ja nogabals sadalīts); adjAll: reālā piegulība (#48 atlikuma pusei)
+ const _sbmCache=new Map(); // #79: sharedBoundaryM (turf.polygonToLine+lineOverlap) atmiņa uz šo vienu runChecks izsaukumu — bestRestSide un 2. piegājiena nbs cilpa zemāk pārbauda TOS PAŠUS (nogabals,kaimiņš) pārus
  for(const x of out.nog){if(x.m.cirsmaKods!=="KC")continue;const mo=moistureOf(x.m.mezaTips);const lim=kcLimit(mo);if(!lim)continue;const ha=num(x.m.platMezs||x.m.platKop);
   if(ha<=lim+REMNANT_HA){if(ha>lim)x.f.push({t:"plus",s:`nogabals ${fmt(ha,2)} ha pārsniedz limitu ${lim} ha par ${fmt(ha-lim,2)} ha ≤ 0,3: drīkst cirst vienā cirsmā (MK935 17.p.)`});continue;}
   const two=strategyOfM(p,x.m)==="divi";const wM=two?bufM():SPLIT_SEP_M,md=two?"divi":"viens"; // #48: noklusējums divi piegājieni (20 m, 20.p.); viens piegājiens (90 m, 23.p.) tikai pēc izvēles
   let auto={side:null,nb:null,why:""},sp=null; // #49: strategy/restSide dzīvo uz NOGABALA (m.strategy/m.restSide), ne cirsmas — cirsmas identitāte katru buildParts atjaunojas
-  if(two&&!x.m.restSide){const b=bestRestSide(p,x,lim,wM,adjAll);if(b){sp=b.sp;auto=b.auto;}else auto=restSideAuto(p,x,adjAll);} // #48/#52: mala, kur 1./2. piegājiena kontakts ir ≤ 50 m (nav piegulošas, MK935 18.p.), citādi mazākais kontakts; atlikums pieskaras nākotnes KC nogabalam (mēra pēc reālās ģeometrijas visām 4 malām), citādi krautuve / šaurākais virziens
+  if(two&&!x.m.restSide){const b=bestRestSide(p,x,lim,wM,adjAll,_sbmCache);if(b){sp=b.sp;auto=b.auto;}else auto=restSideAuto(p,x,adjAll);} // #48/#52: mala, kur 1./2. piegājiena kontakts ir ≤ 50 m (nav piegulošas, MK935 18.p.), citādi mazākais kontakts; atlikums pieskaras nākotnes KC nogabalam (mēra pēc reālās ģeometrijas visām 4 malām), citādi krautuve / šaurākais virziens
   if(!sp)sp=splitOversizedNogabals(x,lim,wM,md,x.m.restSide||auto.side||null);
   if(sp){sp.sideAuto=auto;sp.sideManual=!!x.m.restSide;out.oversized.push(sp);effHa.set(mKey(x.m),sp.kcHa);
    if(two)x.f.push({t:"ier",s:`nogabals ${fmt(ha,2)} ha > ${lim}+0,3 ha (MK935 15.p. limits ${lim} ha): divi piegājieni — KC tagad ${fmt(sp.kcHa,2)} ha, atlikums ${fmt(sp.stripHa+sp.restHa,2)} ha ${SIDE_LV[sp.side]} malā${auto.nb&&!sp.sideManual?" pie nog. "+auto.nb.x.m.nogabals+" (robeža "+auto.nb.len+" m)":sp.sideManual?" (izvēlēta ar roku)":auto.why?" ("+auto.why+")":""}${sp.stripHa>0?`, josla ≥ ${bufM()} m gar cirtes malu (kontakts ${sp.cutLenM} m > 50 — piegulošas, MK935 18.p.); 2. piegājiena cirsma (atlikums + josla) cērtama uzreiz, tiklīdz VMD pēc apliecinājuma noslēgšanas reģistrējis jauno nogabalu, NEVIS pēc 3 g (20.p. šeit neattiecas)`:`, bez joslas (kontakts ${sp.cutLenM} m ≤ 50 — NAV piegulošas, MK935 18.p.); abas cirsmas cērtamas uzreiz, gaidīšana nav vajadzīga`}`});
@@ -1828,7 +1834,7 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
  // (viena cirsma, ģeometriska saistība) NAV pakļauta 50 m prasībai (tā attiecas tikai uz to, vai DIVAS SEPARĀTAS cirsmas ir piegulošas, MK935 18.p.) — pietiek ar jebkādu reālu saskari.
  for(const sp of out.oversized){if(sp.mode!=="divi")continue;const remF=[sp.restGeom,sp.stripGeom].filter(Boolean).map(g=>({type:"Feature",properties:{},geometry:g}));const nbs=[];
   for(const pr of adjAll){const other=pr.xa===sp.x?pr.xb:pr.xb===sp.x?pr.xa:null;if(!other||!futureKC(other,out.oversized))continue;
-   let shared=0;for(const f of remF)shared+=sharedBoundaryM(f,merFeature(other.m));shared=Math.round(shared*10)/10;
+   const shared=sbmSum(_sbmCache,mKey(sp.x.m)+">"+mKey(other.m),remF,other.m); // #79: bestRestSide augstāk jau rēķinājis TO PAŠU (nogabals,kaimiņš) pāri šai pusei — atkārtoti neskaita
    nbs.push({x:other,ha:num(other.m.platMezs||other.m.platKop),sharedM:shared,adjM:pr.len,ok:shared>0.5});}
   const ok=nbs.filter(n=>n.ok);const ha=+(sp.stripHa+sp.restHa+ok.reduce((a,n)=>a+n.ha,0)).toFixed(2);
   out.secondPass.push({sp,nbs,ha,year:sp.year,m3:Math.round(sp.stripM3+sp.restM3+ok.reduce((a,n)=>a+n.x.kr,0))});
@@ -1952,7 +1958,7 @@ function restSideAuto(p,x,adjAll){let best=null;
  if(p.krautuve){const s=sideBetween(x.m,p.krautuve.lon,p.krautuve.lat);if(s)return {side:s,nb:null,why:"tuvāk krautuvei"};}
  return {side:null,nb:null,why:"šaurākais virziens"};}
 function fragCount(geom){if(!geom)return 0;if(geom.type==="MultiPolygon")return geom.coordinates.length;if(geom.type==="Polygon")return 1;return 0;} // #50/A: cik nesavienotiem gabaliem sadalās poligons
-function bestRestSide(p,x,lim,widthM,adjAll){const cands=[];for(const pr of adjAll){if(pr.len<ADJ_MIN_M)continue;const other=pr.xa===x?pr.xb:pr.xb===x?pr.xa:null;if(!other||other.m.cirsmaKods==="KC"||!futureKC(other,[]))continue;cands.push({x:other,len:pr.len});}
+function bestRestSide(p,x,lim,widthM,adjAll,sbmCache){const cands=[];for(const pr of adjAll){if(pr.len<ADJ_MIN_M)continue;const other=pr.xa===x?pr.xb:pr.xb===x?pr.xa:null;if(!other||other.m.cirsmaKods==="KC"||!futureKC(other,[]))continue;cands.push({x:other,len:pr.len});}
  // #52: atceļ 4785f28 "maksimizē uz ≥50 m" kritēriju — MK935 18.p. piegulošas ir cirsmas ar kopīgu robežu VIRS 50 m, tāpēc mērķis ir OTRĀDI: 1. un 2. piegājiena
  // cirsmu kontaktu (griezuma līnijas garums, sp.cutLenM) TURĒT ≤ 50 m, ja iespējams — tad tās NAV piegulošas, josla nav vajadzīga. Atlikums vienmēr VIENS saistīts
  // poligons (#50/A); ja neviens virziens neuztur ≤ 50 m, ņem to ar mazāko kontaktu (tuvāk mērķim) — josla starp piegājieniem paliek (esošā #48/#49 cutLenM>50 loģika).
@@ -1965,12 +1971,15 @@ function bestRestSide(p,x,lim,widthM,adjAll){const cands=[];for(const pr of adjA
  if(!chosen)return null; // neviens virziens nedod vienu gabalu -- izsaucējs ņem krautuvi / šaurāko virzienu (restSideAuto)
  // #51/#52: nākamā piegājiena nogabala pievienošana atlikumam NAV pakļauta 50 m prasībai — pietiek ar jebkādu reālu ģeometrisku saskari (viena cirsma, ne divas piegulošas)
  const remF=[chosen.sp.restGeom,chosen.sp.stripGeom].filter(Boolean).map(g=>({type:"Feature",properties:{},geometry:g}));
- let bestNb=null;for(const c of cands){let sh=0;for(const f of remF)sh+=sharedBoundaryM(f,merFeature(c.x.m));sh=Math.round(sh*10)/10;if(sh>0.5&&(!bestNb||sh>bestNb.sh))bestNb={x:c.x,sh};}
+ let bestNb=null;for(const c of cands){const sh=sbmCache?sbmSum(sbmCache,mKey(x.m)+">"+mKey(c.x.m),remF,c.x.m):(()=>{let v=0;for(const f of remF)v+=sharedBoundaryM(f,merFeature(c.x.m));return Math.round(v*10)/10;})();if(sh>0.5&&(!bestNb||sh>bestNb.sh))bestNb={x:c.x,sh};}
  const why=chosen.sp.cutLenM<=ADJ_MIN_M?`1. un 2. piegājiena kontakts ${chosen.sp.cutLenM} m ≤ 50 m — cirsmas nav piegulošas (MK935 18.p.), josla nav vajadzīga`
   :`1. un 2. piegājiena kontakts ${chosen.sp.cutLenM} m > 50 m visos griezuma virzienos, kas dod vienu atlikuma gabalu — ${SIDE_LV[chosen.side]} mala dod mazāko kontaktu`;
  return {sp:chosen.sp,auto:{side:chosen.side,nb:bestNb?{x:bestNb.x,len:bestNb.sh}:null,frag:1,why}};}
 function sharedBoundaryM(fa,fb){try{const toLines=f=>{const l=turf.polygonToLine(f);return l.type==="FeatureCollection"?l.features:[l];};let mm=0;
  for(const la of toLines(fa))for(const lb of toLines(fb)){const ov=turf.lineOverlap(la,lb,{tolerance:0.003});for(const f of ov.features)mm+=turf.length(f,{units:"kilometers"})*1000;}return mm;}catch(e){return 0;}}
+// #79: sharedBoundaryM (turf.polygonToLine+lineOverlap, dārga operācija) atmiņa pēc (nogabals,kaimiņš) atslēgas — bestRestSide un 2. piegājiena nbs cilpa
+// (runChecks) pārbauda TOS PAŠUS pārus tai pašā atlikuma pusei; kešs dzīvo tikai vienam runChecks izsaukumam (jauns Map katru reizi), tāpēc mainīga ģeometrija (cita puse/scenārijs) nekad nedod novecojušu rezultātu.
+function sbmSum(cache,key,remF,otherM){if(cache.has(key))return cache.get(key);let v=0;for(const f of remF)v+=sharedBoundaryM(f,merFeature(otherM));v=Math.round(v*10)/10;cache.set(key,v);return v;}
 function sideOptions(p,x,r){const out={};for(const pr of kaiminiPairs(p,r.nog)){const other=pr.xa===x?pr.xb:pr.xb===x?pr.xa:null;if(!other)continue;const s=sideOf(x.m,other.m);if(!s)continue;out[s]=(out[s]?out[s]+", ":"")+"nog. "+other.m.nogabals+" ("+pr.len+" m"+(futureKC(other,[])?", nākotnes KC":"")+")";}return out;}
 function setRestSide(mid,v){M(mid).restSide=v||null;rebuildAutoParts(P());save(S.cur);}
 function rebuildAutoParts(p){try{buildParts(p);}catch(e){console.warn("rebuildAutoParts",e);}} // #49: pēc strategy/restSide/D-ceļa izvēles pārbūvē parts no jauna (cirsmu identitāte katru reizi atjaunojas, izņemot c.manual)

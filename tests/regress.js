@@ -4,17 +4,29 @@ const fs=require("fs");const zlib=require("zlib");const https=require("https");c
 const root=fs.existsSync(path.join(process.cwd(),"node_modules","jsdom"))?path.join(process.cwd(),"node_modules"):require("child_process").execSync("npm root -g").toString().trim();
 const {JSDOM}=require(root+"/jsdom");
 const html=fs.readFileSync("app/index.html","utf8").replace(/<script src="https:[^"]+"><\/script>/g,"").replace(/<link rel="stylesheet" href="https:[^"]+">/g,"");
-// family:4 -- šai videi novērots, ka IPv6 uz raw.githubusercontent.com reizēm karājas/ETIMEDOUT, kaut IPv4 strādā uzreiz (05.09.2026, #74 diagnostikā atklāts un noķerts)
-const get=u=>new Promise((res,rej)=>{const req=https.get(u,{family:4,timeout:30000},r=>{const b=[];r.on("data",d=>b.push(d));r.on("end",()=>res(Buffer.concat(b)));});req.on("error",rej);req.on("timeout",()=>req.destroy(new Error("timeout: "+u)));});
+// family:4/agent:false -- šai videi novērots, ka IPv6 uz raw.githubusercontent.com reizēm karājas/ETIMEDOUT, kaut IPv4 strādā uzreiz (05.09.2026, #74 diagnostikā atklāts un noķerts);
+// agent:false izvairās no koplietota (potenciāli sastrēguša) savienojumu pūla garā, daudz-pieprasījumu procesā (#78).
+const get=u=>new Promise((res,rej)=>{const req=https.get(u,{family:4,timeout:30000,agent:false},r=>{const b=[];r.on("data",d=>b.push(d));r.on("end",()=>res(Buffer.concat(b)));});req.on("error",rej);req.on("timeout",()=>req.destroy(new Error("timeout: "+u)));});
 const BASE="https://raw.githubusercontent.com/kgudonis-dotcom/geo-ingest/data";
 let fails=0;const ok=(c,m)=>{console.log((c?"OK  ":"FAIL")+" "+m);if(!c)fails++;};
-async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendToBeVisual:true,url:"http://localhost/"});const w=dom.window;w.turf=require(root+"/@turf/turf");w.XLSX=require(root+"/xlsx");w.pako={ungzip:(u8)=>zlib.gunzipSync(Buffer.from(u8)).toString()};
- const cache={};w.fetch=async(url)=>{const m=url.match(/\/(pagasti|infra)\/(\d{4})\.json\.gz/);if(!m)return {ok:false,status:404};const k=m[1]+m[2];if(!cache[k]){try{cache[k]=await get(`${BASE}/${m[1]}/${m[2]}.json.gz`);}catch(e){return {ok:false,status:404};}}
+// #78: kešs MODUĻA LĪMENĪ (ne app() iekšā) -- pastāv visam node procesam, ne tikai vienam w=await app() izsaukumam; tas pats etalona pagasts (piem. 60700020059)
+// šajā failā tiek ielādēts 8x -- bez tā katrs izsaukums no jauna fetčoja/atspieda/parsēja to pašu vairāku MB pagasta failu (izmērīts: 81 -> 8 tīkla pieprasījumi).
+const cache={};
+const FIXDIR=path.join(__dirname,"fixtures","pagasti"); // #78: mazi fixture faili (tikai etalona ZV, dažus KB) -- aizstāj pilno (700 KB-1,6 MB) pagasta failu; skript tests/build_fixtures.js tos ģenerē no dzīvajiem datiem
+let __lastWindow=null; // #79: katrs w=await app() rada JAUNU pilnu jsdom logu/dokumentu; bez iepriekšējā slēgšanas tie uzkrājas atmiņā (~28 izsaukumi/palaidienā -> arvien lēnāk/nestabilāk pret beigām)
+async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__lastWindow=null;}
+ const dom=new JSDOM(html,{runScripts:"dangerously",pretendToBeVisual:true,url:"http://localhost/"});const w=dom.window;__lastWindow=w;w.turf=require(root+"/@turf/turf");w.XLSX=require(root+"/xlsx");w.pako={ungzip:(u8)=>zlib.gunzipSync(Buffer.from(u8)).toString()};
+ w.fetch=async(url)=>{const m=url.match(/\/(pagasti|infra)\/(\d{4})\.json\.gz/);if(!m)return {ok:false,status:404};const k=m[1]+m[2];
+  if(!cache[k]){
+   const fixPath=m[1]==="pagasti"?path.join(FIXDIR,m[2]+".json.gz"):null;
+   if(fixPath&&fs.existsSync(fixPath))cache[k]=fs.readFileSync(fixPath);
+   else{try{cache[k]=await get(`${BASE}/${m[1]}/${m[2]}.json.gz`);}catch(e){return {ok:false,status:404};}}
+  }
   const b=cache[k];if(b.length<100)return {ok:false,status:404};return {ok:true,arrayBuffer:async()=>b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength)};};
  w.eval("setLang('lv')");return w;}
 (async()=>{
  // 1. Zapasnaja 19: VMD izsniedza KC apliecinājumus uz nog. 2,3,4,5,6,7,9 -> tur nedrīkst būt bloķētāju
- let w=await app();await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
+ let w=await app();await w.eval("createFromPagasts('36680080031')");
  ok(w.eval("P().mer.length")===9,"Zapasnaja: 9 nogabali no VMD");
  ok(w.eval("P().mer.every(m=>!nogPlausibleIssue(m))")&&w.eval("dashData(P()).kraja")===w.eval("Math.round(P().mer.reduce((s,m)=>s+krajaMer(m),0))"),"Zapasnaja: neviens nogabals nav neticams, kopējā krāja nemainās (#45)");
  w.eval("for(const n of ['2','3','4','5','6','7','9']){const m=P().mer.find(x=>x.nogabals===n);m.cirsmaKods='KC';}recalcLinked()");
@@ -24,27 +36,27 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // #50 (comment 3, atlikušais 5.): Zapasnaja pēc REĀLA (ne manuāli uzspiesta) grupējuma — VMD apstiprināja KC uz nog. 2,3,4,5,6,7,9. Pārbaudām, ka buildParts katru nogabalu,
  // ko lietotne PATI (vecuma/D pamata, bonitāte/cirtmets ārpus šī uzdevuma robežām) atzīst par KC, ievieto savā cirsmā ar pareizu ha — nesajaukts, nepazudis. Pilnīga sakritība ar
  // VMD sarakstu NAV apgalvota (sk. atskaiti): app auto-KC un VMD apstiprinātais saraksts var atšķirties, jo tas ir bonitātes/cirtmeta jautājums, ne cirsmu ģeometrijas/dalījuma.
- w=await app();await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,2500));
+ w=await app();await w.eval("createFromPagasts('36680080031')");
  const zap=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const approved=["2","3","4","5","6","7","9"];
   const autoKc=p.mer.filter(m=>approved.includes(m.nogabals)&&m.cirsmaKods==="KC").map(m=>m.nogabals);
   const eachOwnCirsma=autoKc.every(n=>{const m=p.mer.find(x=>x.nogabals===n);const c=p.cirsmas.find(cc=>cc.id===m.cirsma);return c&&Math.abs(c.platiba-num(m.platMezs||m.platKop))<0.05;});
   return {approved,autoKc,eachOwnCirsma,ncirsmas:p.cirsmas.length};})())`));
  ok(zap.autoKc.length>0&&zap.eachOwnCirsma,"Zapasnaja: katrs VMD apstiprinātais nogabals, ko lietotne pati atzīst par KC ("+zap.autoKc.join(",")+" no "+zap.approved.join(",")+"), pēc reālā (ne manuāla) grupējuma ir savā cirsmā ar pareizu ha (nav sajaukts/pazudis, "+zap.ncirsmas+" cirsmas kopā) — bonitāte/cirtmets (kāpēc tieši šis apakškopums) ir ārpus #49/#50 robežām");
  // 2. Ezermuiža
- w=await app();await w.eval("createFromPagasts('70600050074')");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('70600050074')");
  ok(w.eval("P().mer.length")===28,"Ezermuiža: 28 nogabali");
  ok(w.eval("P().mer.every(m=>!nogPlausibleIssue(m))")&&w.eval("dashData(P()).kraja")===w.eval("Math.round(P().mer.reduce((s,m)=>s+krajaMer(m),0))"),"Ezermuiža: neviens nogabals nav neticams, kopējā krāja nemainās (#45)");
  ok(w.eval("P().mer.filter(m=>m.geom).length")===28,"Ezermuiža: visiem ģeometrija");
  ok(w.eval("P().cirsmas.length")>=1,"Ezermuiža: cirsmas izveidotas");
  // 2a. Ezermuiža aizsargjoslas (#39): reāls gadījums, fiksēts 02.09.2026, pārbaudīt pret VMD
- w.eval("loadInfra(P())");await new Promise(r=>setTimeout(r,3000));
+ await w.eval("loadInfra(P())");
  const ezInfra=w.eval("P().infra?{water:P().infra.water.length,usik:P().infra.usik.length}:null");
  ok(ezInfra&&(ezInfra.water+ezInfra.usik)>=1,"Ezermuiža: ir vismaz viena ūdenstece infra datos (got "+JSON.stringify(ezInfra)+")");
  const ezKc=w.eval("+Object.values(runChecks(P()).zoneByNog||{}).reduce((a,z)=>a+z.kc.ha,0).toFixed(2)");
  const ezMain=w.eval("+Object.values(runChecks(P()).zoneByNog||{}).reduce((a,z)=>a+z.main.ha,0).toFixed(2)");
  ok(ezKc===0&&ezMain===0,"Ezermuiža: aizsargjoslas kopā KC 0,00 ha, 10 m josla 0,00 ha (fiksēts 02.09.2026, pārbaudīt pret VMD; got kc="+ezKc+" main="+ezMain+")");
  // 3. PAF 70420080041: IRR pret Excel (67,0 %)
- w=await app();await w.eval("createFromPagasts('70420080041')");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('70420080041')");
  ok(w.eval("P().mer.length")===38,"70420080041: 38 nogabali");
  const irr=w.eval("(xirr([[0,-113968.87],[120,-41210],[90,93210],[365,111320],[365,0]])*100).toFixed(1)");ok(irr==="67.0","XIRR = Excel 67,0 % (got "+irr+")");
  // 4. Nodeva MK1250
@@ -105,13 +117,13 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(m3===758,"atliktie m³ = joslas daļa × nogabala krāja: 3,79 ha × 200 m³/ha = 758 m³ (got "+m3+")");
  // 5. #44: objekts = NĪ ar vairākām ZV - agregācija (krāja, cērtamais, LAD/eksplikācijas ha, PAF zemes summa) = abu ZV summas
  w=await app();
- await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
+ await w.eval("createFromPagasts('36680080031')");
  const zvA=w.eval("P().id");
  const statsExpr=p=>"(()=>{const p="+p+";return {mer:p.mer.length,kraja:+p.mer.reduce((s,m)=>s+krajaMer(m),0).toFixed(2),cut:+calcProp(p).m3.toFixed(2),ladHa:p.lad?p.lad.ha:0,explLiz:p.expl?(p.expl.liz||0):0,explMezs:p.expl?(p.expl.mezs||0):0,land:+valCalc(p).landPrice.toFixed(2),zv:p.zv.slice().sort()};})()";
  const A=JSON.parse(w.eval("JSON.stringify("+statsExpr("P()")+")"));
- await w.eval("createFromPagasts('70600050074')");await new Promise(r=>setTimeout(r,1500));
+ await w.eval("createFromPagasts('70600050074')");
  const B=JSON.parse(w.eval("JSON.stringify("+statsExpr("P()")+")"));
- await w.eval(`addZV('${zvA}','70600050074')`);await new Promise(r=>setTimeout(r,2000));
+ await w.eval(`addZV('${zvA}','70600050074')`);
  const C=JSON.parse(w.eval("JSON.stringify("+statsExpr(`S.props.find(x=>x.id==='${zvA}')`)+")"));
  ok(JSON.stringify(C.zv)==='["36680080031","70600050074"]',"2 ZV objektā: abas ZV pievienotas p.zv (got "+JSON.stringify(C.zv)+")");
  ok(C.mer===A.mer+B.mer,"2 ZV: nogabalu skaits summējas "+C.mer+" = "+A.mer+" + "+B.mer);
@@ -123,7 +135,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // 6. #44: viens ZV kā līdz šim (bez māsas ZV) - siblingZV neizraisa izvēles UI, izveide notiek uzreiz (jau pārbaudīts iepriekš ar Zapasnaja/Ezermuiža/PAF - visi testi augstāk paliek zaļi bez izmaiņām)
  // 7. #44: Arhivēšana - arhivēts objekts nav sarakstā/Fondā, atjaunots atgriežas
  w=await app();
- await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
+ await w.eval("createFromPagasts('36680080031')");
  const pid=w.eval("P().id");
  const nBefore=w.eval("fundStats(S.props).n");
  w.eval(`archiveProp('${pid}')`); // #44: divkāršs klikšķis apstiprinājumam (arhivēt ar apstiprinājumu) — 1. klikšķis tikai iestata ARM, nearhivē
@@ -138,7 +150,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const nAfterRestore=w.eval("fundStats(S.props).n");
  ok(nAfterRestore===nBefore,"atjaunots objekts atkal skaitās Fondā");
  // 8. #45: nogabalu ticamības pārbaude (VMD dbf ×100 kļūda). 60700020059 kv.2 nog.4: B16, D12, H11, 3,05 ha, reālajos datos krāja 25095 m³ (8228 m³/ha), G 1700 -> patiesie ~251 m³, G 17. NĪ "Bojāri" ir 2 ZV, ņem tikai šo.
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
  const tgt="P().mer.find(m=>m.kvartals==='2'&&m.nogabals==='4')";
  ok(w.eval("P().mer.length")===56,"60700020059: 56 nogabali");
  const pl=JSON.parse(w.eval("JSON.stringify(nogPlausibleIssue("+tgt+"))"));
@@ -173,7 +185,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const bonFlagOld=w.eval("runChecks(P()).nog.filter(x=>x.f.some(f=>f.t==='warn'&&/aptuvena/.test(f.s))).length");
  ok(bonFlagOld===0,"vecās 'bonitāte aptuvena' (Orlova aproksimācija) dzeltenā karodziņa vairs nav — funkcija izņemta");
  // 60700020059: 18 priedes 101-111 g ar REĀLIEM H no pagasta faila (bez simulētas bonitātes) -> visām MK384 dod bon I-III -> visas KC
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
  const pinesExpr="P().mer.filter(m=>m.suga==='Priede'&&m.vecums>=101&&m.vecums<=111)";
  ok(w.eval(pinesExpr+".length")===18,"60700020059: 18 priedes 101-111 g (got "+w.eval(pinesExpr+".length")+")");
  const pineBon=JSON.parse(w.eval("JSON.stringify("+pinesExpr+".map(m=>bonOf(m)))"));
@@ -189,7 +201,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // 10. #22: cirsmas pēc ģeometriskas piegulības (MK935 18.p.), nevis krājas summas; limits pa nogabalu (MK935 15./16./23.p.); atdalošās joslas.
  // Cēlonis (diagnoze 03.09.2026): adjacency atslēga bija "kv-nog" (bez ZV), bet salīdzināta pret kailu m.nogabals -> daudz-ZV objektos (60700020059, NĪ "Bojāri", 2 ZV)
  // NEKAD neatrada atbilstību, tāpēc buffers vienmēr bija tukšs masīvs. Labots: atslēga vienmēr zv/kv/nog (mKey), cirsmas veido pēc savienoto komponenšu grafa.
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
  const r22=JSON.parse(w.eval(`JSON.stringify((()=>{const r=runChecks(P());
   const grpOf=k=>r.split.findIndex(g=>g.nog.some(e=>mKey(e.m)===k));
   const rawTokens=String(P().kaimini||"").split(/[;,]/).map(x=>x.trim()).filter(Boolean);
@@ -221,14 +233,14 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const total22=r22.kcTotal+r22.deferredM3+r22.blockedM3;
  ok(Math.abs(total22-9340)<=100,"KC kopā + atliktie + bloķētie ≈ 9340 m³ (pirms-sadalīšanas summa, iekšēji konsekventa; PIEZĪME: issue #22 komentārā minētie 9079 m³ bija no 2 jau izveidotām rokas cirsmām, ne visu 56 nogabalu pilnās KC kopsummas — atskaitē paskaidrots) (got "+total22+")");
  // Zapasnaja/Ezermuiža/70420080041: pateikt, vai mainās
- w=await app();await w.eval("createFromPagasts('36680080031')");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('36680080031')");
  const zap22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
  ok(zap22.numBuffers>0&&zap22.deferredM3>0,"Zapasnaja: TAS PATS #22 labojums ietekmē arī šo objektu — tagad ir reālas joslas (agrāk 0, tas pats atslēgas defekts) (got buffers="+zap22.numBuffers+", deferredM3="+zap22.deferredM3+")");
- w=await app();await w.eval("createFromPagasts('70600050074')");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('70600050074')");
  const ez22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
  // #74: baltalksnis nog.26 (0 g krājas, 1,97 ha, 9 g) tagad "vienmēr" KC (Meža likuma 9.p. tabulā nav cirtmeta) un ir piegulošs kādam citam KC nogabalam — 1 josla, bet 0 m³ (G=0, nekas nav cērtams)
  ok(ez22.numBuffers===1&&ez22.deferredM3===0,"Ezermuiža: nog.26 (baltalksnis, 0 g krājas) tagad arī 'KC' un piegulošs — 1 josla parādās, bet 0 m³ atliekas (G=0) (agrāk 0 joslu, #74 aizstāj #60 25 g slieksni ar 'vienmēr') (got buffers="+ez22.numBuffers+", deferredM3="+ez22.deferredM3+")");
- w=await app();await w.eval("createFromPagasts('70420080041')");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('70420080041')");
  const paf22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
  ok(paf22.numBuffers===0&&paf22.deferredM3===0,"70420080041 (PAF): nemainās (got buffers="+paf22.numBuffers+", deferredM3="+paf22.deferredM3+")");
  // Sintētisks: viens 7 ha nogabals damaksnī (limits 5 ha) -> ģeometriski sadalās KC daļā + 90 m josla (MK935 23.p.) + atlikumā
@@ -265,13 +277,13 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   var _p39w={id:"synt39w",zv:["99990010001"],mer:[{id:"s1",zv:"9999",kvartals:"1",nogabals:"1",platMezs:1,platKop:1,cirsmaKods:"KC",suga:"Priede",geom:_standRing39w}],cirsmas:[],deferPairs:[]};`);
  const infraGz=zlib.gzipSync(Buffer.from(JSON.stringify({pagasts:"9999",updated:"2026-09-03",roads:[],water:[],usik:[],watera:[{t:"water",name:"Testezers",ha:5,geom:[[[[27.0005,57.0005],[27.0015,57.0005],[27.0015,57.0015],[27.0005,57.0015],[27.0005,57.0005]]]]}]})));
  w.fetch=async(url)=>/\/infra\/9999\.json\.gz/.test(url)?{ok:true,arrayBuffer:async()=>infraGz.buffer.slice(infraGz.byteOffset,infraGz.byteOffset+infraGz.byteLength)}:{ok:false,status:404};
- w.eval(`window.__err39w=null;loadInfra(_p39w).catch(e=>window.__err39w=e.message);`);
- await new Promise(r=>setTimeout(r,1500));
+ await w.eval(`(async()=>{window.__err39w=null;try{await loadInfra(_p39w);}catch(e){window.__err39w=e.message;}})()`);
+ 
  const w39=JSON.parse(w.eval("JSON.stringify({watera:(_p39w.infra&&_p39w.infra.watera)||[],err:window.__err39w})"));
  ok(w39.watera.length===1&&!w39.err,"loadInfra: MultiPolygon watera formāts vairs netiek izmests bbox filtrā, vismaz 1 poligons paliek (got "+JSON.stringify(w39)+")");
  // reālie dati: vecais plakans watera formāts (pirms infra pārbūves) joprojām strādā bez kļūdas (atpakaļsaderība)
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
- w.eval("loadInfra(P())");await new Promise(r=>setTimeout(r,4000));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
+ await w.eval("loadInfra(P())");
  const liveZ=w.eval("(()=>{try{const Z=zoneFeatures(P());return Z?Z.kc.length:-1;}catch(e){return 'ERR:'+e.message;}})()");
  ok(typeof liveZ==="number"&&liveZ>=0,"60700020059: zoneFeatures nesalūzt uz reāliem (vēl vecā formāta, pirms infra pārbūves) datiem (got "+liveZ+")");
  // #22 turpinājums: pagasta faila geom tagad gredzenu saraksts [ārējais,caurums,...] (SCHEMA_VERSION 2) — merFeature/turf.area caurumu atskaita; vecais plakanais formāts joprojām strādā
@@ -309,8 +321,8 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const izNoInfra=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(Object.assign({},_p21,{infra:{roads:[]}})))"));
  ok(izNoInfra.ok===false&&izNoInfra.cost===0&&/infrastruktūr/.test(izNoInfra.reason),"#21 bez ceļu datiem: izmaksa 0, iemesls skaidrs (got "+JSON.stringify(izNoInfra)+")");
  // reāls objekts ar infra datiem (60700020059, 03.09.2026, pēc infra pārbūves commit 8ea4b8e): krautuve automātiski uz ceļa pieslēguma, 24 cērtamie nogabali
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
- w.eval("loadInfra(P())");await new Promise(r=>setTimeout(r,8000));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
+ await w.eval("loadInfra(P())");
  const krReal=JSON.parse(w.eval("JSON.stringify(P().krautuve)"));
  ok(krReal&&typeof krReal.lon==="number"&&typeof krReal.lat==="number","60700020059: krautuve piedāvāta automātiski (got "+JSON.stringify(krReal)+")");
  const c21r=JSON.parse(w.eval("JSON.stringify(izvedCalc(P()))"));
@@ -337,7 +349,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(w.eval("sentinelCol(_mMismatch1)")==="#c0392b"&&w.eval("sentinelCol(_mOk)")==="#2c6a47","#19 sentinelCol: sarkans zudumam, zaļš bez izmaiņām (got "+w.eval("sentinelCol(_mMismatch1)")+", "+w.eval("sentinelCol(_mOk)")+")");
  ok(w.eval("lidarCol(_mMismatch2)")==="#c0392b"&&w.eval("lidarCol(_mOk)")==="#2c6a47","#19 lidarCol: sarkans <30%, zaļš ≥50% (got "+w.eval("lidarCol(_mMismatch2)")+", "+w.eval("lidarCol(_mOk)")+")");
  // reāls objekts: karte rāda nesakritības izcēlumu un LiDAR "nav pieejams" pogu, kad neviens nogabals to nenorāda
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,1500));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
  const hBase=w.eval("S.mapLayer=null;vDash()");
  ok(/LiDAR šim apgabalam nav pieejams/.test(hBase),"60700020059: bez ievadīta LiDAR seguma poga LiDAR segums ir atspējota ar paskaidrojumu (nogabaliem nav LiDAR)");
  const nogB=w.eval("P().mer.filter(m=>m.geom)[1]");
@@ -358,7 +370,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(/Bojājums \(Sentinel-2\)/.test(rcDmg)||/Bojājums \(Sentinel-1\)/.test(rcDmg),"runChecks: nogabalam ar Sentinel/vējgāzes datiem parādās 'Bojājums (...)' info karodziņš (#50/E2 obligātā pārbaude) (got "+rcDmg+")");
  // #49: cirsmas kā nogabalu DAĻAS (poligoni), piegājieni kā ĪSTAS cirsmas ar parts[]/stage/dependsOn. Nalobnes mežs (NĪ 78880060236, ZV 78880060148, pagasts 7888).
  // Reālais 04.09.2026 plāns (1,96 + 0,61 ha) ir ar roku zīmēts, tests to NEpiesien; fiksē likuma noklusējumu: nog.1 2,52 ha (mežaTips ārpus MK935 15.1 saraksta) = MK935 15.2 (2 ha).
- w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");
  const nal=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const r=runChecks(p);const o=r.oversized[0];const c1=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="1");const c2b=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="2");const c3=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="3");const c2=p.cirsmas.find(c=>c.stage===2);
   const m1=p.mer.find(m=>m.nogabals==="1"),m2=p.mer.find(m=>m.nogabals==="2"),m3=p.mer.find(m=>m.nogabals==="3");
   const stage1Hatch=p.cirsmas.filter(c=>c.stage!==2).reduce((a,c)=>a+(c.parts||[]).filter(pp=>pp.kind==="josla").length,0);
@@ -439,7 +451,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const nalI=JSON.parse(w.eval("JSON.stringify((()=>{const m2=P().mer.find(m=>m.nogabals==='2');const c=P().cirsmas.find(cc=>cc.id===m2.cirsma);return {kods:m2.cirsmaKods,plan:m2.dPlan&&m2.dPlan.path,auto:!!(m2.dPlan&&m2.dPlan.auto),manual:!!m2.cirsmaManual,cPlat:c&&c.platiba};})())"));
  ok(nalI.kods==="KC"&&nalI.plan==="izlaseKc"&&nalI.auto===false&&nalI.manual===true&&Math.abs(nalI.cPlat-1.35)<=0.02,"Nalobnes nog.2 pēc izvēles ar roku (chooseDPath 'izlaseKc'): cirsmaKods 'KC', dPlan.auto=false (izvēlēts ar roku, ne automātiski), m.cirsmaManual iestatīts, cirsma ≈1,35 ha (got "+JSON.stringify(nalI)+")");
  // pārrēķins esošam (saglabātam) objektam: simulē objektu no PIRMS #49 (bez parts, sanitārā/2.piegājiens vēl nav atvasināti), tad migrateSplit
- w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");
  w.eval("(()=>{const p=P();p.splitVer=undefined;p.cirsmas=[];for(const m of p.mer){m.cirsma='';if(m.dPlan){m.cirsmaKods='';delete m.dPlan;}delete m.strategy;delete m.restSide;delete m.cirsmaManual;}})()"); // nog.1 (vecuma-KC, bez dPlan) paliek; nog.2 (D-ceļa dPlan) un nog.3 (#60: D-ceļa dPlan) tiek atiestatīti uz tukšu, kā tas būtu pirms #49/#50/#60
  const mig=JSON.parse(w.eval("JSON.stringify((()=>{const ch=migrateSplit(P());const p=P();return {ch,ncirsmas:p.cirsmas.length,ver:p.splitVer,log:p.log[0].text,stages:p.cirsmas.map(c=>c.stage).sort(),partsVer:PARTS_VER};})())"));
  // #60: nog.3 tagad ARĪ automātiski pārrēķinās uz KC pēc caurmēra (sava cirsma) — 4 cirsmas (nog.1, nog.2, nog.3 1. piegājienā + 2. piegājiens), ne 3
@@ -453,7 +465,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   const m=p.mer[0];return {suga:m.suga,D:m.D};})())`));
  ok(dTest.suga==="Egle"&&Math.abs(dTest.D-25)<0.5,"Sintētisks nogabals: valdošā suga egle D25/G20 + bērzs D32/G5 (mazāks G) -> valdošās sugas D paliek ≈25, NEsajaucas ar bērza 32 (got "+JSON.stringify(dTest)+")");
  // #50/D: cirsmu plāna scenāriji — vismaz A/B/C, noklusējums (lielākā vērtība bez sarkana karodziņa) = B, objekts NAV mainīts pirms applyScenario
- w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");
  const scenTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const before=JSON.stringify(p.cirsmas);const scs=buildScenarios(p);const afterUnchanged=JSON.stringify(p.cirsmas)===before;
   return {n:scs.length,keys:scs.map(s=>s.key).sort(),recommendedKey:(scs.find(s=>s.recommended)||{}).key,allZeroRed:scs.every(s=>s.red===0),afterUnchanged,scenarioB:scs.find(s=>s.key==="B"),scenarioC:scs.find(s=>s.key==="C")};})())`));
  ok(scenTest.n>=3&&JSON.stringify(scenTest.keys)==='["A","B","C"]',"Nalobnes: buildScenarios dod vismaz 3 scenārijus A/B/C (got "+JSON.stringify(scenTest.keys)+")");
@@ -466,7 +478,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // #48 hotfix (04.09.2026): b88919d ražošanā Cirsmu sadaļa krita ar "CSTAT is not defined" (rindas komentārs aprija const CSTAT), regress to nenoķēra, jo
  // neviens tests nerenderēja cilnes ar ATVĒRTU cirsmas kartīti. Renderē visas cilnes reāliem objektiem; jebkurš ReferenceError/TypeError krīt šeit.
  const viewErr=(view,openId)=>w.eval(`(()=>{S.view='${view}';S.open=${openId?"'"+openId+"'":"null"};try{const fn={dash:vDash,cirs:vCirs,mer:vMer,val:vVal,docs:vDocs}[S.view];const h=fn();return h.length>500?"":"tukšs ("+h.length+")";}catch(e){return e.constructor.name+": "+e.message;}})()`);
- w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
+ w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");
  for(const v of ["dash","cirs","mer","val","docs"]){const e=viewErr(v,null);ok(e==="","Nalobnes cilne '"+v+"' renderējas bez kļūdas"+(e?" (got "+e+")":""));}
  const cids=JSON.parse(w.eval("JSON.stringify(P().cirsmas.map(c=>c.id+'|'+cTips(c)))"));
  for(const cid of cids){const [id,tips]=cid.split("|");const e=viewErr("cirs",id);ok(e==="","Nalobnes Cirsmas ar atvērtu kartīti ("+tips+") renderējas — CSTAT, stratēģija, atlikuma puse"+(e?" (got "+e+")":""));}
@@ -481,13 +493,13 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
   const view=w.eval("S.view");const len=w.eval("document.getElementById('main').innerHTML.length");
   ok(err===""&&view===v&&len>200,"Nalobnes cilne '"+v+"' pēc ĪSTA klikšķa uz nav pogu maina S.view un satur saturu (got kļūda='"+err+"', S.view='"+view+"', main len="+len+")");
  }
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,2500));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
  for(const v of ["dash","cirs","mer","val","docs"]){const e=viewErr(v,null);ok(e==="","60700020059 cilne '"+v+"' renderējas bez kļūdas"+(e?" (got "+e+")":""));}
  {const cid=w.eval("P().cirsmas[0].id");const e=viewErr("cirs",cid);ok(e==="","60700020059 Cirsmas ar atvērtu kartīti renderējas"+(e?" (got "+e+")":""));}
  // #60: (1) KC pēc caurmēra kā automātisks scenārijs (ĪADT izņēmums), (2) cirsmu dalīšana pēc cirtes izpildes veida, (3) piegulošu cirsmu kopplatība (MK935 16.p.).
  // Marija mežs (68840080082, pagasts 6884): jauns etalons pēc VMD apliecinājumiem — nog.1 KC 1,81; nog.3+4 KC 2,25; nog.8 KC pēc caurmēra ≈2,6; nog.9+10 KC 3,55;
  // nog.12 KC pēc caurmēra ≈1,27; nog.7/nog.11 (sanitārās VMD lēmumā) lietotne pati nepiedāvā.
- w=await app();await w.eval("createFromPagasts('68840080082',['68840080082'])");await new Promise(r=>setTimeout(r,4000));
+ w=await app();await w.eval("createFromPagasts('68840080082',['68840080082'])");
  const mar=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const r=runChecks(p);
   const byNog=n=>p.cirsmas.find(c=>c.tips==="Kc"&&(";"+c.nogabali+";").includes(";"+n+";"));
   const c1=byNog("1"),c34=byNog("3"),c8=byNog("8"),c910=byNog("9"),c12=byNog("12");
@@ -507,7 +519,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(mar.buffers.every(b=>b!=="10-12"&&b!=="12-10"),"Marija: nav joslas starp nog.9+10 (3,55 ha) un nog.12 (1,27 ha) cirsmām (got "+JSON.stringify(mar.buffers)+")");
  ok(mar.global910v12.length===1&&/kopējā platība/.test(mar.global910v12[0])&&/nepārsniedz limitu/.test(mar.global910v12[0]),"Marija (MK935 16.p.): nog.9+10 un nog.12 piegulošas (kontakts > 50 m), kopējā platība ≤ 5 ha limitu — abas cērtamas vienlaikus, informatīvs ieraksts, ne josla (got "+JSON.stringify(mar.global910v12)+")");
  // Ezermuiža (70600050074, Vestienas AAA): ĪADT individuālie noteikumi liedz KC pēc caurmēra automātiskajā scenārijā — dzeltens brīdinājums, nevis auto-KC
- w=await app();await w.eval("createFromPagasts('70600050074',['70600050074'])");await new Promise(r=>setTimeout(r,4000));
+ w=await app();await w.eval("createFromPagasts('70600050074',['70600050074'])");
  const ez60=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const r=runChecks(p);
   const kcd=p.mer.filter(m=>m.cirsmaKods==="KC"&&m.dPlan&&m.dPlan.path==="kcD");
   const warn=r.nog.find(x=>x.m.nogabals==="4").f.filter(f=>f.t==="warn"&&/caurmēru/.test(f.s));
@@ -515,17 +527,17 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(ez60.blocked===true&&ez60.kcdCount===0&&ez60.warn.length===1,"Ezermuiža (Vestienas AAA): dCirteBlocked=true, nevienam nogabalam nav automātiski piedāvāta 'Kailcirte pēc caurmēra' — caurmēra KC nedrīkst parādīties (#60), nog.4 (D 27 ≥ 27 cm) dzeltens brīdinājums (got "+JSON.stringify(ez60)+")");
  // #60 (Baltalksnim MK935 1.pielikumā nav noteikts cirtmets — likumi.lv/mezataksacija.lv) ietekmē arī citus etalona objektus: jaunas Kailcirte-pēc-vecuma cirsmas
  // baltalksņa nogabaliem ≥ 25 g (RULES.youngKeep), pieguloši esošam KC — pārbaudīts pret reālu ģeometriju/datiem, fiksēts kā regresijas vērtība.
- w=await app();await w.eval("createFromPagasts('36680080031',['36680080031'])");await new Promise(r=>setTimeout(r,4000));
+ w=await app();await w.eval("createFromPagasts('36680080031',['36680080031'])");
  const zap60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
  ok(Math.abs(zap60.ha-6.82)<=0.05&&zap60.ncirsmas===8,"Zapasnaja: baltalksnis nog.6 (0,24 ha, 48 g) tagad sava KC cirsma — kopā ≈6,82 ha, 8 cirsmas (agrāk 6,58 ha/7, #60) (got "+JSON.stringify(zap60)+")");
- w=await app();await w.eval("createFromPagasts('70420080041',['70420080041'])");await new Promise(r=>setTimeout(r,4000));
+ w=await app();await w.eval("createFromPagasts('70420080041',['70420080041'])");
  const o41_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
  // #74: SP_CODES pilnīgums (previously-dropped elementi tagad summējas G) + Baltalksnis "vienmēr" (nevis 25 g slieksnis) kopā dod lielāku ha/cirsmu skaitu nekā #60-era starprezultāts
  ok(Math.abs(o41_60.ha-12.15)<=0.1&&o41_60.ncirsmas===11,"70420080041: baltalksņa nogabali (jebkurā vecumā, ne tikai ≥25 g) tagad KC cirsmās + SP_CODES papildinājums (#74) — kopā ≈12,15 ha, 11 cirsmas (#60 starprezultāts bija ≈10,32 ha/10) (got "+JSON.stringify(o41_60)+")");
- w=await app();await w.eval("createFromPagasts('70600050074',['70600050074'])");await new Promise(r=>setTimeout(r,4000));
+ w=await app();await w.eval("createFromPagasts('70600050074',['70600050074'])");
  const ez60b=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
  ok(Math.abs(ez60b.ha-12.39)<=0.1&&ez60b.ncirsmas===7,"Ezermuiža: baltalksņa nogabali nog.5/20/22/26 (jebkurā vecumā, ĪADT neietekmē — MK264 nedefinē cirtmetu) + SP_CODES papildinājums (#74) — kopā ≈12,39 ha, 7 cirsmas (#60 starprezultāts bija ≈10,42 ha/8) (got "+JSON.stringify(ez60b)+")");
- w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,4000));
+ w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
  const b59_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
  ok(Math.abs(b59_60.ha-30.53)<=0.05&&b59_60.ncirsmas===19,"60700020059: nav baltalksņa/caurmēra-sliekšņa nogabalu — nemainās (#60) (got "+JSON.stringify(b59_60)+")");
  // #74: cirtmetu tabula pēc Meža likuma 9.panta (data/cirtmeti_meza_likums.json), MT/SP/ZKAT klasifikatoru labojumi, "suga nav atpazīta" un ĪADT zonas brīdinājumi.
