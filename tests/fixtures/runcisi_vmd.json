@@ -1,0 +1,16 @@
+{
+  "_avots": "VMD ciršanas apliecinājumi, izsniegti 08.07.2026, ZV 68840020027 (Runcīši, Pasienes pag., Ludzas nov.). 5 apliecinājumi, 9 cirsmas, 16,17 ha kopā. Lietotāja iedots atsauces saraksts #72/#76 diagnostikai (05.09.2026) — NAV pārbaudīts pret pašu apliecinājumu dokumentu, tikai pret lietotāja rakstīto sarakstu.",
+  "kadastrs": "68840020027",
+  "kopa_ha": 16.17,
+  "cirsmas": [
+    {"id": 1, "nogabali": ["4"], "ha": 2.34, "veids": "Kailcirte"},
+    {"id": 2, "nogabali": ["5"], "ha": 1.07, "veids": "Kailcirte"},
+    {"id": 3, "nogabali": ["6"], "ha": 2.00, "veids": "Kailcirte pēc caurmēra"},
+    {"id": 4, "nogabali": ["7", "8"], "ha": {"7": 0.24, "8": 0.33}, "haKopa": 0.57, "veids": "Sanitārā izlases cirte"},
+    {"id": 5, "nogabali": ["9", "10"], "ha": {"9": 1.79, "10": 0.63}, "haKopa": 2.42, "veids": "Kailcirte"},
+    {"id": 6, "nogabali": ["12"], "ha": 0.36, "veids": "Kailcirte"},
+    {"id": 7, "nogabali": ["14"], "ha": 1.23, "veids": "Kailcirte pēc caurmēra"},
+    {"id": 8, "nogabali": ["11", "13"], "ha": {"11": 1.31, "13": 2.03}, "haKopa": 3.34, "veids": "Kopšanas cirte"},
+    {"id": 9, "nogabali": ["2", "15"], "ha": {"2": 1.84, "15": 1.00}, "haKopa": 2.84, "veids": "Kailcirte"}
+  ]
+}
