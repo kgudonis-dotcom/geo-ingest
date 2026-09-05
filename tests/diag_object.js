@@ -95,6 +95,32 @@ async function scan(){
  return rows;
 }
 
+// #72: --marza <kadastrs> — pilna naudas ķēde no ieņēmumiem līdz max cenai, PA SOLIEM, katrai cirsmai. NEAIZTIEK calcCirsma()/calcProp() —
+// tikai LASA to pašu rezultātu, ko rāda UI, un pārbauda pieņēmumu "pirms_maržas × (1 − marža) == max cena" (lietotāja mentālais modelis,
+// #72 uzdevums) pret REĀLO kodu (app/index.html:352 calcCirsma, rinda 359 max=rev*(1-marza)-cost; calcProp rinda ~380 izvešana atskaitīta
+// PĒC maržas, TIKAI objekta līmenī — NAV sadalīta pa cirsmām, jo izvedIzmaksas(p) rēķina VIENU vidējo attālumu visam objektam).
+async function marzaOne(b){
+ const call=b.picked?`createFromPagasts('${b.kad}',['${b.kad}'])`:`createFromPagasts('${b.kad}')`;
+ const w=await app();
+ try{await w.eval(call);}catch(e){return {kad:b.kad,label:b.label,error:String(e&&e.message||e)};}
+ const data=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const t=calcProp(p);
+  const rows=p.cirsmas.map(c=>{const cc=calcCirsma(c);
+   const sagat=num(c.sagat)*cc.m3,piev=num(c.piev)*cc.m3,trans=num(c.trans)*cc.m3;
+   const izvesana=0; // izvedIzmaksas(p) NAV sadalīta pa cirsmām kodā — sk. piezīmi zemāk un OBJEKTS rindu
+   const citi=+(cc.cost-(sagat+piev+trans)).toFixed(2); // ja NAV 0, calcCirsma().cost satur kaut ko, ko sagat/piev/trans nesedz — jāizceļ, nevis jāpazūd
+   const pirmsMarzas=cc.rev-sagat-piev-trans-izvesana-citi;
+   const marza=num(c.marza)*100;
+   const gaidamaisMax=pirmsMarzas*(1-num(c.marza));
+   const starpiba=+(gaidamaisMax-cc.max).toFixed(2);
+   return {id:c.id,tips:c.tips,stage:c.stage||1,excluded:!!c.excluded,kvartals:c.kvartals,nogabali:c.nogabali,
+    m3:+cc.m3.toFixed(1),rev:+cc.rev.toFixed(2),sagat:+sagat.toFixed(2),piev:+piev.toFixed(2),trans:+trans.toFixed(2),
+    izvesana,citi,pirmsMarzas:+pirmsMarzas.toFixed(2),marza,max:+cc.max.toFixed(2),
+    match:Math.abs(starpiba)<0.01,starpiba,starpibaPct:pirmsMarzas?+(100*starpiba/gaidamaisMax).toFixed(1):0};});
+  return {rows,t:{rev:t.rev,cost:t.cost,max:t.max,grandMax:t.grand.max},iz:t.izved};})())`));
+ return {kad:b.kad,label:b.label,...data};
+}
+function fmtE(n){return (n<0?"-":"")+Math.abs(n).toFixed(2);}
+
 async function diag(kadastrs,pagCode){
  pagCode=pagCode||kadastrs.slice(0,4);
  const w=await app();
@@ -170,6 +196,46 @@ function fmt2(n){return n==null?"–":(+n).toFixed(2).replace(".00","");}
 
 (async()=>{
  const kad=process.argv[2];const pag=process.argv[3];
+ if(kad==="--marza"){
+  const only=pag; // --marza <kadastrs> viens etalons; --marza (bez argumenta) visi 7
+  const targets=only?SCAN_BENCHMARKS.filter(b=>b.kad===only):SCAN_BENCHMARKS;
+  if(only&&!targets.length){console.error("Nezināms etalona kadastrs priekš --marza: "+only);process.exit(1);}
+  const cols=["cirsma","m³","ieņēmumi €","sagat €","piev €","trans €","izvešana €","citi atskaitījumi €","pirms maržas €","marža %","max cena €","pārbaude"];
+  for(const b of targets){
+   const d=await marzaOne(b);
+   console.log("\n=== "+d.kad+" ("+d.label+") ===");
+   if(d.error){console.log("KĻŪDA: "+d.error);continue;}
+   console.log(cols.join(" | "));console.log("-".repeat(170));
+   for(const r of d.rows){
+    const label=r.tips+" kv."+r.kvartals+"/nog."+r.nogabali+(r.stage===2?" (2.pieg.)":"")+(r.excluded?" (izslēgta)":"");
+    const check=r.match?"JĀ":"NĒ, starpība "+fmtE(r.starpiba)+" € ("+fmtE(r.starpibaPct)+"%)";
+    console.log([label,r.m3,fmtE(r.rev),fmtE(r.sagat),fmtE(r.piev),fmtE(r.trans),fmtE(r.izvesana)+(r.izvesana===0?" (nav sadalīta pa cirsmām, sk. OBJEKTS)":""),
+     fmtE(r.citi),fmtE(r.pirmsMarzas),r.marza,fmtE(r.max),check].join(" | "));
+   }
+   // OBJEKTA (calcProp) rinda: TIKAI 1. piegājiena, ne-izslēgtās, ne-KKC cirsmas — tā pati kopa, ko t.rev/t.cost/t.max lieto
+   const inGrand=d.rows.filter(r=>!r.excluded&&r.tips!=="KKC"&&r.stage!==2);
+   const sSagat=inGrand.reduce((a,r)=>a+r.sagat,0),sPiev=inGrand.reduce((a,r)=>a+r.piev,0),sTrans=inGrand.reduce((a,r)=>a+r.trans,0);
+   const marzas=[...new Set(inGrand.map(r=>r.marza))];
+   const izOk=d.iz&&d.iz.ok&&!d.iz.excluded;
+   const izvesanaObj=izOk?d.iz.cost:0;
+   const pirmsMarzasObj=d.t.rev-sSagat-sPiev-sTrans-izvesanaObj;
+   const marzaLabel=marzas.length===1?marzas[0]:"jaukta ("+marzas.join("/")+")";
+   let checkObj;
+   if(marzas.length===1){const gaid=pirmsMarzasObj*(1-marzas[0]/100);const st=+(gaid-d.t.max).toFixed(2);
+    checkObj=Math.abs(st)<0.01?"JĀ":"NĒ, starpība "+fmtE(gaid-d.t.max)+" €";}
+   else checkObj="– (maržas atšķiras pa cirsmām, sk. rindas augšā)";
+   console.log("-".repeat(170));
+   console.log(["OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām)","–",fmtE(d.t.rev),fmtE(sSagat),fmtE(sPiev),fmtE(sTrans),
+    fmtE(izvesanaObj)+(d.iz&&!d.iz.ok?" (nav aprēķināta: "+d.iz.reason+")":(d.iz&&d.iz.excluded?" (aprēķināta, BET izslēgta: "+(d.iz.severity||"")+")":"")),
+    "0.00",fmtE(pirmsMarzasObj),marzaLabel,fmtE(d.t.max),checkObj].join(" | "));
+   if(d.t.grandMax!==d.t.max)console.log("PIEZĪME: t.grand.max ("+fmtE(d.t.grandMax)+" €) ietver arī 2. piegājiena (atliktās) cirsmas — UI 'Kopējā cirsmu vērtība' var rādīt šo, ne rindā augstāk redzamo.");
+  }
+  console.log("\nPIEZĪME (visiem etaloniem): izvedIzmaksas(p) rēķina VIENU vidējo izvešanas attālumu/izmaksu VISAM OBJEKTAM (izvedCalc apkopo visus cērtamos nogabalus), NEVIS pa cirsmām — tāpēc katras");
+  console.log("atsevišķas cirsmas kartītē (cirsmaCard) rādītā 'Maksimālā piedāvājamā cena' NEATSPOGUĻO izvešanas izmaksu vispār (tā atskaitās TIKAI vienu reizi, objekta KOPĀ rindā/calcProp()). Marža");
+  console.log("(calcCirsma, app/index.html:359: max=rev*(1-marza)-cost) pielietota TIKAI ieņēmumiem, PIRMS izmaksu (sagat/piev/trans) atskaitīšanas — ne 'atlikumam' (ieņēmumi-visas izmaksas). Tāpēc");
+  console.log("'pirms_maržas × (1-marža) == max cena' pārbaude (šī uzdevuma definīcija: pirms_maržas = ieņēmumi - visi atskaitījumi) NEIZTUR, ja ir jebkādas izmaksas — starpība vienmēr = marža × (sagat+piev+trans+izvešana).");
+  process.exit(0);
+ }
  if(kad==="--scan"){
   const rows=await scan();
   const cols=["kadastrs","objekts","nogabali kopā","pirms 945f067 (ha / m³)","pēc 945f067 (ha / m³)","starpība (ha / m³, tikai 1. piegājiens)","ietekmētie nogabali (cirsmaKods/dPlan mainījies)"];

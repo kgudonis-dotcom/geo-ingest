@@ -1,0 +1,134 @@
+
+=== 36680080031 (Zapasnaja) ===
+cirsma | m³ | ieņēmumi € | sagat € | piev € | trans € | izvešana € | citi atskaitījumi € | pirms maržas € | marža % | max cena € | pārbaude
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Kc kv.1/nog.8 | 441 | 35353.75 | 3969.00 | 3748.50 | 4410.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 23226.25 | 5 | 21458.56 | NĒ, starpība 606.38 € (2.70%)
+Kc kv.1/nog.9 | 323 | 25901.25 | 2907.00 | 2745.50 | 3230.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 17018.75 | 5 | 15723.69 | NĒ, starpība 444.13 € (2.70%)
+Kc kv.1/nog.5 | 278 | 23171.30 | 2502.00 | 2363.00 | 2780.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 15526.30 | 5 | 14367.73 | NĒ, starpība 382.25 € (2.60%)
+Kc kv.1/nog.3 | 250 | 20040.00 | 2250.00 | 2125.00 | 2500.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 13165.00 | 5 | 12163.00 | NĒ, starpība 343.75 € (2.70%)
+Kc kv.1/nog.2 | 112 | 8201.30 | 1008.00 | 952.00 | 1120.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 5121.30 | 5 | 4711.23 | NĒ, starpība 154.00 € (3.20%)
+Kc kv.1/nog.4 | 108 | 8634.95 | 972.00 | 918.00 | 1080.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 5664.95 | 5 | 5233.20 | NĒ, starpība 148.50 € (2.80%)
+Kc kv.1/nog.7 | 106 | 8881.50 | 954.00 | 901.00 | 1060.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 5966.50 | 5 | 5522.42 | NĒ, starpība 145.75 € (2.60%)
+Kc kv.1/nog.6 | 42 | 1749.50 | 378.00 | 357.00 | 420.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 594.50 | 5 | 507.02 | NĒ, starpība 57.75 € (10.20%)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām) | – | 131933.55 | 14940.00 | 14110.00 | 16600.00 | 11255.26 | 0.00 | 75028.29 | 5 | 68431.62 | NĒ, starpība 2845.26 €
+
+=== 70600050074 (Ezermuiža) ===
+cirsma | m³ | ieņēmumi € | sagat € | piev € | trans € | izvešana € | citi atskaitījumi € | pirms maržas € | marža % | max cena € | pārbaude
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Kc kv.4/nog.27 | 737 | 59010.25 | 6633.00 | 6264.50 | 7370.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 38742.75 | 5 | 35792.24 | NĒ, starpība 1013.38 € (2.80%)
+Kc kv.4/nog.12;11 | 749 | 57380.80 | 6741.00 | 6366.50 | 7490.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 36783.30 | 5 | 33914.26 | NĒ, starpība 1029.88 € (2.90%)
+Kc kv.4/nog.20;26;25 | 711 | 33688.15 | 6399.00 | 6043.50 | 7110.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 14135.65 | 5 | 12451.24 | NĒ, starpība 977.63 € (7.30%)
+Kc kv.4/nog.8;7;28 | 301 | 24262.15 | 2709.00 | 2558.50 | 3010.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 15984.65 | 5 | 14771.54 | NĒ, starpība 413.88 € (2.70%)
+Kc kv.4/nog.23 | 187 | 13381.70 | 1683.00 | 1589.50 | 1870.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 8239.20 | 5 | 7570.11 | NĒ, starpība 257.13 € (3.30%)
+Kc kv.4/nog.22 | 127 | 5470.60 | 1143.00 | 1079.50 | 1270.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1978.10 | 5 | 1704.57 | NĒ, starpība 174.63 € (9.30%)
+Kc kv.4/nog.5 | 32 | 1328.00 | 288.00 | 272.00 | 320.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 448.00 | 5 | 381.60 | NĒ, starpība 44.00 € (10.30%)
+KKC kv.4/nog.4;2;1 | 292 | 19317.28 | 2628.00 | 2482.00 | 2920.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 11287.28 | 5 | 10321.42 | NĒ, starpība 401.50 € (3.70%)
+KKC kv.4/nog.6 | 302 | 25609.60 | 2718.00 | 2567.00 | 3020.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 17304.60 | 5 | 16024.12 | NĒ, starpība 415.25 € (2.50%)
+KKC kv.4/nog.13;10;14;17;18 | 513 | 30238.94 | 4617.00 | 4360.50 | 5130.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 16131.44 | 5 | 14619.49 | NĒ, starpība 705.38 € (4.60%)
+KKC kv.4/nog.16 | 656 | 41400.45 | 5904.00 | 5576.00 | 6560.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 23360.45 | 5 | 21290.43 | NĒ, starpība 902.00 € (4.10%)
+KKC kv.4/nog.21 | 171 | 9020.40 | 1539.00 | 1453.50 | 1710.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 4317.90 | 5 | 3866.88 | NĒ, starpība 235.13 € (5.70%)
+KKC kv.4/nog.24 | 11 | 609.95 | 99.00 | 93.50 | 110.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 307.45 | 5 | 276.95 | NĒ, starpība 15.13 € (5.20%)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām) | – | 194521.65 | 25596.00 | 24174.00 | 28440.00 | 32569.49 | 0.00 | 83742.16 | 5 | 74016.08 | NĒ, starpība 5538.97 €
+
+=== 70420080041 (70420080041) ===
+cirsma | m³ | ieņēmumi € | sagat € | piev € | trans € | izvešana € | citi atskaitījumi € | pirms maržas € | marža % | max cena € | pārbaude
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Kc kv.1/nog.10;6;13;2;7 | 475 | 19790.11 | 4275.00 | 4037.50 | 4750.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 6727.61 | 5 | 5738.10 | NĒ, starpība 653.12 € (10.20%)
+Kc kv.1/nog.32 | 242 | 18578.25 | 2178.00 | 2057.00 | 2420.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 11923.25 | 5 | 10994.34 | NĒ, starpība 332.75 € (2.90%)
+Kc kv.1/nog.11 | 147 | 6066.00 | 1323.00 | 1249.50 | 1470.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2023.50 | 5 | 1720.20 | NĒ, starpība 202.13 € (10.50%)
+Kc kv.1/nog.3 | 109 | 4549.90 | 981.00 | 926.50 | 1090.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1552.40 | 5 | 1324.90 | NĒ, starpība 149.87 € (10.20%)
+Kc kv.1/nog.23 | 96 | 3857.40 | 864.00 | 816.00 | 960.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1217.40 | 5 | 1024.53 | NĒ, starpība 132.00 € (11.40%)
+Kc kv.1/nog.8 | 99 | 5667.30 | 891.00 | 841.50 | 990.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2944.80 | 5 | 2661.43 | NĒ, starpība 136.13 € (4.90%)
+Kc kv.1/nog.17 | 71 | 4298.90 | 639.00 | 603.50 | 710.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2346.40 | 5 | 2131.45 | NĒ, starpība 97.63 € (4.40%)
+Kc kv.1/nog.18 | 69 | 5144.20 | 621.00 | 586.50 | 690.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 3246.70 | 5 | 2989.49 | NĒ, starpība 94.88 € (3.10%)
+Kc kv.1/nog.30 | 46 | 4398.25 | 414.00 | 391.00 | 460.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 3133.25 | 5 | 2913.34 | NĒ, starpība 63.25 € (2.10%)
+Kc kv.1/nog.36 | 29 | 2723.15 | 261.00 | 246.50 | 290.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1925.65 | 5 | 1789.49 | NĒ, starpība 39.88 € (2.20%)
+Kc kv.1/nog.19 | 22 | 1695.20 | 198.00 | 187.00 | 220.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1090.20 | 5 | 1005.44 | NĒ, starpība 30.25 € (2.90%)
+KKC kv.1/nog.16 | 53 | 2247.20 | 477.00 | 450.50 | 530.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 789.70 | 5 | 677.34 | NĒ, starpība 72.88 € (9.70%)
+KKC kv.1/nog.5 | 49 | 3390.25 | 441.00 | 416.50 | 490.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2042.75 | 5 | 1873.24 | NĒ, starpība 67.38 € (3.50%)
+KKC kv.1/nog.9 | 15 | 633.15 | 135.00 | 127.50 | 150.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 220.65 | 5 | 188.99 | NĒ, starpība 20.63 € (9.80%)
+KKC kv.1/nog.21;22;27;28;31;33;29;25;34;24 | 566 | 31274.33 | 5094.00 | 4811.00 | 5660.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 15709.33 | 5 | 14145.61 | NĒ, starpība 778.25 € (5.20%)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām) | – | 76768.66 | 12645.00 | 11942.50 | 14050.00 | 16363.87 | 0.00 | 21767.29 | 5 | 17928.86 | NĒ, starpība 2750.07 €
+
+=== 60700020059 (60700020059) ===
+cirsma | m³ | ieņēmumi € | sagat € | piev € | trans € | izvešana € | citi atskaitījumi € | pirms maržas € | marža % | max cena € | pārbaude
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Kc kv.2/nog.15 | 1743 | 164233.20 | 15687.00 | 14815.50 | 17430.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 116300.70 | 5 | 108089.04 | NĒ, starpība 2396.63 € (2.20%)
+Kc kv.2/nog.2 | 1029 | 99185.50 | 9261.00 | 8746.50 | 10290.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 70888.00 | 5 | 65928.72 | NĒ, starpība 1414.88 € (2.10%)
+Kc kv.2/nog.8;16 | 860 | 81033.50 | 7740.00 | 7310.00 | 8600.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 57383.50 | 5 | 53331.82 | NĒ, starpība 1182.50 € (2.20%)
+Kc kv.3/nog.27;31 | 948 | 90169.60 | 8532.00 | 8058.00 | 9480.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 64099.60 | 5 | 59591.12 | NĒ, starpība 1303.50 € (2.10%)
+Kc kv.2/nog.1 | 650 | 62838.75 | 5850.00 | 5525.00 | 6500.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 44963.75 | 5 | 41821.81 | NĒ, starpība 893.75 € (2.10%)
+Kc kv.3/nog.16;45 | 617 | 58635.80 | 5553.00 | 5244.50 | 6170.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 41668.30 | 5 | 38736.51 | NĒ, starpība 848.38 € (2.10%)
+Kc kv.2/nog.3 | 557 | 53953.90 | 5013.00 | 4734.50 | 5570.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 38636.40 | 5 | 35938.71 | NĒ, starpība 765.88 € (2.10%)
+Kc kv.3/nog.32 | 397 | 37094.30 | 3573.00 | 3374.50 | 3970.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 26176.80 | 5 | 24322.08 | NĒ, starpība 545.88 € (2.20%)
+Kc kv.3/nog.14;7;6;18 | 1007 | 90159.95 | 9063.00 | 8559.50 | 10070.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 62467.45 | 5 | 57959.45 | NĒ, starpība 1384.62 € (2.30%)
+Kc kv.3/nog.6 | 197 | 13589.90 | 1773.00 | 1674.50 | 1970.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 8172.40 | 5 | 7492.91 | NĒ, starpība 270.88 € (3.50%)
+Kc kv.3/nog.11 | 168 | 14847.60 | 1512.00 | 1428.00 | 1680.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 10227.60 | 5 | 9485.22 | NĒ, starpība 231.00 € (2.40%)
+Kc kv.3/nog.20 | 167 | 15736.55 | 1503.00 | 1419.50 | 1670.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 11144.05 | 5 | 10357.22 | NĒ, starpība 229.63 € (2.20%)
+Kc kv.2/nog.17 | 106 | 9986.85 | 954.00 | 901.00 | 1060.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 7071.85 | 5 | 6572.51 | NĒ, starpība 145.75 € (2.20%)
+Kc kv.3/nog.36 | 85 | 7942.40 | 765.00 | 722.50 | 850.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 5604.90 | 5 | 5207.78 | NĒ, starpība 116.88 € (2.20%)
+Kc kv.3/nog.8 | 81 | 7792.20 | 729.00 | 688.50 | 810.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 5564.70 | 5 | 5175.09 | NĒ, starpība 111.38 € (2.10%)
+Kc kv.3/nog.21 | 73 | 6213.25 | 657.00 | 620.50 | 730.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 4205.75 | 5 | 3895.09 | NĒ, starpība 100.38 € (2.50%)
+Kc kv.2/nog.13 | 42 | 3954.50 | 378.00 | 357.00 | 420.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2799.50 | 5 | 2601.77 | NĒ, starpība 57.75 € (2.20%)
+Kc kv.3/nog.44 | 35 | 3367.00 | 315.00 | 297.50 | 350.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2404.50 | 5 | 2236.15 | NĒ, starpība 48.13 € (2.10%)
+KKC kv.3/nog.19 | 22 | 981.60 | 198.00 | 187.00 | 220.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 376.60 | 5 | 327.52 | NĒ, starpība 30.25 € (8.50%)
+KKC kv.3/nog.22;23 | 37 | 1697.68 | 333.00 | 314.50 | 370.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 680.18 | 5 | 595.30 | NĒ, starpība 50.88 € (7.90%)
+KKC kv.3/nog.2 | 36 | 2457.30 | 324.00 | 306.00 | 360.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1467.30 | 5 | 1344.43 | NĒ, starpība 49.50 € (3.60%)
+KKC kv.3/nog.12;26;34;25;33 | 734 | 35796.10 | 6606.00 | 6239.00 | 7340.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 15611.10 | 5 | 13821.29 | NĒ, starpība 1009.25 € (6.80%)
+KKC kv.3/nog.7 | 160 | 7936.00 | 1440.00 | 1360.00 | 1600.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 3536.00 | 5 | 3139.20 | NĒ, starpība 220.00 € (6.50%)
+KKC kv.2/nog.5 | 241 | 13110.40 | 2169.00 | 2048.50 | 2410.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 6482.90 | 5 | 5827.38 | NĒ, starpība 331.38 € (5.40%)
+KKC kv.3/nog.4 | 44 | 3743.45 | 396.00 | 374.00 | 440.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2533.45 | 5 | 2346.28 | NĒ, starpība 60.50 € (2.50%)
+KKC kv.3/nog.5 | 47 | 2220.80 | 423.00 | 399.50 | 470.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 928.30 | 5 | 817.26 | NĒ, starpība 64.62 € (7.30%)
+Kc kv.2/nog.15;15 (2.pieg.) | 182 | 17146.00 | 1638.00 | 1547.00 | 1820.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 12141.00 | 5 | 11283.70 | NĒ, starpība 250.25 € (2.20%)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām) | – | 820734.75 | 78858.00 | 74477.00 | 87620.00 | 79905.09 | 0.00 | 499874.66 | 5 | 458837.93 | NĒ, starpība 16043.00 €
+PIEZĪME: t.grand.max (470121.63 €) ietver arī 2. piegājiena (atliktās) cirsmas — UI 'Kopējā cirsmu vērtība' var rādīt šo, ne rindā augstāk redzamo.
+
+=== 78880060148 (Nalobnes) ===
+cirsma | m³ | ieņēmumi € | sagat € | piev € | trans € | izvešana € | citi atskaitījumi € | pirms maržas € | marža % | max cena € | pārbaude
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Kc kv.1/nog.1 | 439 | 29508.15 | 3951.00 | 3731.50 | 4390.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 17435.65 | 5 | 15960.24 | NĒ, starpība 603.63 € (3.60%)
+Kc kv.1/nog.2 | 320 | 26967.80 | 2880.00 | 2720.00 | 3200.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 18167.80 | 5 | 16819.41 | NĒ, starpība 440.00 € (2.50%)
+Kc kv.1/nog.3 | 121 | 11309.00 | 1089.00 | 1028.50 | 1210.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 7981.50 | 5 | 7416.05 | NĒ, starpība 166.38 € (2.20%)
+Kc kv.1/nog.1;1 (2.pieg.) | 117 | 7867.10 | 1053.00 | 994.50 | 1170.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 4649.60 | 5 | 4256.24 | NĒ, starpība 160.88 € (3.60%)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām) | – | 67784.95 | 7920.00 | 7480.00 | 8800.00 | 8132.49 | 0.00 | 35452.46 | 5 | 32063.22 | NĒ, starpība 1616.62 €
+PIEZĪME: t.grand.max (36319.46 €) ietver arī 2. piegājiena (atliktās) cirsmas — UI 'Kopējā cirsmu vērtība' var rādīt šo, ne rindā augstāk redzamo.
+
+=== 68840080082 (Marija) ===
+cirsma | m³ | ieņēmumi € | sagat € | piev € | trans € | izvešana € | citi atskaitījumi € | pirms maržas € | marža % | max cena € | pārbaude
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Kc kv.1/nog.10;9 | 718 | 53188.50 | 6462.00 | 6103.00 | 7180.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 33443.50 | 5 | 30784.07 | NĒ, starpība 987.25 € (3.10%)
+Kc kv.1/nog.8;11 | 725 | 64974.25 | 6525.00 | 6162.50 | 7250.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 45036.75 | 5 | 41788.04 | NĒ, starpība 996.88 € (2.30%)
+Kc kv.1/nog.1 | 498 | 39822.25 | 4482.00 | 4233.00 | 4980.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 26127.25 | 5 | 24136.14 | NĒ, starpība 684.75 € (2.80%)
+Kc kv.1/nog.12 | 254 | 24458.55 | 2286.00 | 2159.00 | 2540.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 17473.55 | 5 | 16250.62 | NĒ, starpība 349.25 € (2.10%)
+Kc kv.1/nog.4;3 | 395 | 18565.50 | 3555.00 | 3357.50 | 3950.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 7703.00 | 5 | 6774.72 | NĒ, starpība 543.13 € (7.40%)
+KKC kv.1/nog.5;7 | 517 | 22949.31 | 4653.00 | 4394.50 | 5170.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 8731.81 | 5 | 7584.34 | NĒ, starpība 710.88 € (8.60%)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām) | – | 201009.05 | 23310.00 | 22015.00 | 25900.00 | 24381.01 | 0.00 | 105403.04 | 5 | 95352.58 | NĒ, starpība 4780.30 €
+
+=== 68840020027 (Runcīši) ===
+cirsma | m³ | ieņēmumi € | sagat € | piev € | trans € | izvešana € | citi atskaitījumi € | pirms maržas € | marža % | max cena € | pārbaude
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Kc kv.1/nog.6 | 416 | 39900.45 | 3744.00 | 3536.00 | 4160.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 28460.45 | 5 | 26465.43 | NĒ, starpība 572.00 € (2.10%)
+Kc kv.1/nog.4 | 336 | 14064.60 | 3024.00 | 2856.00 | 3360.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 4824.60 | 5 | 4121.37 | NĒ, starpība 462.00 € (10.10%)
+Kc kv.1/nog.9;10 | 414 | 23175.20 | 3726.00 | 3519.00 | 4140.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 11790.20 | 5 | 10631.44 | NĒ, starpība 569.25 € (5.10%)
+Kc kv.1/nog.14 | 302 | 29052.40 | 2718.00 | 2567.00 | 3020.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 20747.40 | 5 | 19294.78 | NĒ, starpība 415.25 € (2.10%)
+Kc kv.1/nog.2;15;1 | 344 | 13760.00 | 3096.00 | 2924.00 | 3440.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 4300.00 | 5 | 3612.00 | NĒ, starpība 473.00 € (11.60%)
+Kc kv.1/nog.5 | 192 | 8584.50 | 1728.00 | 1632.00 | 1920.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 3304.50 | 5 | 2875.27 | NĒ, starpība 264.00 € (8.40%)
+Kc kv.1/nog.12 | 60 | 2729.10 | 540.00 | 510.00 | 600.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1079.10 | 5 | 942.64 | NĒ, starpība 82.50 € (8.00%)
+KKC kv.1/nog.3 | 113 | 4764.80 | 1017.00 | 960.50 | 1130.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1657.30 | 5 | 1419.06 | NĒ, starpība 155.37 € (9.90%)
+KKC kv.1/nog.11;13 | 194 | 7527.00 | 1746.00 | 1649.00 | 1940.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 2192.00 | 5 | 1815.65 | NĒ, starpība 266.75 € (12.80%)
+Kc kv.1/nog.8 (2.pieg.) | 50 | 2862.00 | 450.00 | 425.00 | 500.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1487.00 | 5 | 1343.90 | NĒ, starpība 68.75 € (4.90%)
+Kc kv.1/nog.7 (2.pieg.) | 38 | 2107.10 | 342.00 | 323.00 | 380.00 | 0.00 (nav sadalīta pa cirsmām, sk. OBJEKTS) | 0.00 | 1062.10 | 5 | 956.74 | NĒ, starpība 52.25 € (5.20%)
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+OBJEKTS (calcProp, 1.pieg., bez KKC/izslēgtajām) | – | 131266.25 | 18576.00 | 17544.00 | 20640.00 | 18302.79 | 0.00 | 56203.46 | 5 | 49640.15 | NĒ, starpība 3753.14 €
+PIEZĪME: t.grand.max (51940.79 €) ietver arī 2. piegājiena (atliktās) cirsmas — UI 'Kopējā cirsmu vērtība' var rādīt šo, ne rindā augstāk redzamo.
+
+PIEZĪME (visiem etaloniem): izvedIzmaksas(p) rēķina VIENU vidējo izvešanas attālumu/izmaksu VISAM OBJEKTAM (izvedCalc apkopo visus cērtamos nogabalus), NEVIS pa cirsmām — tāpēc katras
+atsevišķas cirsmas kartītē (cirsmaCard) rādītā 'Maksimālā piedāvājamā cena' NEATSPOGUĻO izvešanas izmaksu vispār (tā atskaitās TIKAI vienu reizi, objekta KOPĀ rindā/calcProp()). Marža
+(calcCirsma, app/index.html:359: max=rev*(1-marza)-cost) pielietota TIKAI ieņēmumiem, PIRMS izmaksu (sagat/piev/trans) atskaitīšanas — ne 'atlikumam' (ieņēmumi-visas izmaksas). Tāpēc
+'pirms_maržas × (1-marža) == max cena' pārbaude (šī uzdevuma definīcija: pirms_maržas = ieņēmumi - visi atskaitījumi) NEIZTUR, ja ir jebkādas izmaksas — starpība vienmēr = marža × (sagat+piev+trans+izvešana).
