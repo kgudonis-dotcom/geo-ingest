@@ -1,0 +1,81 @@
+{
+  "avots": "Valsts meža dienests, \"Algoritmi mežaudzes sekundāro parametru aprēķināšanai\" (bonitate_un_kraj2a-2_0.zip: Bonitātes.doc + krājas aprēķināšana.pdf), lapa \"Informācija inventarizācijas veikšanai\" https://www.vmd.gov.lv/lv/informacija-inventarizacijas-veiksanai , fails https://www.vmd.gov.lv/lv/media/1854/download?attachment",
+  "lejupieladets": "2026-09-05",
+  "piezime": "Skaitļi šajā failā ir pārkopēti burtiski no VMD publicētā avota (#75/#88). app/index.html satur šo pašu tabulu MIRORĒTU JS objektā ar atsauci uz šo failu (kodā nav neatkarīgi ievadītu skaitļu) — ja avots mainās, jāatjauno abi.",
+
+  "veidaugstumi_ozolins": {
+    "apraksts": "R. Ozoliņa veidaugstumu (HF) tabula: Vs = G × HF, kur Vs = koku sugas krāja m³/ha (H>=12m zars), G = koku sugas šķērslaukums m²/ha. Indekss: augstums (veseli metri, 9-40; sugām, kur tabula beidzas pie 35, garāki nav definēti — lietotnē lineāri interpolē starp blakus veseliem metriem).",
+    "sugu_grupas": {
+      "priede": ["Priede", "Lapegle", "Citas priedes", "Ciedru priede"],
+      "egle": ["Egle", "Citas egles", "Baltegle"],
+      "ozols": ["Ozols"],
+      "osis": ["Osis", "Goba", "Vīksna", "Dižskābardis", "Skābardis", "Kļava"],
+      "berzs": ["Bērzs"],
+      "melnalksnis": ["Melnalksnis"],
+      "liepa": ["Liepa"],
+      "apse": ["Apse", "Papele"],
+      "baltalksnis": ["Baltalksnis", "Vītols", "Blīgzna"]
+    },
+    "tabula": {
+      "priede":      {"9":5.26,"10":5.71,"11":6.14,"12":6.54,"13":6.96,"14":7.34,"15":7.69,"16":8.07,"17":8.44,"18":8.81,"19":9.14,"20":9.50,"21":9.85,"22":10.25,"23":10.61,"24":11.00,"25":11.40,"26":11.80,"27":12.15,"28":12.55,"29":12.90,"30":13.28,"31":13.66,"32":14.04,"33":14.42,"34":14.80,"35":15.18,"36":15.56,"37":15.94,"38":16.32,"39":16.70,"40":17.08},
+      "egle":        {"9":5.62,"10":6.09,"11":6.55,"12":7.05,"13":7.39,"14":7.87,"15":8.27,"16":8.75,"17":9.12,"18":9.49,"19":9.85,"20":10.20,"21":10.54,"22":10.76,"23":10.95,"24":11.39,"25":11.83,"26":12.14,"27":12.57,"28":13.01,"29":13.45,"30":13.80,"31":14.15,"32":14.49,"33":14.83,"34":15.17,"35":15.51,"36":15.85,"37":16.19,"38":16.52,"39":16.86,"40":17.19},
+      "ozols":       {"9":4.63,"10":5.04,"11":5.45,"12":5.87,"13":6.28,"14":6.69,"15":7.10,"16":7.52,"17":7.93,"18":8.35,"19":8.78,"20":9.20,"21":9.62,"22":10.06,"23":10.49,"24":10.92,"25":11.37,"26":11.81,"27":12.26,"28":12.72,"29":13.18,"30":13.63,"31":14.07,"32":14.52,"33":14.96,"34":15.41,"35":15.85},
+      "osis":        {"9":5.25,"10":5.70,"11":6.13,"12":6.55,"13":6.97,"14":7.39,"15":7.80,"16":8.20,"17":8.60,"18":9.00,"19":9.40,"20":9.79,"21":10.19,"22":10.58,"23":10.96,"24":11.35,"25":11.74,"26":12.12,"27":12.50,"28":12.89,"29":13.27,"30":13.65,"31":14.03,"32":14.41,"33":14.79,"34":15.16,"35":15.54},
+      "berzs":       {"9":4.75,"10":5.14,"11":5.53,"12":5.92,"13":6.31,"14":6.70,"15":7.10,"16":7.49,"17":7.88,"18":8.28,"19":8.68,"20":9.09,"21":9.49,"22":9.90,"23":10.32,"24":10.73,"25":11.16,"26":11.58,"27":12.01,"28":12.44,"29":12.88,"30":13.30,"31":13.72,"32":14.15,"33":14.57,"34":15.00,"35":15.42},
+      "melnalksnis": {"9":4.95,"10":5.36,"11":5.78,"12":6.20,"13":6.62,"14":7.05,"15":7.48,"16":7.90,"17":8.34,"18":8.74,"19":9.15,"20":9.60,"21":10.05,"22":10.51,"23":10.96,"24":11.42,"25":11.90,"26":12.36,"27":12.84,"28":13.32,"29":13.80,"30":14.27,"31":14.74,"32":15.21,"33":15.68,"34":16.15,"35":16.62},
+      "liepa":       {"9":4.90,"10":5.32,"11":5.74,"12":6.18,"13":6.62,"14":7.06,"15":7.50,"16":7.95,"17":8.39,"18":8.83,"19":9.28,"20":9.72,"21":10.17,"22":10.61,"23":11.06,"24":11.51,"25":11.96,"26":12.36,"27":12.86,"28":13.31,"29":13.77,"30":14.22,"31":14.67,"32":15.12,"33":15.57,"34":16.02,"35":16.47},
+      "apse":        {"9":4.90,"10":5.29,"11":5.71,"12":6.15,"13":6.59,"14":7.03,"15":7.48,"16":7.91,"17":8.35,"18":8.80,"19":9.24,"20":9.69,"21":10.14,"22":10.59,"23":11.04,"24":11.50,"25":11.95,"26":12.41,"27":12.86,"28":13.32,"29":13.78,"30":14.24,"31":14.69,"32":15.15,"33":15.61,"34":16.07,"35":16.52},
+      "baltalksnis": {"9":5.09,"10":5.41,"11":5.74,"12":6.15,"13":6.52,"14":6.92,"15":7.29,"16":7.61,"17":7.97,"18":8.37,"19":8.73,"20":8.98,"21":9.38,"22":9.74,"23":10.14,"24":10.49,"25":10.89,"26":11.26,"27":11.65,"28":12.00,"29":12.35,"30":12.72,"31":13.10,"32":13.48,"33":13.85,"34":14.23,"35":14.61}
+    }
+  },
+
+  "normala_kraja": {
+    "apraksts": "Audzes normālā krāja Vn (m³/ha) pēc koku sugu grupas un vidējā augstuma (1-11m, H<12m zars): Vs = Bs × Vn, kur Bs = koku sugas reducētā biezība (audzes biezība sadalīta pa sastāvošām koku sugām proporcionāli to sastāva koeficientiem).",
+    "sugu_grupas": {
+      "skuju_koki": ["Priede", "Lapegle", "Citas priedes", "Ciedru priede", "Egle", "Citas egles", "Baltegle"],
+      "lapu_koki": ["Ozols", "Osis", "Goba", "Vīksna", "Dižskābardis", "Skābardis", "Kļava", "Bērzs", "Melnalksnis", "Liepa", "Apse", "Papele", "Baltalksnis", "Vītols", "Blīgzna"]
+    },
+    "tabula": {
+      "skuju_koki": {"1":5,"2":10,"3":20,"4":30,"5":40,"6":60,"7":80,"8":100,"9":120,"10":140,"11":160},
+      "lapu_koki":  {"1":5,"2":10,"3":20,"4":30,"5":40,"6":50,"7":60,"8":70,"9":80,"10":90,"11":100}
+    }
+  },
+
+  "bonitate_jaunaudzem": {
+    "apraksts": "VII. Mežaudzes bonitāte atkarībā no valdošās koku sugas un meža tipa (7.tabula) — lieto mežaudzēm, kuru valdošās koku sugas vecums nav sasniedzis 21 gadu (priede/egle/citi skuju koki/ozols/osis/vīksna/goba/kļava/dižskābardis/skābardis), 11 gadu (bērzs/liepa/apse/melnalksnis/vītols/papele/blīgzna) vai 6 gadus (baltalksnis/pālīdzis). I bonitāte ietver arī Ia un augstākas, V ietver arī Va un zemākas. Šī tabulas struktūra (numerācija, piezīmes) sakrīt ar MK 384 (2012) pielikumu formātu — ticams, ka tā ir tā pati MK384 tabula, ko VMD šeit apkopojis lietošanai.",
+    "sugu_kolonnas": ["priede", "egle", "berzs_liepa", "melnalksnis", "apse", "baltalksnis", "ozols", "osis"],
+    "vecuma_slieksnis": {"priede": 21, "egle": 21, "ozols": 21, "osis": 21, "berzs": 11, "apse": 11, "melnalksnis": 11, "baltalksnis": 6},
+    "tabula": {
+      "Sils":              {"priede":"IV","egle":"V","berzs_liepa":"IV","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Mētrājs":           {"priede":"III","egle":"IV","berzs_liepa":"III","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Lāns":              {"priede":"II","egle":"III","berzs_liepa":"II","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Damaksnis":         {"priede":"I","egle":"II","berzs_liepa":"II","melnalksnis":"II","apse":"II","baltalksnis":"II","ozols":"III","osis":"II"},
+      "Vēris":             {"priede":"V","egle":"I","berzs_liepa":"I","melnalksnis":"II","apse":"I","baltalksnis":"I","ozols":"II","osis":"II"},
+      "Gārša":             {"priede":"V","egle":"I","berzs_liepa":"I","melnalksnis":"II","apse":"I","baltalksnis":"I","ozols":"II","osis":"I"},
+      "Grīnis":            {"priede":"V","egle":"V","berzs_liepa":"V","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Slapjais mētrājs":  {"priede":"IV","egle":"V","berzs_liepa":"III","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Slapjais damaksnis":{"priede":"III","egle":"IV","berzs_liepa":"II","melnalksnis":"II","apse":"II","baltalksnis":"II","ozols":"III","osis":"II"},
+      "Slapjais vēris":    {"priede":"V","egle":"III","berzs_liepa":"I","melnalksnis":"II","apse":"I","baltalksnis":"I","ozols":"II","osis":"II"},
+      "Slapjā gārša":      {"priede":"V","egle":"II","berzs_liepa":"II","melnalksnis":"I","apse":"II","baltalksnis":"II","ozols":"II","osis":"I"},
+      "Purvājs":           {"priede":"V","egle":"V","berzs_liepa":"V","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Niedrājs":          {"priede":"IV","egle":"IV","berzs_liepa":"IV","melnalksnis":"III","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Dumbrājs":          {"priede":"III","egle":"III","berzs_liepa":"III","melnalksnis":"II","apse":"II","baltalksnis":"II","ozols":"V","osis":"II"},
+      "Liekņa":            {"priede":"V","egle":"II","berzs_liepa":"II","melnalksnis":"I","apse":"I","baltalksnis":"I","ozols":"V","osis":"I"},
+      "Viršu ārenis":      {"priede":"IV","egle":"V","berzs_liepa":"IV","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Mētru ārenis":      {"priede":"III","egle":"III","berzs_liepa":"III","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Šaurlapju ārenis":  {"priede":"II","egle":"II","berzs_liepa":"II","melnalksnis":"II","apse":"II","baltalksnis":"II","ozols":"III","osis":"II"},
+      "Platlapju ārenis":  {"priede":"V","egle":"I","berzs_liepa":"I","melnalksnis":"I","apse":"I","baltalksnis":"I","ozols":"II","osis":"I"},
+      "Viršu kūdrenis":    {"priede":"III","egle":"III","berzs_liepa":"III","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Mētru kūdrenis":    {"priede":"II","egle":"III","berzs_liepa":"II","melnalksnis":"V","apse":"V","baltalksnis":"V","ozols":"V","osis":"V"},
+      "Šaurlapju kūdrenis":{"priede":"I","egle":"II","berzs_liepa":"I","melnalksnis":"II","apse":"I","baltalksnis":"I","ozols":"III","osis":"II"},
+      "Platlapju kūdrenis":{"priede":"V","egle":"I","berzs_liepa":"I","melnalksnis":"I","apse":"I","baltalksnis":"I","ozols":"II","osis":"I"}
+    }
+  },
+
+  "nenoteiktiba": {
+    "apraksts": "#88: krājas/vērtējuma nenoteiktības diapazons pēc datu avota (nav VMD algoritma daļa — lietotāja/#75 komentāra lēmums 2026-09-05).",
+    "taksacija_pct": 20,
+    "taksacija_pirms_2010_papildu_piezime": true,
+    "dastojums_pct": 10
+  }
+}

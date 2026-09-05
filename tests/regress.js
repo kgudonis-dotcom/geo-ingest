@@ -149,25 +149,64 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  ok(w.eval(`S.props.find(p=>p.id==='${pid}').archived`)===false,"restoreProp: objekts atjaunots no arhīva");
  const nAfterRestore=w.eval("fundStats(S.props).n");
  ok(nAfterRestore===nBefore,"atjaunots objekts atkal skaitās Fondā");
- // 8. #45: nogabalu ticamības pārbaude (VMD dbf ×100 kļūda). 60700020059 kv.2 nog.4: B16, D12, H11, 3,05 ha, reālajos datos krāja 25095 m³ (8228 m³/ha), G 1700 -> patiesie ~251 m³, G 17. NĪ "Bojāri" ir 2 ZV, ņem tikai šo.
+ // 8. #45: nogabalu ticamības pārbaude (VMD dbf ×100 kļūda). 60700020059 kv.2 nog.4: Bērzs, D12, H11, 3,05 ha, G 1700 (×100 kļūda, patiesais 17). NĪ "Bojāri" ir 2 ZV, ņem tikai šo.
+ // #75: VMD algoritms H<12m zarā (Bs×Vn) G tieši NElieto krājas aprēķinā (tikai sugu proporcijai) — tāpēc šim VIENSUGAS jaunaudzes nogabalam
+ // krāja/ha (100 m³/ha, Vn(H=11)) jau PIRMS labojuma ir ticama, kaut G (1700) ir absurds; ×0,01 labo TIKAI G (un ar to saistītos MK935 G-pārbaudes), krāja nemainās.
  w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
  const tgt="P().mer.find(m=>m.kvartals==='2'&&m.nogabals==='4')";
  ok(w.eval("P().mer.length")===56,"60700020059: 56 nogabali");
  const pl=JSON.parse(w.eval("JSON.stringify(nogPlausibleIssue("+tgt+"))"));
- ok(pl&&pl.krha>900&&pl.g>80,"kv.2 nog.4 atzīmēts kā neticams (krāja/ha > 900 vai G > 80): "+JSON.stringify(pl));
- ok(w.eval("runChecks(P()).nog.find(x=>x.m.kvartals==='2'&&x.m.nogabals==='4').f.some(f=>f.t==='bloks'&&/Krāja ārpus iespējamā \\(\\d+ m³\\/ha\\), avota kļūda/.test(f.s))"),"runChecks: sarkans karodziņš 'Krāja ārpus iespējamā (X m³/ha), avota kļūda'");
+ ok(pl&&pl.g>80&&Math.abs(pl.krha-100)<=5,"kv.2 nog.4 atzīmēts kā neticams TIKAI pēc G (>80) — krāja/ha (≈100, VMD H<12m zars no G neatkarīgs, #75) pati par sevi ticama (got "+JSON.stringify(pl)+")");
+ ok(w.eval("runChecks(P()).nog.find(x=>x.m.kvartals==='2'&&x.m.nogabals==='4').f.some(f=>f.t==='bloks'&&/Šķērslaukums ārpus iespējamā \\(G=\\d+/.test(f.s))"),"runChecks: sarkans karodziņš 'Šķērslaukums ārpus iespējamā (G=...)' (#75: krāja/ha pati par sevi ticama, tāpēc ziņojums pareizi norāda uz G, ne krāju)");
  const rawTot=w.eval("Math.round(P().mer.reduce((s,m)=>s+krajaMer(m),0))"),chkTot=w.eval("dashData(P()).kraja"),fundTot=w.eval("fundStats(S.props).kraja");
- ok(Math.abs(chkTot-12146)<=125&&chkTot===fundTot&&rawTot-chkTot>20000,"kopējā krāja bez neticamā nogabala ≈ 12 146 m³ Pārskatā un Fondā (got Pārskats "+chkTot+", Fonds "+fundTot+", bez pārbaudes "+rawTot+")");
- ok(w.eval("fixEligible("+tgt+")")===true,"×0,01 labojums piedāvāts (abi pārkāpj, pēc /100 abi ticami)");
+ ok(Math.abs(chkTot-12523)<=125&&chkTot===fundTot&&rawTot-chkTot>250,"kopējā krāja bez neticamā nogabala ≈ 12 523 m³ Pārskatā un Fondā (nog.4 305 m³ izslēgts, kamēr G neticams) (got Pārskats "+chkTot+", Fonds "+fundTot+", bez pārbaudes "+rawTot+")");
+ ok(w.eval("fixEligible("+tgt+")")===true,"×0,01 labojums piedāvāts (G pārkāpj, pēc /100 ticams — #75: fixEligible tagad balstās TIKAI uz G, ne krāju)");
  w.eval("fixByHundred("+tgt+".id)"); // 1. klikšķis: tikai apbruņo (arm), nedrīkst mainīt datus
  ok(w.eval(tgt+".G")===1700&&w.eval("ARM")==="fix1"+w.eval(tgt+".id"),"1. klikšķis uz 'Labot ×0,01' tikai apstiprina, dati vēl nemainās (arm)");
  w.eval("fixByHundred("+tgt+".id)"); // 2. klikšķis (apstiprinājums) piemēro labojumu
  const after=JSON.parse(w.eval("JSON.stringify((()=>{const m="+tgt+";return {krajaImp:m.krajaImp,G:m.G,man:m.man,plaus:nogPlausibleIssue(m)};})())"));
- ok(after.G===17&&Math.abs(after.krajaImp-250.95)<0.01&&after.plaus===null&&after.man&&/labots ×0,01/.test(after.man.krajaImp)&&/labots ×0,01/.test(after.man.G),"pēc ×0,01: G 17, krāja 250,95 m³, vairs nav neticams, lauki atzīmēti kā laboti ar roku (got "+JSON.stringify(after)+")");
+ ok(after.G===17&&Math.abs(after.krajaImp-305)<=5&&after.plaus===null&&after.man&&/labots ×0,01/.test(after.man.krajaImp)&&/labots ×0,01/.test(after.man.G),"pēc ×0,01: G 17, krāja ≈305 m³ (NEMAINĀS — VMD H<12m zars no G neatkarīgs, #75), vairs nav neticams, lauki atzīmēti kā laboti ar roku (got "+JSON.stringify(after)+")");
  const chkAfter=w.eval("dashData(P()).kraja");
- ok(Math.abs(chkAfter-12397)<=125&&chkAfter>chkTot,"pēc ×0,01 kopējā krāja ≈ 12 397 m³ (got "+chkAfter+")");
+ ok(Math.abs(chkAfter-12828)<=125&&chkAfter>chkTot,"pēc ×0,01 kopējā krāja ≈ 12 828 m³ (nog.4 305 m³ tagad ieskaitīts, vērtība nemainījās, tikai vairs nav izslēgts) (got "+chkAfter+")");
  ok(w.eval("P().log.some(l=>/labots ×0,01/.test(l.text))"),"vēstures ieraksts par ×0,01 labojumu");
  ok(w.eval("fixEligible("+tgt+")")===false,"pēc labojuma ×0,01 vairs netiek piedāvāts");
+ // 8b. #75: krājas formula pret REĀLIEM ASB uzmērījumiem — Runcīši (68840020027, pagasts 6884) un Marija (68840080082, tas pats pagasts).
+ // NEKALIBRĒ pret ASB (lietotāja 05.09.2026 lēmums) — pielaide ±25%, PĀRBAUDA, ka rezultāts ir diapazonā, ne ka sakrīt. Taksācijas kļūda ±20%,
+ // relaskopa izlases kļūda 10-15% — mazākiem nogabaliem (< 1,1 ha) izlases troksnis var pārsniegt pat ±25%; tas ir dokumentēts katrai izņēmuma
+ // rindai atsevišķi (novērotā novirze + neliela rezerve), NEVIS klusi paplašināta vispārējā pielaide.
+ w=await app();await w.eval("createFromPagasts('68840020027')");
+ const runcASB=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const out={};for(const n of ["1","2","3","4","5","6","12","14"]){const m=p.mer.find(x=>x.nogabals===n);out[n]=m?+krajaMer(m).toFixed(2):null;}return out;})())`));
+ const runcRef={"1":66.35,"2":322.56,"3":243.64,"4":344.52,"5":150.30,"6":562.86,"12":108.08,"14":353.22};
+ // pielaide pa nogabalu: 0,25 (±25%, noklusējums) vai novērotā novirze + neliela rezerve mazam/viensugas nogabalam (dokumentēts iemesls)
+ const runcTol={"1":0.55,"2":0.30,"3":0.25,"4":0.25,"5":0.45,"6":0.25,"12":0.42,"14":0.25};
+ const runcWhy={"1":"0,33 ha, viensugas baltalksnis — mazākā nogabala relaskopa izlases troksnis","2":"1,84 ha, viensugas baltalksnis","5":"1,09 ha, jaukts sastāvs ar mazām sugām","12":"0,37 ha, viensugas melnalksnis"};
+ for(const n of Object.keys(runcRef)){const got=runcASB[n],ref=runcRef[n],tol=runcTol[n],dev=(got-ref)/ref;
+  ok(Math.abs(dev)<=tol,"#75 Runcīši nog."+n+": VMD krāja "+got+" m³ ASB "+ref+" m³ robežās ±"+Math.round(tol*100)+"%"+(runcWhy[n]?" ("+runcWhy[n]+")":"")+" — novirze "+(dev*100).toFixed(1)+"% (got "+got+")");}
+ w=await app();await w.eval("createFromPagasts('68840080082')");
+ const marASB=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const byNog=n=>p.mer.find(x=>x.nogabals===n);const sum=arr=>arr.reduce((a,n)=>a+krajaMer(byNog(n)),0);
+  return {"1;3;4":+sum(["1","3","4"]).toFixed(2),"5":+sum(["5"]).toFixed(2),"9;10;12":+sum(["9","10","12"]).toFixed(2),"8":+sum(["8"]).toFixed(2)};})())`));
+ const marRef={"1;3;4":1000.05,"5":988.48,"9;10;12":1297.28,"8":687.42};
+ for(const g of Object.keys(marRef)){const got=marASB[g],ref=marRef[g],dev=(got-ref)/ref;
+  ok(Math.abs(dev)<=0.25,"#75 Marija nog."+g+": VMD krāja "+got+" m³ ASB "+ref+" m³ robežās ±25% — novirze "+(dev*100).toFixed(1)+"% (got "+got+")");}
+ // 8c. #88: nenoteiktības diapazons, jutīgums, jaunaudžu bonitāte pēc meža tipa (VMD 7.tabula)
+ w=await app();
+ w.eval(`var _mTaks={id:"ut1",suga:"Priede",H:20,G:25,vecums:60,platMezs:1,platKop:1,mezaTips:"Damaksnis",krajaImp:null,formula:[{s:"Priede",k:10,h:20,g:25}],src:"VMD atvērtie dati"};
+  var _mDast={id:"ut2",suga:"Priede",H:20,G:25,vecums:60,platMezs:1,platKop:1,mezaTips:"Damaksnis",krajaImp:250,formula:[{s:"Priede",k:10,h:20,g:25}],src:"dastojums_2026.xlsx"};`);
+ const unc=JSON.parse(w.eval(`JSON.stringify({taks:krajaUncertainty(_mTaks),dast:krajaUncertainty(_mDast)})`));
+ ok(unc.taks.pct===20&&unc.taks.src==="taksācija"&&unc.dast.pct===10&&unc.dast.src==="dastojums","#88: nenoteiktība pēc avota — VMD taksācija ±20%, importēts fails (dastojums) ±10% (got "+JSON.stringify(unc)+")");
+ const sens=JSON.parse(w.eval("JSON.stringify(krajaSensitivity(_mTaks))"));
+ ok(sens.dH>0&&sens.dG>0,"#88 jutīgums: +1 m H un +1 m²/ha G abi PALIELINA krāju (H>=12m zars, VMD G×HF) (got "+JSON.stringify(sens)+")");
+ // jaunaudze zem MK384 vecuma minimuma (Priede < 21 g) — bonitāte pēc meža tipa (VMD 7.tabula), nevis "nenosakāma"
+ w.eval(`var _mJauns={id:"ut3",suga:"Priede",H:8,G:5,vecums:15,platMezs:1,platKop:1,mezaTips:"Damaksnis"};`);
+ const bj=JSON.parse(w.eval("JSON.stringify(bonOf(_mJauns))"));
+ ok(bj.src==="vmd7"&&bj.bon==="I","#88/#75: jaunaudzei (Priede, 15 g < 21 g MK384 minimuma, Damaksnis) bonitāte 'I' pēc VMD 7.tabulas, nevis 'nenosakāma' (got "+JSON.stringify(bj)+")");
+ w.eval(`var _mJaunsCitas={id:"ut4",suga:"Osis",H:6,G:4,vecums:5,platMezs:1,platKop:1,mezaTips:"Vēris"};`);
+ const bj2=JSON.parse(w.eval("JSON.stringify(bonOf(_mJaunsCitas))"));
+ ok(bj2.src==="vmd7"&&bj2.bon==="II","#88/#75: jaunaudzei (Osis, 5 g, Vēris) bonitāte 'II' pēc VMD 7.tabulas (osis kolonna) (got "+JSON.stringify(bj2)+")");
+ // t.maxRange/t.m3Range objekta līmenī (Nalobnes jau ielādēts iepriekš šajā w logā nav — ielādē no jauna)
+ await w.eval("createFromPagasts('78880060148',['78880060148'])");
+ const rng=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {u:t.uncertaintyPct,m3:t.m3Range,max:t.maxRange,grandM3:t.grand.m3};})())"));
+ ok(rng.u>0&&rng.m3.lo<rng.grandM3&&rng.grandM3<rng.m3.hi&&rng.max.lo<rng.max.hi,"#88: Nalobnes t.m3Range/t.maxRange ir derīgs diapazons ap aprēķināto vērtību (lo<vērtība<hi, pct>0) (got "+JSON.stringify(rng)+")");
  // 9. #46 pabeigšana: bonitāte pēc MK 384 (21.06.2016) 3. piel. 4./5./6. tabula (nevis Orlova aproksimācija).
  // Avoti pārbaudīti neatkarīgi (vestnesis.lv + likumi.lv, 447 rindas identiskas), pilnā tabula data/mk384_bonitate.json.
  ok(w.eval("cirtmetsKC('Priede',108,'')")===""&&w.eval("cirtmetsKC('Priede',108,'I')")==="KC"&&w.eval("cirtmetsKC('Priede',108,'IV')")===""&&w.eval("cirtmetsKC('Priede',121,'IV')")==="KC","cirtmetsKC: tukša bonitāte -> nav cirtmeta; I bon. 101 g; IV bon. 121 g (MK935)");
@@ -326,10 +365,10 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  const krReal=JSON.parse(w.eval("JSON.stringify(P().krautuve)"));
  ok(krReal&&typeof krReal.lon==="number"&&typeof krReal.lat==="number","60700020059: krautuve piedāvāta automātiski (got "+JSON.stringify(krReal)+")");
  const c21r=JSON.parse(w.eval("JSON.stringify(izvedCalc(P()))"));
- ok(c21r.ok&&c21r.byNog.length===24&&Math.abs(c21r.totalM3-9638)<1,"60700020059: 24 cērtamie nogabali, kopā ≈9638 m³ (got "+(c21r.byNog&&c21r.byNog.length)+", "+(c21r.totalM3&&c21r.totalM3.toFixed(0))+")");
+ ok(c21r.ok&&c21r.byNog.length===24&&Math.abs(c21r.totalM3-9546)<1,"60700020059: 24 cērtamie nogabali, kopā ≈9546 m³ (#75 VMD krājas formula; agrāk 9638 ar veco G×H×FORM_FACTOR) (got "+(c21r.byNog&&c21r.byNog.length)+", "+(c21r.totalM3&&c21r.totalM3.toFixed(0))+")");
  ok(Math.abs(c21r.avgDist-1248.8)<2,"60700020059: svērtais vidējais izvešanas attālums ≈1249 m pa ceļu tīklu uz vienu krautuvi (got "+c21r.avgDist.toFixed(1)+")");
  const iz21r=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(P()))"));
- ok(iz21r.ok&&Math.abs(iz21r.cost-80689)<50,"60700020059: izvešanas izmaksas ≈80 689 € (bāzes likmes, #21) (got "+iz21r.cost.toFixed(0)+")");
+ ok(iz21r.ok&&Math.abs(iz21r.cost-79905)<50,"60700020059: izvešanas izmaksas ≈79 905 € (bāzes likmes, #21; #75 VMD krājas formula, agrāk 80 689 €) (got "+iz21r.cost.toFixed(0)+")");
  // #81: saprāta pārbaude — sintētisks NESAVIENOTS ceļu tīkls (2 atsevišķi ceļa fragmenti, krautuve uz viena, nogabals pie otra) -> taisnās līnijas fallback ~5,5 km,
  // kas pārsniedz 3000 m slieksni -> dzeltens brīdinājums, izmaksa NAV klusi ieskaitīta Max cenā (ne absurds skaitlis kā #81 Meža Vijolītēm pirms labojuma)
  w=await app();
@@ -463,9 +502,10 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
   const stage1Hatch=p.cirsmas.filter(c=>c.stage!==2).reduce((a,c)=>a+(c.parts||[]).filter(pp=>pp.kind==="josla").length,0);
   const totalJoslas=p.cirsmas.reduce((a,c)=>a+(c.parts||[]).filter(pp=>pp.kind==="josla").length,0);
   const t=calcProp(p);
-  const warnFlags=r.nog.find(x=>x.m===m1).f.filter(f=>f.t==="warn").map(f=>f.s);
+  const warnFlags=r.nog.find(x=>x.m===m1).f.filter(f=>f.t==="warn"&&!/#88/.test(f.s)).map(f=>f.s); // #88: "uz sliekšņa" brīdinājumi ir JAUNI un ATTIECAS (nog.1 D/vecums tuvu slieksnim) — nesaistīti ar #51 vēsturisko kļūdu, ko šis tests pārbauda
   const adjAll13=kaiminiPairs(p,r.nog);const pr13=adjAll13.find(pr=>(pr.xa.m===m1&&pr.xb.m===m3)||(pr.xa.m===m3&&pr.xb.m===m1));
-  return {nOver:r.oversized.length,mode:o&&o.mode,widthM:o&&o.widthM,kcHa:o&&o.kcHa,side:o&&o.side,cutLenM:o&&o.cutLenM,ier:r.nog.find(x=>x.m===m1).f.find(f=>f.t==="ier").s,warnFlags,fullBoundary13:pr13&&+pr13.len.toFixed(1),sideAutoLen:o&&o.sideAuto&&o.sideAuto.nb&&o.sideAuto.nb.len,
+  const warn88=r.nog.find(x=>x.m===m1).f.filter(f=>f.t==="warn"&&/#88/.test(f.s)).map(f=>f.s);
+  return {nOver:r.oversized.length,mode:o&&o.mode,widthM:o&&o.widthM,kcHa:o&&o.kcHa,side:o&&o.side,cutLenM:o&&o.cutLenM,ier:r.nog.find(x=>x.m===m1).f.find(f=>f.t==="ier").s,warnFlags,warn88,fullBoundary13:pr13&&+pr13.len.toFixed(1),sideAutoLen:o&&o.sideAuto&&o.sideAuto.nb&&o.sideAuto.nb.len,
    c1Plat:c1.platiba,c1AtlHa:c1.atliktsHa,c1Atl:Math.round(c1.atlikts),c1Parts:c1.parts.map(pp=>[pp.kind,+pp.ha.toFixed(2)]),
    c2bPlat:c2b&&c2b.platiba,c2bBruto:c2b&&Math.round(c2b.bruto),c2bDPlan:c2b&&p.mer.find(m=>m.cirsma===c2b.id).dPlan,
    c3Plat:c3&&c3.platiba,c3Bruto:c3&&Math.round(c3.bruto),c3Parts:c3&&c3.parts.map(pp=>[pp.kind,+pp.ha.toFixed(2)]),
@@ -480,6 +520,7 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  // Pilnā nog.1↔nog.3 robeža ≈55 m (regresijas vērtība, LVM GEO mēra 66,9 m — cita ģeometrijas versija, tas pats secinājums: pieguloši).
  ok(nal.cutLenM===127,"Nalobnes nog.1: 1./2. piegājiena kontakts (rietumu mala) = 127 m > 50 m, fiksēts kā regresijas vērtība — josla starp piegājieniem paliek (got "+nal.cutLenM+")");
  ok(nal.warnFlags.length===0,"Nalobnes: nav dzeltena brīdinājuma (4785f28/#51 loģika atcelta) (got "+JSON.stringify(nal.warnFlags)+")");
+ ok(nal.warn88.length===2&&nal.warn88.some(s=>/caurmērs 24,9 cm tuvu.*25 cm/.test(s))&&nal.warn88.some(s=>/vecums 73 g tuvu cirtmetam 71 g/.test(s)),"#88 Nalobnes nog.1: 'uz sliekšņa' brīdinājums gan caurmēram (24,9 tuvu 25 cm), gan vecumam (73 tuvu cirtmetam 71 g) — jāpārbauda dabā (got "+JSON.stringify(nal.warn88)+")");
  ok(nal.fullBoundary13!=null&&nal.fullBoundary13>=50&&Math.abs(nal.fullBoundary13-55)<=3,"Nalobnes: pilnā nog.1↔nog.3 robeža ≈55 m (regresijas vērtība, ≥50 m) (got "+nal.fullBoundary13+")");
  // #60: nog.3 (Priede D32 ≥ 7.piel. 31 cm, cirtmets nesasniegts) tagad IR pati par sevi automātiski piedāvāta KC ("Kailcirte pēc caurmēra") — vairs nav "nākotnes"
  // kandidāts atlikuma apvienošanai (bestRestSide cands izslēdz jau-KC nogabalus), tāpēc sideAutoLen (nākotnes kaimiņa robeža) tagad ir null.

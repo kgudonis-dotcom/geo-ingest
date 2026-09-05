@@ -126,7 +126,87 @@ tr.subtot td{font-style:italic;border-top:1px dashed var(--line);background:#f7f
 /* ---------- DEFAULTS (from Vigodas vērtējums) ---------- */
 const SPECIES=["Priede","Egle","Bērzs","Apse","Melnalksnis","Osis","Ozols","Baltalksnis","Citas sugas"];
 const SPECIES_CODE={Priede:"P",Egle:"E",Bērzs:"B",Apse:"Ap",Melnalksnis:"Ma",Osis:"Os",Ozols:"Oz",Baltalksnis:"Ba","Citas sugas":"C"};
-const FORM_FACTOR={Priede:.45,Egle:.47,Bērzs:.44,Apse:.46,Melnalksnis:.45,Osis:.45,Ozols:.45,Baltalksnis:.45,"Citas sugas":.45};
+// #75: VMD "Algoritmi mežaudzes sekundāro parametru aprēķināšanai" (bonitate_un_kraj2a-2_0.zip, lejupielādēts 2026-09-05,
+// https://www.vmd.gov.lv/lv/media/1854/download?attachment) — pilna tabula ar avotu: rules/kraja_bonitate_vmd.json (šis objekts ir tās burtisks spogulis, skaitļi kodā NAV neatkarīgi ievadīti).
+// Aizstāj veco fiksēto FORM_FACTOR (G×H×0,44-0,47 visiem H) ar VMD divzaru formulu: H>=12m -> Vs=G×HF (R.Ozoliņa veidaugstums pa sugu un H);
+// H<12m -> Vs=Bs×Vn (audzes normālā krāja pa sugu grupu skuju/lapu un H, × reducētā biezība). Rēķina PA m.formula elementu (katrai sugai savs H/G, ja zināms), ne tikai valdošajai sugai.
+const VMD_KRAJA={
+ veidaugstumi:{
+  priede:{9:5.26,10:5.71,11:6.14,12:6.54,13:6.96,14:7.34,15:7.69,16:8.07,17:8.44,18:8.81,19:9.14,20:9.50,21:9.85,22:10.25,23:10.61,24:11.00,25:11.40,26:11.80,27:12.15,28:12.55,29:12.90,30:13.28,31:13.66,32:14.04,33:14.42,34:14.80,35:15.18,36:15.56,37:15.94,38:16.32,39:16.70,40:17.08},
+  egle:{9:5.62,10:6.09,11:6.55,12:7.05,13:7.39,14:7.87,15:8.27,16:8.75,17:9.12,18:9.49,19:9.85,20:10.20,21:10.54,22:10.76,23:10.95,24:11.39,25:11.83,26:12.14,27:12.57,28:13.01,29:13.45,30:13.80,31:14.15,32:14.49,33:14.83,34:15.17,35:15.51,36:15.85,37:16.19,38:16.52,39:16.86,40:17.19},
+  ozols:{9:4.63,10:5.04,11:5.45,12:5.87,13:6.28,14:6.69,15:7.10,16:7.52,17:7.93,18:8.35,19:8.78,20:9.20,21:9.62,22:10.06,23:10.49,24:10.92,25:11.37,26:11.81,27:12.26,28:12.72,29:13.18,30:13.63,31:14.07,32:14.52,33:14.96,34:15.41,35:15.85},
+  osis:{9:5.25,10:5.70,11:6.13,12:6.55,13:6.97,14:7.39,15:7.80,16:8.20,17:8.60,18:9.00,19:9.40,20:9.79,21:10.19,22:10.58,23:10.96,24:11.35,25:11.74,26:12.12,27:12.50,28:12.89,29:13.27,30:13.65,31:14.03,32:14.41,33:14.79,34:15.16,35:15.54},
+  berzs:{9:4.75,10:5.14,11:5.53,12:5.92,13:6.31,14:6.70,15:7.10,16:7.49,17:7.88,18:8.28,19:8.68,20:9.09,21:9.49,22:9.90,23:10.32,24:10.73,25:11.16,26:11.58,27:12.01,28:12.44,29:12.88,30:13.30,31:13.72,32:14.15,33:14.57,34:15.00,35:15.42},
+  melnalksnis:{9:4.95,10:5.36,11:5.78,12:6.20,13:6.62,14:7.05,15:7.48,16:7.90,17:8.34,18:8.74,19:9.15,20:9.60,21:10.05,22:10.51,23:10.96,24:11.42,25:11.90,26:12.36,27:12.84,28:13.32,29:13.80,30:14.27,31:14.74,32:15.21,33:15.68,34:16.15,35:16.62},
+  liepa:{9:4.90,10:5.32,11:5.74,12:6.18,13:6.62,14:7.06,15:7.50,16:7.95,17:8.39,18:8.83,19:9.28,20:9.72,21:10.17,22:10.61,23:11.06,24:11.51,25:11.96,26:12.36,27:12.86,28:13.31,29:13.77,30:14.22,31:14.67,32:15.12,33:15.57,34:16.02,35:16.47},
+  apse:{9:4.90,10:5.29,11:5.71,12:6.15,13:6.59,14:7.03,15:7.48,16:7.91,17:8.35,18:8.80,19:9.24,20:9.69,21:10.14,22:10.59,23:11.04,24:11.50,25:11.95,26:12.41,27:12.86,28:13.32,29:13.78,30:14.24,31:14.69,32:15.15,33:15.61,34:16.07,35:16.52},
+  baltalksnis:{9:5.09,10:5.41,11:5.74,12:6.15,13:6.52,14:6.92,15:7.29,16:7.61,17:7.97,18:8.37,19:8.73,20:8.98,21:9.38,22:9.74,23:10.14,24:10.49,25:10.89,26:11.26,27:11.65,28:12.00,29:12.35,30:12.72,31:13.10,32:13.48,33:13.85,34:14.23,35:14.61},
+ },
+ normalaKraja:{skuju:{1:5,2:10,3:20,4:30,5:40,6:60,7:80,8:100,9:120,10:140,11:160},lapu:{1:5,2:10,3:20,4:30,5:40,6:50,7:60,8:70,9:80,10:90,11:100}},
+ bonitateJaunaudzem:{ // 7.tabula: bonitāte pēc valdošās sugas un meža tipa, jaunaudzēm zem MK384 H×vecums tabulas minimuma (21/11/6 g.)
+  "Sils":{priede:"IV",egle:"V",berzs_liepa:"IV",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Mētrājs":{priede:"III",egle:"IV",berzs_liepa:"III",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Lāns":{priede:"II",egle:"III",berzs_liepa:"II",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Damaksnis":{priede:"I",egle:"II",berzs_liepa:"II",melnalksnis:"II",apse:"II",baltalksnis:"II",ozols:"III",osis:"II"},
+  "Vēris":{priede:"V",egle:"I",berzs_liepa:"I",melnalksnis:"II",apse:"I",baltalksnis:"I",ozols:"II",osis:"II"},
+  "Gārša":{priede:"V",egle:"I",berzs_liepa:"I",melnalksnis:"II",apse:"I",baltalksnis:"I",ozols:"II",osis:"I"},
+  "Grīnis":{priede:"V",egle:"V",berzs_liepa:"V",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Slapjais mētrājs":{priede:"IV",egle:"V",berzs_liepa:"III",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Slapjais damaksnis":{priede:"III",egle:"IV",berzs_liepa:"II",melnalksnis:"II",apse:"II",baltalksnis:"II",ozols:"III",osis:"II"},
+  "Slapjais vēris":{priede:"V",egle:"III",berzs_liepa:"I",melnalksnis:"II",apse:"I",baltalksnis:"I",ozols:"II",osis:"II"},
+  "Slapjā gārša":{priede:"V",egle:"II",berzs_liepa:"II",melnalksnis:"I",apse:"II",baltalksnis:"II",ozols:"II",osis:"I"},
+  "Purvājs":{priede:"V",egle:"V",berzs_liepa:"V",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Niedrājs":{priede:"IV",egle:"IV",berzs_liepa:"IV",melnalksnis:"III",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Dumbrājs":{priede:"III",egle:"III",berzs_liepa:"III",melnalksnis:"II",apse:"II",baltalksnis:"II",ozols:"V",osis:"II"},
+  "Liekņa":{priede:"V",egle:"II",berzs_liepa:"II",melnalksnis:"I",apse:"I",baltalksnis:"I",ozols:"V",osis:"I"},
+  "Viršu ārenis":{priede:"IV",egle:"V",berzs_liepa:"IV",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Mētru ārenis":{priede:"III",egle:"III",berzs_liepa:"III",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Šaurlapju ārenis":{priede:"II",egle:"II",berzs_liepa:"II",melnalksnis:"II",apse:"II",baltalksnis:"II",ozols:"III",osis:"II"},
+  "Platlapju ārenis":{priede:"V",egle:"I",berzs_liepa:"I",melnalksnis:"I",apse:"I",baltalksnis:"I",ozols:"II",osis:"I"},
+  "Viršu kūdrenis":{priede:"III",egle:"III",berzs_liepa:"III",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Mētru kūdrenis":{priede:"II",egle:"III",berzs_liepa:"II",melnalksnis:"V",apse:"V",baltalksnis:"V",ozols:"V",osis:"V"},
+  "Šaurlapju kūdrenis":{priede:"I",egle:"II",berzs_liepa:"I",melnalksnis:"II",apse:"I",baltalksnis:"I",ozols:"III",osis:"II"},
+  "Platlapju kūdrenis":{priede:"V",egle:"I",berzs_liepa:"I",melnalksnis:"I",apse:"I",baltalksnis:"I",ozols:"II",osis:"I"},
+ },
+ nenoteiktiba:{taksacijaPct:20,dastojumsPct:10}, // #88: 05.09.2026 lietotāja lēmums, NAV VMD algoritma daļa — taksācijas kļūda ±20% (pirms ~2010 vēl vairāk), dastojums (uzmērīts) ±10%
+};
+// #75: m.suga (9 kanoniskās sugas, sk. SPECIES) -> VMD sugu grupa. "Citas sugas" nav savas VMD kolonnas — tuvākā (arī pati jaukta) ir "osis" (goba/vīksna/dižskābardis/skābardis/kļava).
+const SPECIES_GROUP_HF={Priede:"priede",Egle:"egle",Bērzs:"berzs",Apse:"apse",Melnalksnis:"melnalksnis",Osis:"osis",Ozols:"ozols",Baltalksnis:"baltalksnis","Citas sugas":"osis"};
+const SPECIES_GROUP_VN={Priede:"skuju",Egle:"skuju",Bērzs:"lapu",Apse:"lapu",Melnalksnis:"lapu",Osis:"lapu",Ozols:"lapu",Baltalksnis:"lapu","Citas sugas":"lapu"};
+const SPECIES_GROUP_BON={Priede:"priede",Egle:"egle",Bērzs:"berzs_liepa",Apse:"apse",Melnalksnis:"melnalksnis",Osis:"osis",Ozols:"ozols",Baltalksnis:"baltalksnis","Citas sugas":"osis"};
+function veidaugstums(suga,H){ // #75: R.Ozoliņa HF, lineāri interpolēts starp veseliem metru soļiem (tabulā tikai veseli metri)
+ const tab=VMD_KRAJA.veidaugstumi[SPECIES_GROUP_HF[suga]||SPECIES_GROUP_HF["Citas sugas"]];if(!tab)return null;
+ const keys=Object.keys(tab).map(Number);const hmin=Math.min(...keys),hmax=Math.max(...keys);
+ const h=Math.max(hmin,Math.min(hmax,num(H)));const lo=Math.floor(h),hi=Math.ceil(h);
+ if(tab[lo]==null)return null;if(lo===hi||tab[hi]==null)return tab[lo];
+ return tab[lo]+(tab[hi]-tab[lo])*(h-lo);}
+function normalaKrajaVn(suga,H){ // #75: audzes normālā krāja pa sugu grupu (skuju/lapu) un H (1-11m, H<12m zars)
+ const tab=VMD_KRAJA.normalaKraja[SPECIES_GROUP_VN[suga]||SPECIES_GROUP_VN["Citas sugas"]];if(!tab)return null;
+ const h=Math.max(1,Math.min(11,Math.round(num(H))));return tab[h]??null;}
+// #75: VMD krājas formula, katram taksācijas elementam (suga+G+H) atsevišķi — els:[{s,g,h}], biez=audzes biezība (0-1; null/nezināma -> pieņem 1,0, sk. #88 dzeltenais karogs runChecks)
+function krajaFromElements(els,ha,biez){
+ const Gtot=els.reduce((t,e)=>t+num(e.g),0)||1;let vsHa=0;
+ for(const e of els){const H=num(e.h),g=num(e.g);
+  if(H>=12){const hf=veidaugstums(e.s,H);if(hf!=null)vsHa+=g*hf;}
+  else{const vn=normalaKrajaVn(e.s,H);if(vn!=null)vsHa+=(biez??1)*(g/Gtot)*vn;}} // Bs = audzes biezība × sugas G-daļa (proporcionāli sastāva koeficientam)
+ return vsHa*num(ha);}
+// #88: nenoteiktības diapazons pēc datu avota — "VMD atvērtie dati" (taksācija, ±20%, vecāka par ~2010 — papildu piezīme) pret jebko citu (importēts fails/dastojums, ±10%)
+function krajaUncertainty(m){
+ const dastojums=!!m.src&&m.src!=="VMD atvērtie dati";
+ const pct=dastojums?VMD_KRAJA.nenoteiktiba.dastojumsPct:VMD_KRAJA.nenoteiktiba.taksacijaPct;
+ return {pct,src:dastojums?"dastojums":"taksācija",oldTaks:!dastojums&&!!m.invGads&&m.invGads<2010};}
+function withRange(val,pct){return {lo:+(val*(1-pct/100)).toFixed(2),hi:+(val*(1+pct/100)).toFixed(2),pct:+pct.toFixed(1)};}
+function cirsmaUncertaintyPct(c,p){ // #88: m³-svērtais vidējais pa cirsmai piesaistītajiem nogabaliem (cirsmaLinkedNog, #82)
+ const linked=cirsmaLinkedNog(c,p);if(!linked.length)return VMD_KRAJA.nenoteiktiba.taksacijaPct;
+ let wsum=0,psum=0;for(const m of linked){const kr=krajaMerChecked(m);const u=krajaUncertainty(m);wsum+=kr;psum+=kr*u.pct;}
+ return wsum?psum/wsum:VMD_KRAJA.nenoteiktiba.taksacijaPct;}
+// #88: jutīgums — cik krāja mainās uz +1 m H un +1 m²/ha G (galīgo diferenču metode uz VMD formulu), lai apskatē dabā redz, ko precizējums nozīmē
+function krajaSensitivity(m){
+ const els=(m.formula&&m.formula.length)?m.formula.map(e=>({s:e.s,g:e.g!=null?e.g:num(m.G)*num(e.k)/10,h:e.h!=null?e.h:num(m.H)})):[{s:m.suga,g:num(m.G),h:num(m.H)}];
+ const ha=num(m.platMezs||m.platKop);const base=krajaFromElements(els,ha,m.biez);
+ const elsH=els.map(e=>({...e,h:num(e.h)+1}));const dH=krajaFromElements(elsH,ha,m.biez)-base;
+ const elsG=els.map((e,i)=>i===0?{...e,g:num(e.g)+1}:e);const dG=krajaFromElements(elsG,ha,m.biez)-base; // +1 valdošajai (pirmajai) sugai
+ return {dH:+dH.toFixed(1),dG:+dG.toFixed(1)};}
 const DEFAULT_PRICES={
  Priede:[["26<",115,.30],["18-26",110,.30],["8-18",80,.15],["Pm",50,.15],["Malka",42,.10],["A klase",120,0],["Stabi",0,0]],
  Egle:[["26<",103,.30],["18-26",103,.28],["8-18",87,.12],["Pm",45,.20],["Gulsnis",60,0],["Malka",40,.10]],
@@ -186,7 +266,7 @@ const RU={
 "Gūstamie ieņēmumi":"Ожидаемая выручка","Izstrādes izmaksas":"Затраты на заготовку","Maksimālā piedāvājamā cena":"Максимальная цена предложения","vid. koks":"ср. дерево","Piezīmes":"Примечания",
 "Likumdošana šai cirsmai":"Законодательство для этой лесосеки","KC aizliegta izvēlētajā ĪADT zonā":"Сплошная рубка запрещена в выбранной зоне ООПТ","Sausie tipi":"Сухие типы","Slapjie / purvāji / āreņi / kūdreņi":"Сырые / болотные / осушенные","Bez meža tipa":"Без типа леса","limits":"лимит","pārsniedz, jādala":"превышает, делить","Cirsmā jaukti sausie un slapjie tipi, limitu skaita katrai grupai atsevišķi":"В лесосеке смешаны сухие и сырые типы, лимит считается по группам","Kopšanas intensitāte (cērtamais / krāja)":"Интенсивность ухода (к рубке / запас)","Ekoloģiskie koki":"Экологические деревья","atskaitīti":"вычтено",
 "Nogabalu mērījumi":"Замеры выделов","+ Mērījums":"+ Замер","Nav mērījumu. Uzmēri pirmo nogabalu.":"Замеров нет. Измерьте первый выдел.",
-"Nogabals":"Выдел","Meža tips":"Тип леса","Cirsmas kods":"Код рубки","Krāja no dokumenta, m³ (tukšs = rēķina)":"Запас из документа, м³ (пусто = расчёт)","Kopējā platība, ha":"Общая площадь, га","Meža platība, ha":"Лесная площадь, га","Zemes veids":"Вид земли","Valdošā suga":"Главная порода","Bonitāte (no dokumenta)":"Бонитет (из документа)","Cērtamais, m³ (kopšanai)":"К рубке, м³ (уход)","Buferis / 90 m josla, % no m³":"Буфер / полоса 90 м, % от м³","(manuāli)":"(вручную)","(rīka novērtējums)":"(оценка программы)","Rīka vērtība":"Значение программы","Inventarizācijas gads":"Год инвентаризации","Caurmērs D, cm":"Диаметр D, см","Augstums H, m":"Высота H, м","Šķērslaukums G, m²/ha":"Сумма площадей сечений G, м²/га","Vecums":"Возраст","Formas koef. (tukšs = pēc sugas":"Видовой коэф. (пусто = по породе","Ierobežojumi / piezīmes":"Ограничения / примечания","Pēdējā cirte:":"Последняя рубка:","Pēdējā darbība:":"Последнее действие:","Sastāvs dokumentā:":"Состав по документу:","Avots:":"Источник:","Bonitāte":"Бонитет","(aprēķināta no H un vecuma)":"(расчёт по H и возрасту)","Krāja":"Запас","Krāja pa sugām:":"Запас по породам:","Sugu formula":"Формула состава","+ suga":"+ порода","Formula:":"Формула:","– izvēlies cirsmu –":"– выберите лесосеку –","Pievienot cirsmai":"Добавить в лесосеку","buferis":"буфер",
+"Nogabals":"Выдел","Meža tips":"Тип леса","Cirsmas kods":"Код рубки","Krāja no dokumenta, m³ (tukšs = rēķina)":"Запас из документа, м³ (пусто = расчёт)","Kopējā platība, ha":"Общая площадь, га","Meža platība, ha":"Лесная площадь, га","Zemes veids":"Вид земли","Valdošā suga":"Главная порода","Bonitāte (no dokumenta)":"Бонитет (из документа)","Cērtamais, m³ (kopšanai)":"К рубке, м³ (уход)","Buferis / 90 m josla, % no m³":"Буфер / полоса 90 м, % от м³","(manuāli)":"(вручную)","(rīka novērtējums)":"(оценка программы)","Rīka vērtība":"Значение программы","Inventarizācijas gads":"Год инвентаризации","Caurmērs D, cm":"Диаметр D, см","Augstums H, m":"Высота H, м","Šķērslaukums G, m²/ha":"Сумма площадей сечений G, м²/га","Vecums":"Возраст","Audzes biezība (0,1-1,0; tukšs = pieņem 1,0 — VMD #75)":"Полнота древостоя (0,1-1,0; пусто = принято 1,0 — VMD #75)","Ierobežojumi / piezīmes":"Ограничения / примечания","Pēdējā cirte:":"Последняя рубка:","Pēdējā darbība:":"Последнее действие:","Sastāvs dokumentā:":"Состав по документу:","Avots:":"Источник:","Bonitāte":"Бонитет","(aprēķināta no H un vecuma)":"(расчёт по H и возрасту)","Krāja":"Запас","Krāja pa sugām:":"Запас по породам:","Sugu formula":"Формула состава","+ suga":"+ порода","Formula:":"Формула:","– izvēlies cirsmu –":"– выберите лесосеку –","Pievienot cirsmai":"Добавить в лесосеку","buferis":"буфер",
 "Cenas, €/m³ un noklusētais sortimentu sadalījums":"Цены, €/м³ и сортиментная структура по умолчанию","+ sortiments":"+ сортимент","% nokl.":"% по умолч.","Sortimentu sadalījums pēc vid. caurmēra":"Сортиментная структура по среднему диаметру","Atjaunot noklusējumu":"Сбросить к умолчанию","Atjaunot noklusētās cenas":"Сбросить цены к умолчанию",
 "Noklusētās izmaksas jaunām cirsmām, €/m³":"Затраты по умолчанию для новых лесосек, €/м³","Atskaitījumi no cērtamās krājas":"Вычеты из запаса к рубке","Atskaitīt":"Вычитать","Neatskaitīt":"Не вычитать","Izstrādes zudumi un defekti, % no krājas":"Потери при заготовке и дефекты, % от запаса","Sinhronizācija":"Синхронизация","Servera adrese":"Адрес сервера","Piekļuves atslēga":"Ключ доступа","Sūtīt tagad":"Отправить сейчас","Ielādēt no servera":"Загрузить с сервера","Rindā:":"В очереди:","objekti":"объектов","Rezerves kopija":"Резервная копия","Lejupielādēt JSON":"Скачать JSON","Ielādēt JSON":"Загрузить JSON","Valoda":"Язык",
 "Importēt objektu":"Импорт объекта","Izvēlēties failu":"Выбрать файл","Atpakaļ":"Назад","Kolonnas":"Колонки","rindas":"строк","Virsrakstu rinda":"Строка заголовков","Priekšskatījums":"Предпросмотр","Izveidot objektu":"Создать объект",
@@ -261,7 +341,7 @@ function zvStr(p){return p.zv&&p.zv.length?p.zv.join(", "):(p.kadastrs||"");}
 function objLabel(p){const n=(p.zv&&p.zv.length)||(p.kadastrs?1:0);return niLabel(p)+(n?" · "+n+" ZV":"");}
 function newCirsma(){const sp={};for(const s of SPECIES){sp[s]={m3:0,pct:Object.fromEntries(S.prices[s].map(r=>[r[0],r[2]]))};}
  return {id:uid(),tips:"Kc",kvartals:"",nogabali:"",platiba:0,koki:0,pievAtt:1000,sagat:S.settings.sagat,piev:S.settings.piev,trans:S.settings.trans,marza:S.settings.marza,species:sp,piezimes:""};}
-function newMer(){return {id:uid(),zv:"",kvartals:"",mezaTips:"",krajaImp:null,cirsmaKods:"",nogabals:"",platKop:0,platMezs:0,veids:"Mežaudze",suga:"Bērzs",H:0,G:0,vecums:0,formula:[{s:"Bērzs",k:10}],f:null,cirsma:""};}
+function newMer(){return {id:uid(),zv:"",kvartals:"",mezaTips:"",krajaImp:null,cirsmaKods:"",nogabals:"",platKop:0,platMezs:0,veids:"Mežaudze",suga:"Bērzs",H:0,G:0,vecums:0,formula:[{s:"Bērzs",k:10}],cirsma:""};}
 
 /* calculations, all deterministic */
 function calcCirsma(c){
@@ -294,8 +374,13 @@ function calcProp(p){const t={m3:0,rev:0,cost:0,max:0,ha:0};const d2={ha:0,m3:0,
  if(iz.ok&&!iz.excluded){t.cost+=iz.cost;t.max-=iz.cost;}
  // #82: grand = abi piegājieni KOPĀ (izslēdzot c.excluded cirsmas), izvešanas izmaksa jau atskaitīta iepriekš — lieto Kopsavilkuma vienotajā tabulā
  t.grand={ha:+(t.ha+d2.ha).toFixed(2),m3:t.m3+d2.m3,rev:t.rev+d2.rev,cost:t.cost+d2.cost,max:t.max+d2.max};
+ // #88: nenoteiktības diapazons (m³-svērtais vidējais % pa visām neizslēgtajām cirsmām) — rev/cost/max mērogojas ar to pašu koeficientu kā m³ (abi ir m³ × likme)
+ t.uncertaintyPct=(()=>{let wsum=0,psum=0;for(const c of p.cirsmas){if(c.excluded)continue;const cc=calcCirsma(c);const pct=cirsmaUncertaintyPct(c,p);wsum+=cc.m3;psum+=cc.m3*pct;}return wsum?psum/wsum:VMD_KRAJA.nenoteiktiba.taksacijaPct;})();
+ t.m3Range=withRange(t.grand.m3,t.uncertaintyPct);t.maxRange=withRange(t.grand.max,t.uncertaintyPct);
  return t;}
-function krajaMer(m){if(m.krajaImp!=null&&m.krajaImp>0)return num(m.krajaImp);const f=m.f??FORM_FACTOR[m.suga]??.45;return num(m.G)*num(m.H)*f*num(m.platMezs||m.platKop);}
+function krajaMer(m){if(m.krajaImp!=null&&m.krajaImp>0)return num(m.krajaImp); // #75: VMD formula, pa m.formula elementiem (katram sava suga/G/H, ja zināms — sk. mergeZvInto); bez formula/h/g -> viena "elementa" tuvinājums no m.suga/G/H
+ const els=(m.formula&&m.formula.length)?m.formula.map(e=>({s:e.s,g:e.g!=null?e.g:num(m.G)*num(e.k)/10,h:e.h!=null?e.h:num(m.H)})):[{s:m.suga,g:num(m.G),h:num(m.H)}];
+ return krajaFromElements(els,num(m.platMezs||m.platKop),m.biez);}
 // #45: nogabalu ticamības pārbaude (VMD dbf decimālās kļūdas, piem. ×100) — dzīvs pārbaudījums pret pašreizējo m.G/m.krajaImp, strādā vienādi VMD un xlsx importam
 function nogPlausibleIssue(m){const ha=num(m.platMezs||m.platKop);const kr=krajaMer(m),g=num(m.G);
  if(ha<=0)return (kr>0||gExceeds(m.suga,m.H,g))?{krha:null,g,kr}:null; // ha=0 nedrīkst apiet G pārbaudi, un krāja bez platības arī nav ticama
@@ -304,26 +389,36 @@ function plausText(pl){if(pl.krha==null)return `Krāja ${Math.round(pl.kr)} m³ 
  if(pl.krha>RULES.maxPlausibleM3Ha)return `Krāja ārpus iespējamā (${pl.krha} m³/ha), avota kļūda`;
  return `Šķērslaukums ārpus iespējamā (G=${pl.g}, virs 1,5× normālā pēc MK384), avota kļūda`;}
 function krajaMerChecked(m){return nogPlausibleIssue(m)?0:krajaMer(m);} // kopsummām (Pārskats, Fonds, cirsmas): neticamie nogabali = 0, kamēr nav labots
-function fixEligible(m){const ha=num(m.platMezs||m.platKop);if(!ha)return false;const kr=krajaMer(m),g=num(m.G),krha=kr/ha;
- if(!(krha>RULES.maxPlausibleM3Ha)||!gExceeds(m.suga,m.H,g))return false; // abi (krāja UN G) jāpārkāpj
- return krha*0.01<=RULES.maxPlausibleM3Ha&&!gExceeds(m.suga,m.H,g*0.01);} // pēc /100 abi jākļūst ticami
+function fixEligible(m){const g=num(m.G);
+ // #75: ×100 avota kļūda vienmēr izpaužas G laukā (un tam proporcionālajos formula[].g); krāja NAV uzticams signāls —
+ // VMD H<12m zars (Bs×Vn) G tieši nelieto, tāpēc krājas/ha var jau iepriekš būt ticama, kaut G ir absurds (piem. 60700020059 kv.2 nog.4, H=11).
+ if(!gExceeds(m.suga,m.H,g))return false;
+ return !gExceeds(m.suga,m.H,g*0.01);} // pēc /100 G kļūst ticams
 function fixByHundred(id){arm("fix1"+id,"",()=>{const m=M(id);if(!fixEligible(m))return;const p=P();const oldKr=Math.round(krajaMer(m)),oldG=m.G;
  const note="labots ×0,01 (avota kļūda) "+new Date().toISOString().slice(0,10);m.man=m.man||{};
- if(m.krajaImp!=null&&m.krajaImp>0){m.krajaImp=+(m.krajaImp*0.01).toFixed(2);m.man.krajaImp=note;}
  m.G=+(num(m.G)*0.01).toFixed(2);m.man.G=note;
+ if(m.formula&&m.formula.length){for(const e of m.formula)if(e.g!=null)e.g=+(e.g*0.01).toFixed(2);m.man.formula=note;} // #75: g pa elementu arī jālabo, lai VMD formula rēķina no pareiza G
+ if(m.krajaImp!=null&&m.krajaImp>0){ // #75: PĀRRĒĶINA (nevis lineāri ×0,01) — H<12m zarā krāja no G tieši neatkarīga, tāpēc pēc G labojuma tā var arī NEMAINĪTIES
+  const els=(m.formula&&m.formula.length)?m.formula.map(e=>({s:e.s,g:e.g,h:e.h})):[{s:m.suga,g:m.G,h:m.H}];
+  m.krajaImp=Math.round(krajaFromElements(els,m.platMezs||m.platKop,m.biez))||null;m.man.krajaImp=note;}
  if(m.sugas)for(const s in m.sugas)m.sugas[s]=+(m.sugas[s]*0.01).toFixed(2);
- logIt(p,`nog. ${m.nogabals}: krāja/G labots ×0,01 (${oldKr} m³, G ${oldG} → ${Math.round(krajaMer(m))} m³, G ${m.G})`);
+ logIt(p,`nog. ${m.nogabals}: G labots ×0,01 (${oldG} → ${m.G}), krāja ${oldKr} → ${Math.round(krajaMer(m))} m³`);
  recalcLinked();save(S.cur);});}
 // #46 pabeigšana: bonitāte vispirms no datiem (VMD BON lauks vai Kadastra atskaites kolonna), tikai tad MK384 3.piel.
 // tabula pēc H+vecuma (real likuma tabula, nevis aproksimācija); nekad klusi neizvēlas sliekšņa galu.
 // src: "data" (no datiem, bez karodziņa), "mk384" (aprēķināts, zils informatīvs), "missing" (trūkst H/vecuma, dzeltens),
 // "jauns" (vecums zem tabulas minimuma — pārāk jauns cirtmeta jautājumam, klusi bez karodziņa), "suga" (suga nav MK384 tabulās, sarkans).
 function bonOf(m){const b=String(m.bon||"").trim();if(b)return {bon:b,est:false,src:"data"};
- const H=num(m.H),age=Math.round(num(m.vecums));
- if(!H||!num(m.vecums))return {bon:"",est:false,src:"missing"};
- const tk=MK384.SUGA_TAB[m.suga];if(!tk)return {bon:"",est:false,src:"suga"};
- const t=MK384.TAB[tk];if(age<t.min)return {bon:"",est:false,src:"jauns"};
- const row=t.r[Math.min(age,t.max)-t.min];
+ const age=Math.round(num(m.vecums));const tk=MK384.SUGA_TAB[m.suga];
+ const youngLimit=tk?MK384.TAB[tk].min:21; // #75: "Citas sugas" nav savas MK384 H×vecums tabulas — 21 g. (kā "osis" grupai) VMD 7.tabulas zaram
+ if(age&&age<youngLimit){ // #75/VMD 7.tabula (bonitate_jaunaudzem, rules/kraja_bonitate_vmd.json): jaunaudzei bonitāte pēc meža tipa, nevis "nenosakāma"
+  const row=VMD_KRAJA.bonitateJaunaudzem[String(m.mezaTips||"").trim()];const col=SPECIES_GROUP_BON[m.suga];
+  const bon=row&&col?row[col]:null;if(bon)return {bon,est:true,src:"vmd7"};
+  return {bon:"",est:false,src:"jauns"};}
+ const H=num(m.H);
+ if(!H||!age)return {bon:"",est:false,src:"missing"};
+ if(!tk)return {bon:"",est:false,src:"suga"};
+ const t=MK384.TAB[tk];const row=t.r[Math.min(age,t.max)-t.min];
  return {bon:bonFromRow(row,H),est:true,src:"mk384",tab:tk};}
 
 /* ---------- SYNC ---------- */
@@ -378,7 +473,7 @@ function zvPickModal(){
   <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px"><button class="btn sec" onclick="newObjPickCancel()">Atcelt</button><button class="btn" onclick="newObjPickCreate()">${targetPid?"Pievienot":"Izveidot"}</button></div>
  </div></div>`;}
 function zvSummary(zvd){const st=zvd&&zvd.stands||[];let ha=0,kraja=0;
- for(const x of st){const plat=num(x.plat);ha+=plat;let gh=0;for(let i=0;i<5;i++){const sp=SP_CODES[num(x["s1"+i])];if(!sp)continue;gh+=num(x["g1"+i])*num(x["h1"+i])*(FORM_FACTOR[sp]||0.45);}kraja+=Math.round(gh*plat)||0;}
+ for(const x of st){const plat=num(x.plat);ha+=plat;const els=[];for(let i=0;i<5;i++){const sp=SP_CODES[num(x["s1"+i])];if(!sp)continue;els.push({s:sp,g:num(x["g1"+i]),h:num(x["h1"+i])});}kraja+=Math.round(krajaFromElements(els,plat,null))||0;} // #75: VMD algoritms (priekšskats pirms objekta izveides)
  return {ha:+ha.toFixed(2),n:st.length,kraja:Math.round(kraja)};}
 function vObj(){const hay=p=>(p.name+" "+(p.ni?p.ni.nr+" "+(p.ni.name||""):"")+" "+(p.zv&&p.zv.length?p.zv.join(" "):p.kadastrs)).toLowerCase();
  const filt=S.props.filter(p=>(!S.q||hay(p).includes(S.q.toLowerCase()))&&(S.qs==="Arhīvs"?p.archived:(!p.archived&&(!S.qs||(p.status||"Vērtēšanā")===S.qs))));
@@ -433,7 +528,7 @@ function summaryTable(p,t,r){if(!p.cirsmas.length)return "";
    <td><select onchange="setPiegajiens('${c.id}',this.value)"><option value="1" ${c.stage!==2?"selected":""}>1.</option><option value="2" ${c.stage===2?"selected":""}>2.</option></select></td>
    <td><input type="number" inputmode="decimal" step="0.01" style="width:72px" value="${num(c.platiba)||""}" onchange="cf('${c.id}','platiba',num(this.value))"></td>
    <td><input type="number" inputmode="numeric" style="width:80px" value="${Math.round(cc.m3)}" onchange="setM3Man('${c.id}',this.value)"></td>
-   <td>${fmt(cc.m3ha)}</td><td>${fmt(cc.rev)}</td><td>${fmt(cc.costM3,1)}</td><td>${fmt(cc.max)}</td>
+   <td>${fmt(cc.m3ha)}</td><td>${fmt(cc.rev)}</td><td>${fmt(cc.costM3,1)}</td><td>${fmt(cc.max)}<span class="muted" style="font-size:.7rem"> ±${Math.round(cirsmaUncertaintyPct(c,p))}%</span></td>
    <td style="text-align:center"><input type="checkbox" ${c.excluded?"":"checked"} onchange="cf('${c.id}','excluded',!this.checked)"></td>
    <td>${gadsTxt}</td></tr>`;};
  const rows=p.cirsmas.map(rowHtml).join("");
@@ -447,7 +542,8 @@ function summaryTable(p,t,r){if(!p.cirsmas.length)return "";
   ${rows}
   <tr class="tot"><td style="text-align:left">KOPĀ</td><td></td><td>${fmt(g.ha,2)}</td><td>${fmt(g.m3)}</td><td>${fmt(g.ha?g.m3/g.ha:0)}</td><td>${fmt(g.rev)}</td><td>${fmt(g.m3?g.cost/g.m3:0,1)}</td><td>${fmt(g.max)}</td><td></td><td></td></tr>
   ${subRow("t.sk. 1. piegājiens",s1)}${subRow("t.sk. 2. piegājiens",s2)}
-  </table><div class="muted" style="margin-top:6px">KOPĀ ietver visas cirsmas neatkarīgi no piegājiena (izņemot "Iekļaut" atzīmētās kā izslēgtas), arī izvešanas izmaksas (#21, viena krautuve): ${izvedBadge(p,t,true)}. Pa nogabaliem: sadaļā Pārskats, kartē.</div></div>`;}
+  </table><div class="muted" style="margin-top:6px">KOPĀ ietver visas cirsmas neatkarīgi no piegājiena (izņemot "Iekļaut" atzīmētās kā izslēgtas), arī izvešanas izmaksas (#21, viena krautuve): ${izvedBadge(p,t,true)}. Pa nogabaliem: sadaļā Pārskats, kartē.
+  ${t.maxRange?`<div>Nenoteiktības diapazons (#88, ±${Math.round(t.uncertaintyPct)}% pēc datu avota — taksācija ±20%, dastojums ±10%): krāja ${fmt(t.m3Range.lo)}–${fmt(t.m3Range.hi)} m³, Max cena ${fmt(t.maxRange.lo)}–${fmt(t.maxRange.hi)} €.</div>`:""}</div></div>`;}
 function cirsmaCard(c){const r=calcCirsma(c);const open=S.open===c.id;
  let h=`<div class="card"><h2 onclick="tog('${c.id}')" style="cursor:pointer">${open?"▾":"▸"} ${esc(cTips(c))} · kv.${esc(c.kvartals)} nog.${esc(c.nogabali)||"–"}<span class="sp"></span><span class="muted">${fmt(r.m3)} m³ · ${fmt(r.max)} €</span></h2>`;
  if(!open)return h+"</div>";
@@ -515,12 +611,13 @@ const plaus=nogPlausibleIssue(m); // #45
   <div><label>LiDAR vainagu augstums, m</label><input type="number" inputmode="decimal" step="0.5" value="${m.lidH||""}" onchange="mf('${m.id}','lidH',num(this.value))"></div><div><label>LiDAR vainagu segums, %</label><input type="number" inputmode="numeric" value="${m.lidCover||""}" onchange="mf('${m.id}','lidCover',num(this.value))"></div>
   ${m.sentinel?(()=>{const mm=lidarSentinelMismatch(m);return `<div class="kv"><span class="${mm?"pctbad":"pctinfo"}">Sentinel${mm?" — LiDAR nesakrīt":""} (${esc(m.sentinel.checked||"")})</span><b>${m.sentinel.flag==="zudums"?"vainaga zudums":m.sentinel.flag==="kritums"?"vainaga kritums":"bez izmaiņām"} (NDVI ${m.sentinel.ndvi_prev??"–"} → ${m.sentinel.ndvi_now??"–"})</b></div>${mm?`<div class="muted pctbad">${esc(mm)}</div>`:""}`;})():""}
   ${dPathText(m)}
-  <div><label>Formas koef. (tukšs = pēc sugas ${FORM_FACTOR[m.suga]})</label><input type="number" inputmode="decimal" step="0.01" value="${m.f??""}" onchange="mf('${m.id}','f',this.value===''?null:num(this.value))"></div></div>
+  <div><label>Audzes biezība (0,1-1,0; tukšs = pieņem 1,0 — VMD #75)</label><input type="number" inputmode="decimal" step="0.05" min="0.1" max="1" value="${m.biez??""}" onchange="mf('${m.id}','biez',this.value===''?null:num(this.value))"></div></div>
   ${m.ierob?`<div class="muted" style="margin-top:6px">${esc(m.ierob)}</div>`:""}${m.sugas?`<div class="muted">Krāja pa sugām: ${esc(Object.entries(m.sugas).map(([a,b])=>a+" "+b).join(", "))}</div>`:""}<label>Ierobežojumi / piezīmes</label><input value="${esc(m.ierob||"")}" onchange="mf('${m.id}','ierob',this.value)">
   ${m.pedCirte||m.pedDarb?`<div class="muted" style="margin-top:6px">${m.pedCirte?"Pēdējā cirte: "+esc(m.pedCirte)+". ":""}${m.pedDarb?"Pēdējā darbība: "+esc(m.pedDarb)+".":""}</div>`:""}
   ${m.formulaTxt?`<div class="muted">Sastāvs dokumentā: ${esc(m.formulaTxt)}</div>`:""}${m.src?`<div class="muted">Avots: ${esc(m.src)}</div>`:""}
-  ${(function(){const bo=bonOf(m);const lbl=bo.src==="mk384"?" (MK 384 3. piel. "+MK384.TAB_LABEL[bo.tab]+")":bo.src==="missing"?" (trūkst H/vecuma)":bo.src==="jauns"?" (vecums zem MK 384 tabulas minimuma)":bo.src==="suga"?" (suga nav MK 384 tabulās)":"";
-   return `<div class="kv"><span>Bonitāte${lbl}</span><b>${esc(bo.bon)||"–"}</b></div>`;})()}${(function(){const gl=MK935.gLimits(m.suga,m.H);if(!gl)return "";const kc=kkcCertamais(m);return `<div class="kv"><span>MK935: Gmin ${gl.gmin} · Gkrit ${gl.gkrit} · kopšanas mērķis ${gl.gkrit+MK935.kkcMargin} m²/ha</span><b>${num(m.G)?(num(m.G)+" m²/ha"+(m.cirsmaKods==="KKC"&&!(m.hasCert&&m.certamais>0)?" → cērtamais "+kc.m3+" m³":"")):"G nav"}</b></div>`;})()}<div class="kv"><span>Krāja</span><b>${fmt(kr)} m³ (${fmt(num(m.platMezs||m.platKop)?kr/num(m.platMezs||m.platKop):0)} m³/ha)</b></div>${plaus?`<div class="kv"><span class="pctbad">${esc(plausText(plaus))}</span>${fixEligible(m)?armBtn("fix1"+m.id,"Labot ×0,01",`fixByHundred('${m.id}')`,"btn sm amber","Tiešām reizināt ar 0,01? Spied vēlreiz"):""}</div>`:""}
+  ${(function(){const bo=bonOf(m);const lbl=bo.src==="mk384"?" (MK 384 3. piel. "+MK384.TAB_LABEL[bo.tab]+")":bo.src==="vmd7"?" (VMD 7. tab. / MK 384, pēc meža tipa — jaunaudze)":bo.src==="missing"?" (trūkst H/vecuma)":bo.src==="jauns"?" (vecums zem MK 384 tabulas minimuma)":bo.src==="suga"?" (suga nav MK 384 tabulās)":"";
+   return `<div class="kv"><span>Bonitāte${lbl}</span><b>${esc(bo.bon)||"–"}</b></div>`;})()}${(function(){const gl=MK935.gLimits(m.suga,m.H);if(!gl)return "";const kc=kkcCertamais(m);return `<div class="kv"><span>MK935: Gmin ${gl.gmin} · Gkrit ${gl.gkrit} · kopšanas mērķis ${gl.gkrit+MK935.kkcMargin} m²/ha</span><b>${num(m.G)?(num(m.G)+" m²/ha"+(m.cirsmaKods==="KKC"&&!(m.hasCert&&m.certamais>0)?" → cērtamais "+kc.m3+" m³":"")):"G nav"}</b></div>`;})()}<div class="kv"><span>Krāja</span><b>${fmt(kr)} m³ (${fmt(num(m.platMezs||m.platKop)?kr/num(m.platMezs||m.platKop):0)} m³/ha)</b></div>${(()=>{if(!num(m.H)||!num(m.G))return "";const sn=krajaSensitivity(m);const c=p&&p.cirsmas.find(cc=>cc.id===m.cirsma);const rate=c?(()=>{const rr=calcCirsma(c);return rr.m3?rr.max/rr.m3:0;})():0;
+  return `<div class="kv"><span>Jutīgums (#88): +1 m H / +1 m²/ha G</span><b>${sn.dH>=0?"+":""}${fmt(sn.dH,1)} / ${sn.dG>=0?"+":""}${fmt(sn.dG,1)} m³${rate?` (≈${sn.dH>=0?"+":""}${fmt(sn.dH*rate)} € / ${sn.dG>=0?"+":""}${fmt(sn.dG*rate)} € max cenā)`:""}</b></div>`;})()}${plaus?`<div class="kv"><span class="pctbad">${esc(plausText(plaus))}</span>${fixEligible(m)?armBtn("fix1"+m.id,"Labot ×0,01",`fixByHundred('${m.id}')`,"btn sm amber","Tiešām reizināt ar 0,01? Spied vēlreiz"):""}</div>`:""}
   <div class="species"><h3>Sugu formula<span class="sp"></span><span class="muted ${ksum!==10?"pctbad":""}">Σ ${ksum}</span></h3>`;
   m.formula.forEach((f,i)=>{h+=`<div class="row" style="grid-template-columns:1fr 90px 48px;margin-bottom:6px"><select onchange="ff('${m.id}',${i},'s',this.value)">${SPECIES.map(z=>`<option value="${z}" ${z===f.s?"selected":""}>${z}</option>`).join("")}</select><input type="number" inputmode="numeric" value="${f.k}" onchange="ff('${m.id}',${i},'k',this.value)"><button class="btn sm danger" onclick="fdel('${m.id}',${i})">×</button></div>`;});
   h+=`<button class="btn sm sec" onclick="fadd('${m.id}')">+ suga</button><div class="muted" style="margin-top:6px">Formula: ${m.formula.map(f=>f.k+(SPECIES_CODE[f.s]||"?")).join(" ")}</div></div>
@@ -1141,8 +1238,8 @@ function mergeZvInto(p,kad,items,extra){
   if(els.length){const lead=els.reduce((x,y)=>y.g>x.g?y:x);m.suga=lead.s;m.vecums=lead.a;m.H=lead.h;m.G=+els.reduce((t,e)=>t+e.g,0).toFixed(1);
    const same=els.filter(e=>e.s===lead.s),gsm=same.reduce((t,e)=>t+e.g,0);m.D=gsm?+(same.reduce((t,e)=>t+e.d*e.g,0)/gsm).toFixed(1):lead.d; // #48: valdošās sugas D = G-svērtais pa VISIEM tās sugas ierakstiem (2., 3. suga, cits stāvs), ne tikai lielākā G ieraksts
    m.Dentries=same.map(e=>({d:e.d,g:e.g,a:e.a,h:e.h}));m.Dmean=+(same.reduce((t,e)=>t+e.d,0)/same.length).toFixed(1);
-   const gs=els.reduce((t,e)=>t+e.g,0)||1;m.formula=els.map(e=>({s:e.s,k:Math.max(1,Math.round(e.g/gs*10))}));
-   m.krajaImp=Math.round(els.reduce((t,e)=>t+e.g*e.h*(FORM_FACTOR[e.s]||0.45),0)*m.platKop)||null;}
+   const gs=els.reduce((t,e)=>t+e.g,0)||1;m.formula=els.map(e=>({s:e.s,k:Math.max(1,Math.round(e.g/gs*10)),h:e.h,g:e.g})); // #75: h/g saglabāti PA ELEMENTU (VMD formulai) blakus vecajam k (sastāva %)
+   m.krajaImp=Math.round(krajaFromElements(els,m.platKop,m.biez))||null;} // #75: VMD algoritms (rules/kraja_bonitate_vmd.json), aizstāj veco G×H×FORM_FACTOR
   else{m.suga="";m.formula=[];}
   m.jakopj=!!(a.jakopj&&String(a.jakopj)!=="0");m.jaatjauno=!!(a.jaatjauno&&String(a.jaatjauno)!=="0");
   if(a.p_cirp||a.p_cirg)m.pedCirte=[a.p_cirp,a.p_cirg].filter(Boolean).join(" ");
@@ -1261,7 +1358,7 @@ function reportHtml(p){const t=calcProp(p);const r=runChecks(p);const v=valOf(p)
  const td=(x,cls="")=>`<td class="${cls}">${x}</td>`;
  let h=`<!doctype html><html><head><meta charset="utf-8"><title>Vērtējums ${esc(zvStr(p))}</title><style>body{font-family:sans-serif;margin:26px;font-size:12px;color:#1e2420}h1{font-size:20px;margin:0}h2{font-size:14px;border-bottom:2px solid #1F4D33;margin:22px 0 6px;color:#1F4D33}h3{font-size:12px;margin:12px 0 4px}table{border-collapse:collapse;width:100%;font-size:11px}th,td{border-bottom:1px solid #ddd;padding:3px 6px;text-align:right}th{background:#f3f1ea;font-weight:600}td:first-child,th:first-child{text-align:left}tr.tot td{font-weight:700;border-top:2px solid #1e2420}.big{font-size:18px;font-weight:700;color:#1F4D33}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.box{border:1px solid #ddd;border-radius:6px;padding:8px}.muted{color:#6b7369}@media print{button{display:none}h2{page-break-after:avoid}}</style></head><body>
  <h1>Meža īpašuma un cirsmu novērtējums</h1><div>${esc(p.name||"")}${p.ni&&p.ni.nr?" · NĪ "+esc(p.ni.nr):""} · ZV ${esc(zvStr(p))} · ${esc(p.novads||"")} · ${d}</div>
- <div class="grid" style="margin-top:12px"><div class="box"><div class="muted">Cērtamais apjoms (pirmais periods)</div><div class="big">${fmt(t.m3)} m³</div></div><div class="box"><div class="muted">Koksnes ieņēmumi / izmaksas</div><div class="big">${fmt(t.rev)} € / ${fmt(t.cost)} €</div></div><div class="box"><div class="muted">Maksimālā piedāvājamā cena par cirsmām</div><div class="big">${fmt(t.max)} €</div></div></div>`;
+ <div class="grid" style="margin-top:12px"><div class="box"><div class="muted">Cērtamais apjoms (pirmais periods)</div><div class="big">${fmt(t.m3)} m³</div>${t.m3Range?`<div class="muted" style="font-size:10px">nenoteiktība ±${Math.round(t.uncertaintyPct)}% (#88): ${fmt(withRange(t.m3,t.uncertaintyPct).lo)}–${fmt(withRange(t.m3,t.uncertaintyPct).hi)} m³</div>`:""}</div><div class="box"><div class="muted">Koksnes ieņēmumi / izmaksas</div><div class="big">${fmt(t.rev)} € / ${fmt(t.cost)} €</div></div><div class="box"><div class="muted">Maksimālā piedāvājamā cena par cirsmām</div><div class="big">${fmt(t.max)} €</div>${t.maxRange?`<div class="muted" style="font-size:10px">nenoteiktība ±${Math.round(t.uncertaintyPct)}% (#88): ${fmt(withRange(t.max,t.uncertaintyPct).lo)}–${fmt(withRange(t.max,t.uncertaintyPct).hi)} €</div>`:""}</div></div>`;
  const dd=dashData(p);h+=`<div class="grid" style="margin-top:10px"><div class="box"><div class="muted">Kopplatība / meža zeme</div><div class="big">${fmt(dd.ha,2)} / ${fmt(dd.mezHa,2)} ha</div></div><div class="box"><div class="muted">Kopējā krāja</div><div class="big">${fmt(dd.kraja)} m³</div></div><div class="box"><div class="muted">Valdošā suga · inventarizācija</div><div class="big">${esc(dd.lead||"–")} · ${dd.invYears.slice(-1)[0]||"–"}</div></div></div>
  <div class="grid" style="grid-template-columns:2fr 1fr;margin-top:10px"><div class="box">${dd.bars.length?svgBars(dd.bars):""}</div><div class="box">${dd.pie.length?svgPie(dd.pie):""}</div></div>`;
  h+=`<h2>1. Cirsmas</h2><table><tr><th>Cirsma</th><th>Nogabali</th><th>ha</th><th>m³</th><th>m³/ha</th><th>Ieņēmumi €</th><th>Izmaksas €/m³</th><th>Max cena €</th></tr>${p.cirsmas.map(cc=>{const rr=calcCirsma(cc);return `<tr>${td(esc(cc.tips)+" kv."+esc(cc.kvartals))}${td(esc(cc.nogabali.replace(/;/g,", ")))}${td(fmt(num(cc.platiba),2))}${td(fmt(rr.m3))}${td(fmt(rr.m3ha))}${td(fmt(rr.rev))}${td(fmt(rr.costM3,1))}${td(fmt(rr.max))}</tr>`;}).join("")}<tr class="tot">${td("KOPĀ")}${td("")}${td(fmt(t.ha,2))}${td(fmt(t.m3))}${td(fmt(t.ha?t.m3/t.ha:0))}${td(fmt(t.rev))}${td(fmt(t.m3?t.cost/t.m3:0,1))}${td(fmt(t.max))}</tr></table>`;
@@ -1319,7 +1416,7 @@ function dashData(p){const t=calcProp(p);const r=runChecks(p);
  return {t,r,bars,pie,lead,invYears,ha:+p.mer.reduce((a,m)=>a+num(m.platKop),0).toFixed(2),mezHa:+p.mer.filter(m=>m.suga||num(m.krajaImp)).reduce((a,m)=>a+num(m.platMezs||m.platKop),0).toFixed(2),kraja:Math.round(p.mer.reduce((a,m)=>a+krajaMerChecked(m),0))};}
 function vDash(){const p=P();const d=dashData(p);const yr=new Date().getFullYear();const inv=d.invYears.length?d.invYears[d.invYears.length-1]:"";
  let h=objSwitch();
- h+=`<div class="kpi"><div class="k"><small>Objekts (NĪ · ZV)</small><b title="${esc(zvStr(p))}">${esc(objLabel(p)||"–")}</b></div><div class="k"><small>Valdošā suga</small><b>${esc(d.lead||"–")}</b></div><div class="k"><small>Kopplatība</small><b>${fmt(d.ha,2)} ha</b></div><div class="k"><small>Meža zemes platība</small><b>${fmt(d.mezHa,2)} ha</b></div><div class="k"><small>Kopējā krāja</small><b>${fmt(d.kraja)} m³</b></div><div class="k"><small>Cērtamais apjoms</small><b>${fmt(d.t.m3)} m³</b></div><div class="k"><small>Kopējā cirsmu vērtība (max cena)</small><b style="color:var(--green)">${p.dataLoading?'<span class="pctwarn">ielādē…</span>':fmt(d.t.max)+" €"}</b></div><div class="k"><small>Vidējais izvešanas attālums</small><b>${izvedBadge(p,d.t,false)}</b></div><div class="k"><small>Inventarizācijas gads</small><b>${inv||"–"} ${inv?(yr-inv>=20?'<span class="pctbad">✗</span>':'<span style="color:var(--ok)">✓</span>'):""}</b></div></div>`;
+ h+=`<div class="kpi"><div class="k"><small>Objekts (NĪ · ZV)</small><b title="${esc(zvStr(p))}">${esc(objLabel(p)||"–")}</b></div><div class="k"><small>Valdošā suga</small><b>${esc(d.lead||"–")}</b></div><div class="k"><small>Kopplatība</small><b>${fmt(d.ha,2)} ha</b></div><div class="k"><small>Meža zemes platība</small><b>${fmt(d.mezHa,2)} ha</b></div><div class="k"><small>Kopējā krāja</small><b>${fmt(d.kraja)} m³</b></div><div class="k"><small>Cērtamais apjoms</small><b>${fmt(d.t.m3)} m³</b>${d.t.m3Range?`<div class="muted" style="font-size:.65rem">±${Math.round(d.t.uncertaintyPct)}% (#88): ${fmt(d.t.m3Range.lo)}–${fmt(d.t.m3Range.hi)} m³</div>`:""}</div><div class="k"><small>Kopējā cirsmu vērtība (max cena)</small><b style="color:var(--green)">${p.dataLoading?'<span class="pctwarn">ielādē…</span>':fmt(d.t.max)+" €"}</b>${!p.dataLoading&&d.t.maxRange?`<div class="muted" style="font-size:.65rem">±${Math.round(d.t.uncertaintyPct)}% (#88): ${fmt(d.t.maxRange.lo)}–${fmt(d.t.maxRange.hi)} €</div>`:""}</div><div class="k"><small>Vidējais izvešanas attālums</small><b>${izvedBadge(p,d.t,false)}</b></div><div class="k"><small>Inventarizācijas gads</small><b>${inv||"–"} ${inv?(yr-inv>=20?'<span class="pctbad">✗</span>':'<span style="color:var(--ok)">✓</span>'):""}</b>${inv&&inv<2010?'<div class="muted pctwarn" style="font-size:.65rem">pirms 2010 — taksācijas kļūda var būt lielāka par ±20% (#88)</div>':""}</div></div>`;
  h+=`<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="btn" onclick="openReport()">Vērtējuma atskaite</button><button class="btn sec" onclick="S.view='mer';save()">Labot datus (dabas apskate)</button><button class="btn sec" onclick="exportXlsx()">Eksportēt Excel</button><button class="btn sec" onclick="openIesniegums()">Iesniegums koku ciršanai</button></div>`;
  { // #19: LiDAR/Sentinel karte slāņi virs Pārskata kartes (šeit, ne Vērtējumā/Cirsmās, jo tā jau ir vienīgā interaktīvā nogabalu karte)
  const hasLidar=p.mer.some(m=>m.geom&&m.lidCover!=null);
@@ -1699,8 +1796,10 @@ function parsePdfLines(lines){ // lines: array of strings (cells joined by singl
 // #46: bez bonitātes cirtmetu NENOSAKA (agrāk tukšs bon klusi deva Priedei 121 g, Bērzam 51 g — sk. #46)
 // #74: cirtmetu tabula pēc Meža likuma 9.panta (NE MK935 — MK935 6.pielikums ir koku skaita noteikšanas forma, 7.pielikums ir caurmēra, ne vecuma, tabula; skat. data/cirtmeti_meza_likums.json avota atsaucei un pilnajam sugu sarakstam).
 // Baltalksnis (un Vītols/Blīgzna/Kārkls/Ieva, kas lietotnē nav atsevišķas sugas) likuma tabulā NAV — cirtmets nav noteikts, KC atļauta VIENMĒR (age>=0, nevis "nezināms"). "Citas sugas" apvieno gan sugas ar cirtmetu (Lapegle/Liepa/Goba/Vīksna/Kļava/Papele), gan bez tā — konservatīvi paliek bez cirtmeta (data failā paskaidrots).
-function cirtmetsKC(sp,age,bon){const b=String(bon||"").trim();if(!b)return "";
- const t={Priede:/^(Ia|I|II|III)$/.test(b)?101:121,Egle:81,Bērzs:/^(Ia|I|II|III)$/.test(b)?71:51,Melnalksnis:71,Apse:41,Ozols:/^(Ia|I)$/.test(b)?101:121,Osis:81,Baltalksnis:0};return t[sp]!=null&&age>=t[sp]?"KC":"";}
+function cirtmetsAge(sp,bon){const b=String(bon||"").trim();if(!b)return null; // #88: izceļ slieksni atsevišķi no cirtmetsKC, lai varētu pārbaudīt "uz sliekšņa" (±3 g)
+ const t={Priede:/^(Ia|I|II|III)$/.test(b)?101:121,Egle:81,Bērzs:/^(Ia|I|II|III)$/.test(b)?71:51,Melnalksnis:71,Apse:41,Ozols:/^(Ia|I)$/.test(b)?101:121,Osis:81,Baltalksnis:0};
+ return t[sp]??null;}
+function cirtmetsKC(sp,age,bon){const t=cirtmetsAge(sp,bon);return t!=null&&age>=t?"KC":"";}
 // #60: KC cirtes izpildes veids — "vecuma" (cirtmets sasniegts) vai "caurmēra" (MK935 7.piel. slieksnis pirms cirtmeta, incl. sanitārā izlase+KC un riskantais nesvērtais D ceļš). Viena cirsma nekad nesatur abus (MK935 15./16.p. grupēšana/limits ir pa veidam).
 function kcVeids(m){return cirtmetsKC(m.suga,m.vecums,bonOf(m).bon)==="KC"?"vecuma":"caurmēra";}
 function firstSp(formula){const m=String(formula).match(/\d+\s*(Ba|Ma|Ap|Oz|Os|Bl|Ie|Kr|P|E|B|A|M|K|L)/);return m?SPC[m[1]]:"";}
@@ -1895,8 +1994,10 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
   const plaus=nogPlausibleIssue(m);if(plaus)f.push({t:"bloks",s:plausText(plaus)});
   const bo=bonOf(m); // #46 pabeigšana: bonitāte no datiem / MK384 tabulas / nav nosakāma
   if(bo.src==="mk384")f.push({t:"info",s:`bonitāte ${bo.bon} (MK 384 3. piel. ${MK384.TAB_LABEL[bo.tab]})`});
+  else if(bo.src==="vmd7")f.push({t:"info",s:`bonitāte ${bo.bon} (VMD 7. tab., pēc meža tipa — jaunaudze zem MK 384 H×vecums tabulas minimuma, #75)`});
   else if(bo.src==="missing")f.push({t:"warn",s:"bonitāte nav nosakāma, trūkst H vai vecuma; cirtmets nav noteikts"});
   else if(bo.src==="suga"&&m.suga&&num(m.vecums))f.push({t:"bloks",s:"bonitāte nav zināma (suga nav MK 384 tabulās), cirtmets nav noteikts"});
+  if(num(m.H)&&num(m.H)<12&&m.biez==null&&(num(m.G)||num(m.krajaImp)))f.push({t:"warn",s:`H<12 m (jaunaudze): audzes biezība nav ievadīta, krājai pieņemts 1,0 (normāla) — VMD algoritms (#75); ievadi reālo biezību nogabala kartītē, ja zināma`});
   if(m.invGads&&yr-m.invGads>=RULES.invMaxYears)f.push({t:"bloks",s:`inventarizācija ${m.invGads}, jāpārtaksē, citādi apliecinājumu neizsniedz visai zemes vienībai`});
   if(m.cirsmaKods==="KC"&&!zone.kc)f.push({t:"bloks",s:"KC aizliegta šajā ĪADT zonā"});
   if(m.cirsmaKods&&krha&&krha<RULES.minEconM3Ha)f.push({t:"ekon",s:`${Math.round(krha)} m³/ha zem ekonomiskā sliekšņa ${RULES.minEconM3Ha}, pievienot blakus cirsmai vai atstāt`});
@@ -1908,6 +2009,9 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
   if(dc&&num(m.D)>=dc&&!m.cirsmaKods){ // #60: sasniegts 7.piel. slieksnis, bet nav (vai nedrīkst būt) automātiski piedāvāts kā KC — pasaka, kāpēc
    if(dIadtBlocked)f.push({t:"warn",s:`sasniedz galvenās cirtes caurmēru ${dc} cm (MK935 7.piel.), BET ĪADT individuālie noteikumi šajā zonā liedz (vai piesardzīgi neiekļauj) kailcirti pēc caurmēra pirms cirtmeta — nav noklusējuma scenārijā, jāpārbauda ar DAP/VMD ar roku`});
    else f.push({t:"plus",s:`sasniedz galvenās cirtes caurmēru ${dc} cm (MK935 7.piel.), KC iespējama pirms cirtmeta; nedrīkst, ja pēdējos 3 g bijusi kopšana`});}
+  // #88: nogabals UZ SLIEKŠŅA (vecums vai caurmērs) — taksācijas dati paši ±20 % (D ±2 cm, vecums ±3 g ir šīs kļūdas robežās), tāpēc lēmums var apgriezties; nedrīkst izšķirt klusi
+  if(dc&&num(m.D)&&Math.abs(num(m.D)-dc)<=2)f.push({t:"warn",s:`caurmērs ${fmt(num(m.D),1)} cm tuvu 7.piel. slieksnim ${dc} cm (±2 cm) — jāpārbauda dabā, taksācijas kļūda var mainīt lēmumu (#88)`});
+  {const ct=cirtmetsAge(m.suga,bo.bon);if(ct!=null&&ct>0&&num(m.vecums)&&Math.abs(num(m.vecums)-ct)<=3)f.push({t:"warn",s:`vecums ${m.vecums} g tuvu cirtmetam ${ct} g (±3 g) — jāpārbauda dabā, taksācijas kļūda var mainīt lēmumu (#88)`});}
   if(!m.suga&&(num(m.krajaImp)||num(m.G)||num(m.vecums)))f.push({t:"warn",s:"suga nav atpazīta (tukša), lai gan nogabalam ir taksācijas dati — cirtmets nav nosakāms, pārbaudīt ar roku (#74)"}); // #74: atšķir no "Citas sugas" (zināma, apzināta kategorija) — šeit suga vispār trūkst/nav atšifrēta
   if(m.dPlan&&m.dPlan.path==="kcMean")f.push({t:"warn",s:`KC pamatojums pēc NESVĒRTĀ vidējā D (MK935 14.p. noapaļots, ${m.dPlan.mean14} cm ≥ ${m.dPlan.dc} cm) — G-svērtais D nesasniedz slieksni; VMD var neatzīt šo pamatojumu, jāpārbauda ar roku (#50 scenārijs A)`}); // #50/D: scenārijs A — riskantāks pamatojums
   if(MK935.kcForbiddenSpecies.includes(m.suga)&&m.cirsmaKods==="KC")f.push({t:"bloks",s:"KC aizliegta: valdošā suga "+m.suga+" (MK935 65.2)"});
@@ -2175,15 +2279,16 @@ function dPaths(m){const dc=MK935.dCirte(m.suga,bonOf(m).bon);if(!dc)return null
  const mean=m.Dmean!=null?num(m.Dmean):Dw;const mean14=Math.floor(mean+0.5); // MK935 14.p.: vidējais aritmētiskais, noapaļo, ,5 uz augšu — INFORMATĪVI, lēmums uz to nebalstās
  const out={dc,Dw,reach:Dw>=dc,mean,mean14,entries:ents,ageKC:cirtmetsKC(m.suga,m.vecums,bonOf(m).bon)==="KC",izlase:null,blockedRecent:recentActivity(m)}; // #49: "nedrīkst, ja pēdējos 3 g bijusi kopšana"
  if(out.reach)return out;
- const ha=num(m.platMezs||m.platKop),f=FORM_FACTOR[m.suga]||.45,Gtot=num(m.G),gl=MK935.gLimits(m.suga,m.H);
+ const ha=num(m.platMezs||m.platKop),Gtot=num(m.G),gl=MK935.gLimits(m.suga,m.H);
  if(!gl){out.izlase={ok:false,why:"H < 12 m vai nav H: kritisko šķērslaukumu (MK935 1. piel.) nevar noteikt"};return out;}
  // aplēse: izcērt tievākos sugas ierakstus (pēc D augoši), pēdējo daļēji, līdz atlikušo svērtais D = slieksnis; G pēc tam nedrīkst būt zem Gkrit
  const sorted=ents.slice().sort((a,b)=>a.d-b.d);let removedG=0,removedM3=0,reached=false;
  for(let i=0;i<sorted.length;i++){const e=sorted[i];if(e.d>=dc){reached=true;break;}
   const rest=sorted.slice(i+1);const rg=rest.reduce((t,z)=>t+z.g,0),rdg=rest.reduce((t,z)=>t+z.d*z.g,0);
   const keep=(rdg-dc*rg)/(dc-e.d); // cik šī ieraksta G drīkst palikt, lai (rdg + d·keep)/(rg + keep) = dc
-  if(keep<=0){removedG+=e.g;removedM3+=e.g*e.h*f*ha;continue;}
-  const cut=e.g-Math.min(e.g,keep);removedG+=cut;removedM3+=cut*e.h*f*ha;reached=true;break;}
+  const hf=veidaugstums(m.suga,e.h)??0; // #75: VMD G×HF (šis zars vienmēr H>=12m, sk. gl pārbaudi augstāk)
+  if(keep<=0){removedG+=e.g;removedM3+=e.g*hf*ha;continue;}
+  const cut=e.g-Math.min(e.g,keep);removedG+=cut;removedM3+=cut*hf*ha;reached=true;break;}
  const gAfter=+(Gtot-removedG).toFixed(1);
  if(!reached)out.izlase={ok:false,why:`pat izcērtot visus tievākos ${m.suga} ierakstus svērtais D ${dc} cm netiek sasniegts`};
  else if(Gtot<=gl.gkrit)out.izlase={ok:false,why:`G ${Gtot} m²/ha jau pie kritiskā ${gl.gkrit} (MK935 1. piel., H ${Math.round(num(m.H))} m) — izlases cirte nav iespējama`,gkrit:gl.gkrit};
