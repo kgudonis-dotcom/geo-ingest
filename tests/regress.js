@@ -358,6 +358,57 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  ok(mv.izved.excluded===true,"Meža Vijolītes: neticamā/pārmērīgā izvešanas izmaksa nav klusi ieskaitīta Max cenā (got severity="+mv.izved.severity+")");
  ok(Math.abs(mv.max-mv.cirsmaSum)<1,"Meža Vijolītes: Max cena ("+Math.round(mv.max)+" €) sakrīt ar cirsmu summu ("+Math.round(mv.cirsmaSum)+" €), NEVIS absurdi zema 1 367 € kā pirms labojuma");
  ok(mv.max>50000,"Meža Vijolītes: Max cena saprātīgā kārtā (got "+Math.round(mv.max)+" €), ne 1 367 €");
+ // #79: sintētisks "Runcīši" gadījums — nog.8 (0,33 ha) blakus nog.9 (1,79 ha), abi Slapjais mētrājs (slapjie), kopā 2,12 ha > 2 ha slapjā limitu (MK935 15./16.p.).
+ // Pirms labojuma: 20 m josla (MK935 18.p. prakse) pret nog.9 atstātu tikai ≈0,05 ha / ≈11 m³ no nog.8 cērtamu tagad — zem sliekšņa, ekonomiski neizdevīgi (issue #79 piemērs).
+ w=await app();
+ w.eval(`var _lat0=57.0000,_lon0=25.0000;
+  var _dm=(m,isLon)=>isLon?m/(111320*Math.cos(_lat0*Math.PI/180)):m/111320;
+  var _d80=_dm(80,true),_d150=_dm(150,false),_d20=_dm(20,true);
+  var _g9=[[_lon0,_lat0],[_lon0+_d80,_lat0],[_lon0+_d80,_lat0+_d150],[_lon0,_lat0+_d150],[_lon0,_lat0]];
+  var _g8=[[_lon0+_d80,_lat0],[_lon0+_d80+_d20,_lat0],[_lon0+_d80+_d20,_lat0+_d150],[_lon0+_d80,_lat0+_d150],[_lon0+_d80,_lat0]];
+  var _nog9={id:"n9",zv:"11111111111",kvartals:"1",nogabals:"9",platMezs:1.79,platKop:1.79,mezaTips:"Slapjais mētrājs",suga:"Egle",krajaImp:447.5,cirsmaKods:"KC",geom:_g9,formula:[{s:"Egle",k:10}]};
+  var _nog8={id:"n8",zv:"11111111111",kvartals:"1",nogabals:"8",platMezs:0.33,platKop:0.33,mezaTips:"Slapjais mētrājs",suga:"Egle",krajaImp:66,cirsmaKods:"KC",geom:_g8,formula:[{s:"Egle",k:10}]};
+  var _pRun={mer:[_nog9,_nog8],cirsmas:[],zv:["11111111111"],deferPairs:[],kaimini:"8-9:150"};`);
+ const runc=JSON.parse(w.eval(`JSON.stringify((()=>{const r=runChecks(_pRun);return {buffers:r.buffers.map(b=>b.a+"-"+b.b),
+  deferredWhole:(r.deferredWhole||[]).map(dw=>({nog:dw.group.nog.map(x=>x.m.nogabals),remHa:dw.remHa,remM3:dw.remM3,other:dw.otherNog})),
+  split:r.split.map(g=>g.nog.map(x=>x.m.nogabals))};})())`));
+ ok(runc.buffers.length===0,"#79 Runcīši: NAV joslas starp nog.8 un nog.9 (agrāk būtu ≈0,29 ha tipa sloksne uz nog.8) (got "+JSON.stringify(runc.buffers)+")");
+ ok(runc.deferredWhole.length===1&&runc.deferredWhole[0].nog.includes("8")&&runc.deferredWhole[0].remHa<0.3,"#79 Runcīši: nog.8 (mazākais) atzīts par ekonomiski neizdevīgu sadalīšanai/joslai, atlikts VESELS — vērtības salīdzinājums pamatots ar remHa/remM3 zem sliekšņa (got "+JSON.stringify(runc.deferredWhole)+")");
+ ok(runc.split.some(g=>g.includes("9"))&&!runc.split.some(g=>g.includes("8")),"#79 Runcīši: nog.9 paliek 1. piegājienā (cērtams tagad VESELS 1,79 ha), nog.8 izslēgts no 1. piegājiena (got "+JSON.stringify(runc.split)+")");
+ w.eval("buildParts(_pRun);");
+ const runc2=JSON.parse(w.eval(`JSON.stringify((()=>{const p=_pRun;const c9=p.cirsmas.find(c=>c.nogabali==="9");const c8=p.cirsmas.find(c=>c.nogabali==="8");
+  return {c9Plat:c9&&c9.platiba,c9Parts:c9&&c9.parts.map(pp=>pp.kind),c8Stage:c8&&c8.stage,c8Note:c8&&c8.blockedNote,c8Plat:c8&&c8.platiba};})())`));
+ ok(!!runc2.c9Plat&&Math.abs(runc2.c9Plat-1.79)<0.01&&runc2.c9Parts.length===1&&runc2.c9Parts[0]==="KC","#79 Runcīši: nog.9 sava cirsma ≈1,79 ha, VIENS KC gabals, bez joslas (got "+JSON.stringify({plat:runc2.c9Plat,parts:runc2.c9Parts})+")");
+ ok(runc2.c8Stage===2&&/#79/.test(runc2.c8Note||"")&&Math.abs(runc2.c8Plat-0.33)<0.01,"#79 Runcīši: nog.8 (0,33 ha) atlikts kā 2. piegājiena cirsma ar paskaidrojumu, NEVIS ≈0,29 ha josla (got stage="+runc2.c8Stage+", note="+runc2.c8Note+", plat="+runc2.c8Plat+")");
+ // slieksnis konfigurējams Iestatījumos (noklusējums 0,3 ha / 50 m³) — pazeminot uz 0, atkal veidojas parastā josla (variants a)
+ w.eval("S.settings.splitMinHa=0;S.settings.splitMinM3=0;");
+ const runc3=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(_pRun);return {buffers:r.buffers.length};})())"));
+ ok(runc3.buffers===1,"#79 Runcīši: pazeminot lietotāja slieksni uz 0, atkal veidojas parastā (mazā) josla (variants a, konfigurējams) (got "+runc3.buffers+")");
+ // #82: Kopsavilkuma tabulas korekcija tajā pašā _pRun objektā (nog.9 1. piegājiena cirsma) — platība/m³/piegājiens/iekļaut, uzreiz pārrēķinās, "manual" karogs, "Atgriezt automātisko"
+ w.eval("S.settings.splitMinHa=null;S.settings.splitMinM3=null;S.cur='x';S.props=[Object.assign({id:'x'},_pRun)];_pRun=S.props[0];"); // #82 testam vajag P()/C() (S.cur/S.props), #79 testiem tas nebija vajadzīgs
+ const c9id=w.eval("_pRun.cirsmas.find(c=>c.nogabali==='9').id");
+ w.eval(`cf('${c9id}','platiba',1.5)`);
+ const afterPlat=JSON.parse(w.eval(`JSON.stringify((()=>{const c=C('${c9id}');return {plat:c.platiba,manual:c.manual};})())`));
+ ok(afterPlat.plat===1.5&&afterPlat.manual===true,"#82: Kopsavilkuma tabulā labota platība (cf) uzreiz saglabājas un iezīmē cirsmu 'manual' (got "+JSON.stringify(afterPlat)+")");
+ const beforeM3=JSON.parse(w.eval(`JSON.stringify(calcCirsma(C('${c9id}')))`));
+ w.eval(`setM3Man('${c9id}',300)`);
+ const afterM3=JSON.parse(w.eval(`JSON.stringify(calcCirsma(C('${c9id}')))`));
+ ok(afterM3.m3===300&&Math.abs(afterM3.rev-beforeM3.rev*(300/beforeM3.m3))<0.5,"#82: Kopsavilkuma tabulā labots m³ (setM3Man) pārrēķina ieņēmumus proporcionāli (got m3="+afterM3.m3+", rev="+Math.round(afterM3.rev)+" pret gaidīto "+Math.round(beforeM3.rev*(300/beforeM3.m3))+")");
+ const tBeforeExcl=JSON.parse(w.eval("JSON.stringify(calcProp(_pRun).grand)"));
+ w.eval(`cf('${c9id}','excluded',true)`);
+ const tAfterExcl=JSON.parse(w.eval("JSON.stringify(calcProp(_pRun).grand)"));
+ ok(Math.abs((tBeforeExcl.ha-tAfterExcl.ha)-1.5)<0.01,"#82: 'Iekļaut' izslēgšana Kopsavilkuma tabulā uzreiz izņem cirsmu no KOPĀ (grand), bet tā paliek redzama sarakstā (got starpība "+Math.abs(tBeforeExcl.ha-tAfterExcl.ha)+" ha)");
+ w.eval(`cf('${c9id}','excluded',false)`);
+ const beforeStage=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(_pRun);return {grandHa:t.grand.ha,s1Ha:t.ha};})())"));
+ w.eval(`setPiegajiens('${c9id}','2')`);
+ const afterStage=JSON.parse(w.eval(`JSON.stringify((()=>{const t=calcProp(_pRun);return {stage:C('${c9id}').stage,plat:C('${c9id}').platiba,grandHa:t.grand.ha,s1Ha:t.ha};})())`));
+ ok(afterStage.stage===2&&Math.abs(afterStage.plat-1.5)<0.01&&Math.abs(afterStage.grandHa-beforeStage.grandHa)<0.01&&Math.abs(beforeStage.s1Ha-afterStage.s1Ha-1.5)<0.01,
+  "#82: piegājiena maiņa (setPiegajiens) tabulā pārceļ cirsmu uz 2. piegājienu BEZ manuālās platības zaudēšanas (1,5 ha), KOPĀ (grand) NEmainās, 1.-piegājiena summa samazinās par to pašu (got "+JSON.stringify({before:beforeStage,after:afterStage})+")");
+ const summaryHtml=w.eval("summaryTable(_pRun,calcProp(_pRun))");
+ ok(/resetCirsmaAuto/.test(summaryHtml)&&/setPiegajiens/.test(summaryHtml)&&/setM3Man/.test(summaryHtml)&&/t\.sk\. 2\. piegājiens/.test(summaryHtml),"#82: Kopsavilkuma tabulā redzama 'auto' poga (manuāli labotai cirsmai), piegājiena/m³ ievadlauki un piegājienu apakšsumma (got auto="+/resetCirsmaAuto/.test(summaryHtml)+")");
+ w.eval(`resetCirsmaAuto('${c9id}')`);
+ const afterReset=JSON.parse(w.eval("JSON.stringify((()=>{const c=_pRun.cirsmas.find(c=>c.nogabali==='9'&&c.stage!==2);return c?{plat:c.platiba,manual:!!c.manual,m3Man:c.m3Man||null}:null;})())"));
+ ok(afterReset&&Math.abs(afterReset.plat-1.79)<0.01&&afterReset.manual===false&&afterReset.m3Man===null,"#82: 'Atgriezt automātisko' (resetCirsmaAuto) atjauno nog.9 uz automātisko ≈1,79 ha, bez manual/m3Man (got "+JSON.stringify(afterReset)+")");
  // #85: datu ielādes secība — jauna objekta izveidē (11 ciparu ZV) p.dataLoading=true UZREIZ pēc buildFromGeo, PIRMS ģeometrijas/infra ielādes; UI rāda 'ielādē…', ne gatavu (bet nepilnīgu) skaitli;
  // karogs pats notīrās, kad fona ielāde (pat neveiksmīga) pabeidzas — objekts nepaliek uz visiem laikiem 'ielādē' stāvoklī
  w=await app();w.fetch=async(u)=>({ok:false,status:404}); // fiktīvs kadastrs/pagasts — nekādu reālu tīkla pieprasījumu, ātrs un determinēts
@@ -420,7 +471,7 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
    c3Plat:c3&&c3.platiba,c3Bruto:c3&&Math.round(c3.bruto),c3Parts:c3&&c3.parts.map(pp=>[pp.kind,+pp.ha.toFixed(2)]),
    c2Plat:c2&&c2.platiba,c2Bruto:c2&&Math.round(c2.bruto),c2DepOk:c2&&c2.dependsOn===c1.id,c2Nog:c2&&c2.nogabali,c2Blocked:c2&&c2.blockedNote,c2Id:c2&&c2.id,c2Parts:c2&&c2.parts.map(pp=>[pp.kind,+pp.ha.toFixed(2)]),
    stage1Hatch,totalJoslas,m1D:m1.D,m2:{kods:m2.cirsmaKods,D:m2.D,Dmean:m2.Dmean,n:m2.Dentries.length,dp:dPaths(m2),dPlan:m2.dPlan},m3:{kods:m3.cirsmaKods,cirsma:m3.cirsma,dp:dPaths(m3),dPlan:m3.dPlan},
-   tHa:t.ha,tM3:t.m3,def2:t.deferred2,summary:summaryTable(p,t),cardText:dPathText(m2),svgHatch:(planSvg(p).match(/<path[^>]*fill="url\\(#hatch\\)"/g)||[]).length};})())`));
+   tHa:t.ha,tM3:t.m3,def2:t.deferred2,grand:t.grand,summary:summaryTable(p,t),cardText:dPathText(m2),svgHatch:(planSvg(p).match(/<path[^>]*fill="url\\(#hatch\\)"/g)||[]).length};})())`));
  ok(nal.nOver===1&&nal.mode==="divi"&&nal.widthM===20&&Math.abs(nal.kcHa-2.00)<=0.03,"Nalobnes nog.1 noklusējums: divi piegājieni, KC tagad 2,00 ha (= limits 2 ha, MK935 15.2) (got "+JSON.stringify({mode:nal.mode,widthM:nal.widthM,kcHa:nal.kcHa})+")");
  ok(/divi piegājieni/.test(nal.ier)&&/tiklīdz VMD/.test(nal.ier)&&!/3 g pēc atjaunošanas/.test(nal.ier)&&!/23\.p/.test(nal.ier),"Nalobnes nog.1 karodziņš: 15.p. limits, VMD reģistrācijas gaidīšana (NE 3 g pēc atjaunošanas, #50 labojums), bez 23.p. (got "+nal.ier+")");
  ok(nal.side==="R","Nalobnes nog.1: griezuma virziens R (rietumu) — vienīgais, kas dod VIENU saistītu atlikuma poligonu (#50/A) (got '"+nal.side+"')");
@@ -462,6 +513,21 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  // #60: KOPĀ (1. piegājiens) tagad ietver arī nog.3 (KC pēc caurmēra) — 2,00 + 1,35 + 0,43 = 3,78 ha
  ok(Math.abs(nal.tHa-3.78)<=0.01&&nal.tM3>0,"Nalobnes: KOPĀ (1. piegājiens) ha = nog.1 KC 2,00 + nog.2 KC 1,35 + nog.3 KC pēc caurmēra 0,43 = 3,78 ha (#60) (got "+nal.tHa+")");
  ok(nal.def2&&Math.abs(nal.def2.ha-0.50)<=0.05&&nal.def2.m3>95&&nal.def2.m3<140,"Nalobnes: 2. piegājiens (≈0,50 ha / ≈115 m³, bez nog.3, #60) skaitās calcProp t.deferred2 (atliktā vērtība), NAV ieskaitīts t.ha/t.m3 (got "+JSON.stringify(nal.def2)+")");
+ // #82: KOPĀ (t.grand) tagad ietver ABUS piegājienus vienuviet — Kopsavilkuma vienotā tabula
+ ok(nal.grand&&Math.abs(nal.grand.ha-(nal.tHa+nal.def2.ha))<0.01&&Math.abs(nal.grand.m3-(nal.tM3+nal.def2.m3))<0.5,"Nalobnes: Kopsavilkuma KOPĀ (t.grand) = 1. piegājiens ("+nal.tHa+" ha) + 2. piegājiens ("+nal.def2.ha+" ha) = "+nal.grand.ha+" ha, abi piegājieni VIENĀ tabulā (#82) (got grand="+JSON.stringify(nal.grand)+")");
+ ok(/<th>Piegājiens<\/th>/.test(nal.summary)&&/t\.sk\. 1\. piegājiens/.test(nal.summary)&&/t\.sk\. 2\. piegājiens/.test(nal.summary),"Nalobnes Kopsavilkuma tabulai ir 'Piegājiens' kolonna un apakšsummas pa piegājieniem zem KOPĀ (#82) (got header="+/<th>Piegājiens<\/th>/.test(nal.summary)+")");
+ // #69: cirtes tipu krāsas/leģenda — Nalobnes nog.1 (KC pēc vecuma), nog.2 ("izlaseKc" = kailcirte pēc sanitāra atzinuma), nog.3 ("kcD" = KC pēc caurmēra) — TRĪS atšķirīgi vizuālie tipi
+ const col69=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();
+  const c1=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="1");const c2=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="2");const c3=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="3");
+  const m2=p.mer.find(m=>m.nogabals==="2"),m3=p.mer.find(m=>m.nogabals==="3");
+  const legend=cirtesLegendData(p);const svg=planSvg(p);
+  return {k1:cirtesKind(c1,null),k2:cirtesKind(c2,m2),k3:cirtesKind(c3,m3),colors:CUT_COLORS,nColorsUnique:new Set(Object.values(CUT_COLORS)).size,nColors:Object.keys(CUT_COLORS).length,
+   legendKinds:legend.map(x=>x.kind),legendHaByKind:Object.fromEntries(legend.map(x=>[x.kind,x.ha])),
+   svgHasKc:svg.includes('fill="'+CUT_COLORS.kc+'"'),svgHasKcD:svg.includes('fill="'+CUT_COLORS.kcD+'"'),svgHasSanKc:svg.includes('fill="'+CUT_COLORS.sanKc+'"')};})())`));
+ ok(col69.k1==="kc"&&col69.k2==="sanKc"&&col69.k3==="kcD","#69: Nalobnes nog.1/2/3 atzīti par trim ATŠĶIRĪGIEM vizuālajiem tipiem — KC pēc vecuma / kailcirte pēc sanitāra atzinuma / KC pēc caurmēra (got "+JSON.stringify({k1:col69.k1,k2:col69.k2,k3:col69.k3})+")");
+ ok(col69.nColorsUnique===col69.nColors,"#69: visām cirtes veidu krāsām (CUT_COLORS) atšķirīgas hex vērtības, nav divu vienādu (got "+col69.nColorsUnique+"/"+col69.nColors+")");
+ ok(col69.legendKinds.includes("kc")&&col69.legendKinds.includes("sanKc")&&col69.legendKinds.includes("kcD")&&col69.legendHaByKind.kc>=2.0&&Math.abs(col69.legendHaByKind.sanKc-1.35)<0.05&&Math.abs(col69.legendHaByKind.kcD-0.43)<0.05,"#69: cirtesLegendData apkopo ha pa cirtes tipiem (kc≥2,00 ha ietver arī nog.1 2. piegājiena atlikumu, sanKc≈1,35, kcD≈0,43 ha) (got "+JSON.stringify(col69.legendHaByKind)+")");
+ ok(col69.svgHasKc&&col69.svgHasKcD&&col69.svgHasSanKc,"#69: SVG plānā parādās visas trīs atšķirīgās cirtes tipu krāsas (vienādas ar leģendu/karti) (got "+JSON.stringify({kc:col69.svgHasKc,kcD:col69.svgHasKcD,sanKc:col69.svgHasSanKc})+")");
  // #49 precizējums 4 (MultiPolygon kā VIENA daļa): Nalobnes reālajai ģeometrijai vairs nesanāk dabiski (Block A tagad IZVAIRĀS no fragmentācijas) — tāpēc tiešs sintētisks tests partSvgPath/partLatLngs līmenī
  const multiTest=JSON.parse(w.eval(`JSON.stringify((()=>{
   const poly={type:"MultiPolygon",coordinates:[[[[26.90,56.41],[26.901,56.41],[26.901,56.411],[26.90,56.411],[26.90,56.41]]],[[[26.91,56.42],[26.911,56.42],[26.911,56.421],[26.91,56.421],[26.91,56.42]]]]};
