@@ -1,0 +1,6 @@
+{
+ "_comment": "#56/#88: aizmiršanas aizsargs. Hash pār 9 vērtēšanu ietekmējošo funkciju avota tekstu app/index.html (calcCirsma/assignAutoCirtesVeids/assignAutoKKC/cirtmetsKC/dPaths/kkcCertamais/gKritKKC/izvedIzmaksas/krajaMer). tests/regress.js pārbauda: ja hash mainās, bet rulesVersion (zemāk) nav lielāka par app/index.html RULES_VERSION konstanti, tests krīt ('aprēķins mainīts, palielini RULES_VERSION'). Ja izmaiņa ir tīša un RULES_VERSION jau palielināta, regress.js pats pārraksta šo failu ar jauno hash — commit to kopā ar RULES_VERSION izmaiņu.",
+ "rulesVersion": 2,
+ "hash": "af7705e44026d004fd8aa25ba6cc5e0f6bf6aad408bd19b88ad1cf55358fd3e6",
+ "functions": ["calcCirsma", "assignAutoCirtesVeids", "assignAutoKKC", "cirtmetsKC", "dPaths", "kkcCertamais", "gKritKKC", "izvedIzmaksas", "krajaMer"]
+}

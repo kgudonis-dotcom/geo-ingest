@@ -307,6 +307,50 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
   const cirsmaLines=marzaTxt.split("\n").filter(l=>/^(Kc|KKC|OBJEKTS)/.test(l));
   const failLines=cirsmaLines.filter(l=>/NĒ/.test(l));
   ok(cirsmaLines.length>=91&&failLines.length===0,"#72 tests/diag/marza_2026-09-05.txt: visas cirsmu/OBJEKTS rindas (got "+cirsmaLines.length+", vajag >=91) rāda JĀ pārbaudei (got "+failLines.length+" ar NĒ: "+failLines.slice(0,3).join(" || ")+")");}
+ // 8g. #56: karodziņš objektiem BEZ rulesVersion (neatkarīgi no ģeometrijas) — 31a812d atklāja, ka reāls Runcīšu objekts (bez ģeometrijas, manuāls/vecs imports)
+ // NEKAD nerādīja karodziņu, jo vecais nosacījums (p.mer.some(m=>m.geom)&&(p.rulesVersion||0)<RULES_VERSION) prasīja ģeometriju PIRMS rulesVersion pārbaudes.
+ w=await app();
+ const flagCause=JSON.parse(w.eval(`JSON.stringify((()=>{
+  const pNoGeom={mer:[{nogabals:"1",platMezs:1,geom:null}],cirsmas:[],archived:false}; // hipotēze b: bez ģeometrijas, rulesVersion trūkst
+  const pWithGeomNoVer={mer:[{nogabals:"1",platMezs:1,geom:[[25,57],[25.001,57],[25.001,57.001],[25,57.001],[25,57]]}],cirsmas:[],archived:false}; // hipotēze a: ar ģeometriju, rulesVersion trūkst
+  const oldCond=p=>p.mer.some(m=>m.geom)&&(p.rulesVersion||0)<RULES_VERSION;
+  return {aOldCond:oldCond(pWithGeomNoVer),bOldCond:oldCond(pNoGeom),aNew:isRulesStale(pWithGeomNoVer),bNew:isRulesStale(pNoGeom)};
+ })())`));
+ ok(flagCause.aOldCond===true,"#56 hipotēze (a) NAV cēlonis: ar ģeometriju + rulesVersion=undefined, VECAIS nosacījums (app/index.html rinda ~514/1455/2288 pirms labojuma) jau bija true — (p.rulesVersion||0) pareizi pārvērš undefined uz 0 (got "+flagCause.aOldCond+")");
+ ok(flagCause.bOldCond===false,"#56 hipotēze (b) IR cēlonis: BEZ ģeometrijas + rulesVersion=undefined, VECAIS nosacījums bija false — p.mer.some(m=>m.geom) izslēdza objektu PIRMS rulesVersion pārbaudes vispār pienāca kārta (got "+flagCause.bOldCond+")");
+ ok(flagCause.aNew===true&&flagCause.bNew===true,"#56 JAUNAIS isRulesStale(p): abi (ar un bez ģeometrijas, rulesVersion trūkst) tagad = true — 'labāk lieks karodziņš nekā kluss nepareizs skaitlis' (got "+JSON.stringify(flagCause)+")");
+ const stillOk=JSON.parse(w.eval(`JSON.stringify((()=>{
+  const pFreshWithVer={mer:[{nogabals:"1",platMezs:1,geom:[[25,57],[25.001,57],[25.001,57.001],[25,57.001],[25,57]]}],cirsmas:[],archived:false,rulesVersion:RULES_VERSION};
+  const pOldWithVer={mer:[{nogabals:"1",platMezs:1,geom:[[25,57],[25.001,57],[25.001,57.001],[25,57.001],[25,57]]}],cirsmas:[],archived:false,rulesVersion:1};
+  const pNoGeomWithVer={mer:[{nogabals:"1",platMezs:1,geom:null}],cirsmas:[],archived:false,rulesVersion:RULES_VERSION};
+  return {fresh:isRulesStale(pFreshWithVer),old:isRulesStale(pOldWithVer),noGeomButStamped:isRulesStale(pNoGeomWithVer)};
+ })())`));
+ ok(stillOk.fresh===false&&stillOk.old===true&&stillOk.noGeomButStamped===false,"#56 isRulesStale(p) NEVAJAG lieki karogot objektus, kam rulesVersion JAU iestatīta (svaigs=false, vecs=true, bez ģeometrijas BET stampēts=false — ģeometrijas pārbaude joprojām strādā, kad rulesVersion zināma) (got "+JSON.stringify(stillOk)+")");
+ // 8h. #56/#88: aizmiršanas tests — hash pār vērtēšanu ietekmējošo funkciju avota tekstu, salīdzināts ar tests/fixtures/rules_hash.json
+ {const crypto=require("crypto");
+  const appSrc=fs.readFileSync("app/index.html","utf8");const srcLines=appSrc.split("\n");
+  const FNS=["calcCirsma","assignAutoCirtesVeids","assignAutoKKC","cirtmetsKC","dPaths","kkcCertamais","gKritKKC","izvedIzmaksas","krajaMer"];
+  const extractFn=name=>{const i=srcLines.findIndex(l=>l.startsWith("function "+name+"("));
+   if(i<0)throw new Error("#56 aizmiršanas tests: funkcija '"+name+"' vairs neeksistē app/index.html — jāatjauno FNS saraksts šeit UN tests/fixtures/rules_hash.json");
+   let j=srcLines.length;for(let k=i+1;k<srcLines.length;k++){if(srcLines[k].startsWith("function ")){j=k;break;}}return srcLines.slice(i,j).join("\n");};
+  const combined=FNS.map(extractFn).join("\n---\n");
+  const hash=crypto.createHash("sha256").update(combined).digest("hex");
+  const codeVersion=+((appSrc.match(/const RULES_VERSION=(\d+);/)||[])[1]);
+  const hashPath="tests/fixtures/rules_hash.json";
+  const baseline=JSON.parse(fs.readFileSync(hashPath,"utf8"));
+  const versionBumped=codeVersion>baseline.rulesVersion;
+  ok(hash===baseline.hash||versionBumped,hash===baseline.hash
+   ?"#56/#88 aizmiršanas tests: hash nemainījies, nekas jāpārbauda"
+   :(versionBumped?"#56/#88 aizmiršanas tests: hash mainījies UN RULES_VERSION palielināta ("+baseline.rulesVersion+"->"+codeVersion+") — tīša, apstiprināta izmaiņa"
+    :"#56/#88 AIZMIRŠANAS TESTS KRĪT: aprēķina funkciju (calcCirsma/assignAutoCirtesVeids/assignAutoKKC/cirtmetsKC/dPaths/kkcCertamais/gKritKKC/izvedIzmaksas/krajaMer) avota kods mainījies, BET RULES_VERSION ("+codeVersion+") NAV palielināta kopš pēdējā fiksētā stāvokļa ("+baseline.rulesVersion+") — palielini RULES_VERSION un ļauj šim testam pārrakstīt tests/fixtures/rules_hash.json."));
+  if(versionBumped&&hash!==baseline.hash){fs.writeFileSync(hashPath,JSON.stringify({_comment:baseline._comment,rulesVersion:codeVersion,hash,functions:FNS},null,1)+"\n");
+   console.log("  (tests/fixtures/rules_hash.json atjaunots uz jauno hash/versiju "+codeVersion+" — jāpievieno commit'am)");}
+ }
+ // 8i. #88: nenoteiktības diapazons vairs NAV rādīts DIVREIZ — cirsmu tabulas rindā (±X% pie katras Max cenas) noņemts, paliek TIKAI kopsavilkuma teksts zem tabulas
+ w=await app();await w.eval("createFromPagasts('68840020027')");
+ const dupUncert=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const t=calcProp(p);return {html:summaryTable(p,t),hasRange:!!t.maxRange};})())`));
+ ok(!/±\d+%<\/span><\/td>/.test(dupUncert.html),"#88 Cirsmu tabulas RINDĀ vairs nav '±X%' pie katras Max cenas (dubultā uzskaite noņemta, VĒRTĪBA calcCirsma().max nav mainīta) (got fragments: "+((dupUncert.html.match(/±\d+%<\/span><\/td>/g)||[]).join(", ")||"nav")+")");
+ ok(dupUncert.hasRange&&/Nenoteiktības diapazons/.test(dupUncert.html),"#88 Kopsavilkuma TEKSTĀ zem tabulas nenoteiktības diapazons PALIEK (viena vieta, ne divas) (got hasRange="+dupUncert.hasRange+")");
  // 8c. #88: nenoteiktības diapazons, jutīgums, jaunaudžu bonitāte pēc meža tipa (VMD 7.tabula)
  w=await app();
  w.eval(`var _mTaks={id:"ut1",suga:"Priede",H:20,G:25,vecums:60,platMezs:1,platKop:1,mezaTips:"Damaksnis",krajaImp:null,formula:[{s:"Priede",k:10,h:20,g:25}],src:"VMD atvērtie dati"};
