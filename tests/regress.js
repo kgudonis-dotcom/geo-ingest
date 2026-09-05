@@ -4,7 +4,8 @@ const fs=require("fs");const zlib=require("zlib");const https=require("https");c
 const root=fs.existsSync(path.join(process.cwd(),"node_modules","jsdom"))?path.join(process.cwd(),"node_modules"):require("child_process").execSync("npm root -g").toString().trim();
 const {JSDOM}=require(root+"/jsdom");
 const html=fs.readFileSync("app/index.html","utf8").replace(/<script src="https:[^"]+"><\/script>/g,"").replace(/<link rel="stylesheet" href="https:[^"]+">/g,"");
-const get=u=>new Promise((res,rej)=>https.get(u,r=>{const b=[];r.on("data",d=>b.push(d));r.on("end",()=>res(Buffer.concat(b)));}).on("error",rej));
+// family:4 -- šai videi novērots, ka IPv6 uz raw.githubusercontent.com reizēm karājas/ETIMEDOUT, kaut IPv4 strādā uzreiz (05.09.2026, #74 diagnostikā atklāts un noķerts)
+const get=u=>new Promise((res,rej)=>{const req=https.get(u,{family:4,timeout:30000},r=>{const b=[];r.on("data",d=>b.push(d));r.on("end",()=>res(Buffer.concat(b)));});req.on("error",rej);req.on("timeout",()=>req.destroy(new Error("timeout: "+u)));});
 const BASE="https://raw.githubusercontent.com/kgudonis-dotcom/geo-ingest/data";
 let fails=0;const ok=(c,m)=>{console.log((c?"OK  ":"FAIL")+" "+m);if(!c)fails++;};
 async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendToBeVisual:true,url:"http://localhost/"});const w=dom.window;w.turf=require(root+"/@turf/turf");w.XLSX=require(root+"/xlsx");w.pako={ungzip:(u8)=>zlib.gunzipSync(Buffer.from(u8)).toString()};
@@ -225,7 +226,8 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(zap22.numBuffers>0&&zap22.deferredM3>0,"Zapasnaja: TAS PATS #22 labojums ietekmē arī šo objektu — tagad ir reālas joslas (agrāk 0, tas pats atslēgas defekts) (got buffers="+zap22.numBuffers+", deferredM3="+zap22.deferredM3+")");
  w=await app();await w.eval("createFromPagasts('70600050074')");await new Promise(r=>setTimeout(r,1500));
  const ez22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
- ok(ez22.numBuffers===0&&ez22.deferredM3===0,"Ezermuiža: nemainās (nav piegulošu KC cirsmu pāru šajā objektā) (got buffers="+ez22.numBuffers+", deferredM3="+ez22.deferredM3+")");
+ // #74: baltalksnis nog.26 (0 g krājas, 1,97 ha, 9 g) tagad "vienmēr" KC (Meža likuma 9.p. tabulā nav cirtmeta) un ir piegulošs kādam citam KC nogabalam — 1 josla, bet 0 m³ (G=0, nekas nav cērtams)
+ ok(ez22.numBuffers===1&&ez22.deferredM3===0,"Ezermuiža: nog.26 (baltalksnis, 0 g krājas) tagad arī 'KC' un piegulošs — 1 josla parādās, bet 0 m³ atliekas (G=0) (agrāk 0 joslu, #74 aizstāj #60 25 g slieksni ar 'vienmēr') (got buffers="+ez22.numBuffers+", deferredM3="+ez22.deferredM3+")");
  w=await app();await w.eval("createFromPagasts('70420080041')");await new Promise(r=>setTimeout(r,1500));
  const paf22=JSON.parse(w.eval("JSON.stringify((()=>{const r=runChecks(P());return {numBuffers:r.buffers.length,deferredM3:r.deferredM3};})())"));
  ok(paf22.numBuffers===0&&paf22.deferredM3===0,"70420080041 (PAF): nemainās (got buffers="+paf22.numBuffers+", deferredM3="+paf22.deferredM3+")");
@@ -355,7 +357,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  const rcDmg=w.eval(`JSON.stringify(runChecks(P()).nog.find(x=>x.m.id==='${nogB.id}').f.filter(f=>f.t==="info"&&/^Bojājums/.test(f.s)).map(f=>f.s))`);
  ok(/Bojājums \(Sentinel-2\)/.test(rcDmg)||/Bojājums \(Sentinel-1\)/.test(rcDmg),"runChecks: nogabalam ar Sentinel/vējgāzes datiem parādās 'Bojājums (...)' info karodziņš (#50/E2 obligātā pārbaude) (got "+rcDmg+")");
  // #49: cirsmas kā nogabalu DAĻAS (poligoni), piegājieni kā ĪSTAS cirsmas ar parts[]/stage/dependsOn. Nalobnes mežs (NĪ 78880060236, ZV 78880060148, pagasts 7888).
- // Reālais 04.09.2026 plāns (1,96 + 0,61 ha) ir ar roku zīmēts, tests to NEpiesien; fiksē likuma noklusējumu: nog.1 2,52 ha Platlapju ārenis = MK935 15.2 (2 ha).
+ // Reālais 04.09.2026 plāns (1,96 + 0,61 ha) ir ar roku zīmēts, tests to NEpiesien; fiksē likuma noklusējumu: nog.1 2,52 ha (mežaTips ārpus MK935 15.1 saraksta) = MK935 15.2 (2 ha).
  w=await app();await w.eval("createFromPagasts('78880060148',['78880060148'])");await new Promise(r=>setTimeout(r,2500));
  const nal=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const r=runChecks(p);const o=r.oversized[0];const c1=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="1");const c2b=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="2");const c3=p.cirsmas.find(c=>c.tips==="Kc"&&c.stage!==2&&c.nogabali==="3");const c2=p.cirsmas.find(c=>c.stage===2);
   const m1=p.mer.find(m=>m.nogabals==="1"),m2=p.mer.find(m=>m.nogabals==="2"),m3=p.mer.find(m=>m.nogabals==="3");
@@ -384,7 +386,7 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  // kandidāts atlikuma apvienošanai (bestRestSide cands izslēdz jau-KC nogabalus), tāpēc sideAutoLen (nākotnes kaimiņa robeža) tagad ir null.
  ok(nal.sideAutoLen==null,"Nalobnes: sideAutoLen null — nog.3 vairs nav 'nākotnes' apvienošanas kandidāts, jo tā PATI tagad ir KC (#60) (got "+nal.sideAutoLen+")");
  ok(Math.abs(nal.c1Plat-nal.kcHa)<=0.01,"Nalobnes 1. piegājiena cirsma (nog.1): platība = KC daļas ha ("+nal.c1Plat+")");
- // #60: nog.1 un nog.3 abi "Platlapju ārenis" (slapjie) — nog.1 PATS jau aizņem visu 2 ha slapjo limitu (MK935 15.2/16.p.), tāpēc kopā ar nog.3 (0,43 ha) PĀRSNIEDZ 2 ha —
+ // #60: nog.1 un nog.3 abi tā paša (slapjā) mežaTips — nog.1 PATS jau aizņem visu 2 ha slapjo limitu (MK935 15.2/16.p.), tāpēc kopā ar nog.3 (0,43 ha) PĀRSNIEDZ 2 ha —
  // josla paliek nepieciešama (nevis #60 kopplatības izņēmums); nog.1 cirsmai tagad DIVAS joslas: pati sadalīšanas strēle (0,74) + jaunā starp-grupu josla pret nog.3 (0,17).
  ok(nal.c1Parts.length===3&&nal.c1Parts.some(x=>x[0]==="KC")&&nal.c1Parts.filter(x=>x[0]==="josla").length===2,"Nalobnes nog.1 1. piegājiena cirsmai c.parts = [KC, josla (pati sadalīšana), josla (starp-grupu pret nog.3)] — abas slapjās, kopā > 2 ha limitu (got "+JSON.stringify(nal.c1Parts)+")");
  ok(nal.c3Plat!=null&&Math.abs(nal.c3Plat-0.43)<=0.02&&nal.c3Bruto>90&&nal.c3Bruto<150&&nal.c3Parts.length===1&&nal.c3Parts[0][0]==="KC","Nalobnes nog.3: sava 1. piegājiena 'Kailcirte pēc caurmēra' cirsma ≈0,43 ha / ≈118 m³, bez joslas savā cirsmā (#60) (got "+JSON.stringify({plat:nal.c3Plat,bruto:nal.c3Bruto,parts:nal.c3Parts})+")");
@@ -518,13 +520,48 @@ async function app(){const dom=new JSDOM(html,{runScripts:"dangerously",pretendT
  ok(Math.abs(zap60.ha-6.82)<=0.05&&zap60.ncirsmas===8,"Zapasnaja: baltalksnis nog.6 (0,24 ha, 48 g) tagad sava KC cirsma — kopā ≈6,82 ha, 8 cirsmas (agrāk 6,58 ha/7, #60) (got "+JSON.stringify(zap60)+")");
  w=await app();await w.eval("createFromPagasts('70420080041',['70420080041'])");await new Promise(r=>setTimeout(r,4000));
  const o41_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
- ok(Math.abs(o41_60.ha-10.32)<=0.1&&o41_60.ncirsmas===10,"70420080041: vairāki baltalksņa nogabali (≥25 g) tagad KC cirsmās — kopā ≈10,32 ha, 10 cirsmas (agrāk ≈4,00 ha/7, #60) (got "+JSON.stringify(o41_60)+")");
+ // #74: SP_CODES pilnīgums (previously-dropped elementi tagad summējas G) + Baltalksnis "vienmēr" (nevis 25 g slieksnis) kopā dod lielāku ha/cirsmu skaitu nekā #60-era starprezultāts
+ ok(Math.abs(o41_60.ha-12.15)<=0.1&&o41_60.ncirsmas===11,"70420080041: baltalksņa nogabali (jebkurā vecumā, ne tikai ≥25 g) tagad KC cirsmās + SP_CODES papildinājums (#74) — kopā ≈12,15 ha, 11 cirsmas (#60 starprezultāts bija ≈10,32 ha/10) (got "+JSON.stringify(o41_60)+")");
  w=await app();await w.eval("createFromPagasts('70600050074',['70600050074'])");await new Promise(r=>setTimeout(r,4000));
  const ez60b=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
- ok(Math.abs(ez60b.ha-10.42)<=0.1&&ez60b.ncirsmas===8,"Ezermuiža: baltalksņa nogabali nog.5/20/22 (≥25 g, ĪADT neietekmē — MK264 nedefinē cirtmetu) tagad KC cirsmās — kopā ≈10,42 ha, 8 cirsmas (agrāk ≈7,43 ha/5, #60) (got "+JSON.stringify(ez60b)+")");
+ ok(Math.abs(ez60b.ha-12.39)<=0.1&&ez60b.ncirsmas===7,"Ezermuiža: baltalksņa nogabali nog.5/20/22/26 (jebkurā vecumā, ĪADT neietekmē — MK264 nedefinē cirtmetu) + SP_CODES papildinājums (#74) — kopā ≈12,39 ha, 7 cirsmas (#60 starprezultāts bija ≈10,42 ha/8) (got "+JSON.stringify(ez60b)+")");
  w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");await new Promise(r=>setTimeout(r,4000));
  const b59_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
  ok(Math.abs(b59_60.ha-30.53)<=0.05&&b59_60.ncirsmas===19,"60700020059: nav baltalksņa/caurmēra-sliekšņa nogabalu — nemainās (#60) (got "+JSON.stringify(b59_60)+")");
+ // #74: cirtmetu tabula pēc Meža likuma 9.panta (data/cirtmeti_meza_likums.json), MT/SP/ZKAT klasifikatoru labojumi, "suga nav atpazīta" un ĪADT zonas brīdinājumi.
+ w=await app();
+ const ozTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p={zv:[],mer:[],cirsmas:[],log:[]};
+  mergeZvInto(p,"9999",[
+   {props:{kvartals:"1",nogabals:"1",platiba_ha:1,bon:"I",s10:10,a10:101,h10:24,d10:40,g10:20}},
+   {props:{kvartals:"1",nogabals:"2",platiba_ha:1,bon:"II",s10:10,a10:101,h10:24,d10:40,g10:20}},
+   {props:{kvartals:"1",nogabals:"3",platiba_ha:1,bon:"II",s10:10,a10:121,h10:24,d10:40,g10:20}}
+  ]);
+  return p.mer.map(m=>({nog:m.nogabals,bon:m.bon,vecums:m.vecums,kods:m.cirsmaKods}));})())`));
+ ok(ozTest[0].kods==="KC"&&ozTest[1].kods===""&&ozTest[2].kods==="KC","Ozols cirtmets pēc bonitātes (Meža likuma 9.p., #74): bon I 101 g -> KC; bon II 101 g -> VĒL NAV (līdz 121 g); bon II 121 g -> KC — iepriekš lietotne kļūdaini deva 101 g visām bonitātēm (got "+JSON.stringify(ozTest)+")");
+ const baTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p={zv:[],mer:[],cirsmas:[],log:[]};
+  mergeZvInto(p,"9999",[{props:{kvartals:"1",nogabals:"1",platiba_ha:1,bon:"I",s10:9,a10:1,h10:5,d10:2,g10:5}}]);
+  const m=p.mer[0];return {kods:m.cirsmaKods,vecums:m.vecums};})())`));
+ ok(baTest.kods==="KC","Baltalksnis: Meža likuma 9.panta tabulā NAV (cirtmets nav noteikts) -> KC atļauta VIENMĒR, arī ļoti jaunam (1 g), ja bonitāte zināma (#74, precizē #60 25 g praktisko slieksni) (got "+JSON.stringify(baTest)+")");
+ const spTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p={zv:[],mer:[],cirsmas:[],log:[]};
+  mergeZvInto(p,"9999",[{props:{kvartals:"1",nogabals:"1",platiba_ha:1,s10:1,a10:80,h10:25,d10:30,g10:20,s11:21,a11:40,h11:18,d11:15,g11:5}}]);
+  const m=p.mer[0];return {suga:m.suga,G:m.G};})())`));
+ ok(Math.abs(spTest.G-25)<0.01,"SP_CODES: VMD kods 21 (Blīgzna) agrāk TRŪKA un elements tika KLUSI IZLAISTS no summām (G pazuda) — tagad 'Citas sugas', G pareizi summējas 20+5=25 (#74) (got "+JSON.stringify(spTest)+")");
+ const mtTest=JSON.parse(w.eval(`JSON.stringify({m15:MT_CODES[15],m16:MT_CODES[16],m17:MT_CODES[17],m21:MT_CODES[21],m24:MT_CODES[24],m31:MT_CODES[31]||null})`));
+ ok(mtTest.m15==="Dumbrājs"&&mtTest.m16==="Liekņa"&&mtTest.m17==="Viršu ārenis"&&mtTest.m21==="Platlapju ārenis"&&mtTest.m24==="Šaurlapju kūdrenis"&&mtTest.m31===null,
+  "MT_CODES labots pret VMD MT_klasifikatoru (#74): iepriekš trūka 15/16, kodi 17-25 bija nobīdīti (rādīja NEPAREIZU nosaukumu), kūdreņi bija uz neesošiem kodiem 31-34 (got "+JSON.stringify(mtTest)+")");
+ const zkTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p={zv:[],mer:[],cirsmas:[],log:[]};
+  mergeZvInto(p,"9999",[{props:{kvartals:"1",nogabals:"1",platiba_ha:1,zkat:14}},{props:{kvartals:"1",nogabals:"2",platiba_ha:1,zkat:10}}]);
+  return p.mer.map(m=>m.veids);})())`));
+ ok(zkTest[0]==="Izcirtums"&&zkTest[1]==="Mežaudze","ZKAT_CODES labots (#74): zkat=14 -> 'Izcirtums' (agrāk VIENMĒR 'Mežaudze' neatkarīgi no koda — ternārā abi zari bija identiski), zkat=10 -> 'Mežaudze' (got "+JSON.stringify(zkTest)+")");
+ const sugaTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p={zv:[],mer:[],cirsmas:[],log:[],dapList:[]};
+  mergeZvInto(p,"9999",[{props:{kvartals:"1",nogabals:"1",platiba_ha:1,bon:"I"}}]);
+  p.mer[0].krajaImp=150;p.mer[0].G=20;
+  const r=runChecks(p);return r.nog[0].f.filter(f=>f.t==="warn").map(f=>f.s);})())`));
+ ok(sugaTest.some(s=>/suga nav atpazīta/.test(s)),"runChecks: tukša suga, BET ir reāli taksācijas dati (krāja/G) -> dzeltens 'suga nav atpazīta' (atšķirībā no apzinātās 'Citas sugas' kategorijas) (#74) (got "+JSON.stringify(sugaTest)+")");
+ const iadtTest=JSON.parse(w.eval(`JSON.stringify((()=>{const p={zv:[],mer:[],cirsmas:[],log:[],dapList:[]};
+  mergeZvInto(p,"9999",[],{protected:[{kind:"zona",name:"",zone:"Kāda pavisam cita zona",overlap_ha:1}]});
+  const r=runChecks(p);return {iadt:p.iadt,unrec:p.iadtZoneUnrecognized,warn:r.global.some(g=>/NAV atpazīts/.test(g))};})())`));
+ ok(iadtTest.iadt===""&&iadtTest.unrec==="Kāda pavisam cita zona"&&iadtTest.warn===true,'ĪADT zonas teksts neatpazīts nevienā no 5 regex kategorijām -> p.iadtZoneUnrecognized + runChecks brīdinājums (agrāk klusi "Nav ĪADT", bez limita) (#74) (got '+JSON.stringify(iadtTest)+")");
  // 11. Koda sadaļu integritāte
  const src=fs.readFileSync("app/index.html","utf8");for(const fn of ["zoneChecks","iadtChecks","neighbourCuts","planSvg","skiceHtml","reportHtml","iesniegumsHtml","exportXlsx","valCalc","runChecks","tallyCalc","finishCirsma","deadlines","landPrices","priceSnapNow","nogPlausibleIssue","krajaMerChecked","fixEligible","fixByHundred","bonOf","cirtmetsKC","bonFromRow","normalG","gExceeds","mKey","matchNogToken","kaiminiPairs","splitOversizedNogabals","splitOversizedProportional","toggleDeferPair","ringsOf","outerRingOf","wateraPolys","roadGraph","dijkstraPath","nearestGraphNode","krautuveAuto","nogCutM3","izvedNogabali","izvedCalc","izvedIzmaksas","moveKrautuve","resetKrautuve","loadSentinel","lidarSentinelMismatch","sentinelCol","lidarCol","dPaths","chooseDPath","strategyOfM","setStrategy","recalcProp","migrateSplit","autoCirsmas","bestRestSide","restSideAuto","sharedBoundaryM","futureKC","setRestSide","cTips","buildParts","finalizePartsCirsma","assignAutoCirtesVeids","recentActivity","partSvgPath","partLatLngs","partCentroid","partFeature","rebuildAutoParts","buildScenarios","applyScenario","scenariosHtml","fragCount","sentinelDamageFlag","dCirteBlocked","kcVeids"])ok(new RegExp("function "+fn+"\\(").test(src),"funkcija eksistē: "+fn);
  ok(!/function bonitate\(/.test(src),"vecā bonitate(H,age) Orlova aproksimācija ir izņemta (#46 pabeigšana)");

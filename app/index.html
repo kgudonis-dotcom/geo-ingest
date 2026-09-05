@@ -1004,8 +1004,21 @@ function neighbourCuts(data,ownZv,p){if(typeof turf==="undefined")return [];cons
  return out;}
 
 /* ---------- VMD OBJEKTS PĒC KADASTRA ---------- */
-const MT_CODES={1:"Sils",2:"Mētrājs",3:"Lāns",4:"Damaksnis",5:"Vēris",6:"Gārša",7:"Grīnis",8:"Slapjais mētrājs",9:"Slapjais damaksnis",10:"Slapjais vēris",11:"Slapjā gārša",12:"Purvājs",14:"Niedrājs",17:"Dumbrājs",18:"Liekņa",21:"Viršu ārenis",22:"Mētru ārenis",23:"Šaurlapju ārenis",24:"Platlapju ārenis",31:"Viršu kūdrenis",32:"Mētru kūdrenis",33:"Šaurlapju kūdrenis",34:"Platlapju kūdrenis"};
-const SP_CODES={1:"Priede",3:"Egle",4:"Bērzs",6:"Melnalksnis",8:"Apse",9:"Baltalksnis",10:"Ozols",11:"Osis",12:"Citas sugas",13:"Citas sugas",14:"Citas sugas",15:"Citas sugas",16:"Citas sugas",17:"Citas sugas",18:"Citas sugas",19:"Citas sugas",20:"Citas sugas",22:"Citas sugas",50:"Citas sugas"};
+// #74: VMD MT_klasifikators (gis.vmd.gov.lv/Public/GetClasificators, lapa "MT_klasifikators", pārbaudīts 05.09.2026) — iepriekšējā tabula bija NOBĪDĪTA no koda 17 uz augšu (trūka 15/16, tad 17-25
+// rādīja PAREIZO NOSAUKUMU PIE NEPAREIZĀ KODA, kūdreņi bija uz 31-34, kur oficiālajā sarakstā to nav): reālam nogabalam ar mt=17..34 lietotne rādīja NEPAREIZU meža tipa nosaukumu (mitruma grupa/limits
+// neizmainījās, jo visi šie kodi tāpat ir "slapjie" gan vecajā, gan jaunajā tabulā — RULES.dryTypes aptver tikai kodus 1-6, kas nemainījās).
+const MT_CODES={1:"Sils",2:"Mētrājs",3:"Lāns",4:"Damaksnis",5:"Vēris",6:"Gārša",7:"Grīnis",8:"Slapjais mētrājs",9:"Slapjais damaksnis",10:"Slapjais vēris",11:"Slapjā gārša",12:"Purvājs",14:"Niedrājs",
+ 15:"Dumbrājs",16:"Liekņa",17:"Viršu ārenis",18:"Mētru ārenis",19:"Šaurlapju ārenis",21:"Platlapju ārenis",22:"Viršu kūdrenis",23:"Mētru kūdrenis",24:"Šaurlapju kūdrenis",25:"Platlapju kūdrenis"};
+// #74: VMD S_klasifikators (gis.vmd.gov.lv/Public/GetClasificators, lapa "S_klasifikators", pārbaudīts 05.09.2026) — PILNS kodu saraksts 1-69; agrāk trūka 21/23-29/32/35/61-69,
+// tāpēc reāls koku elements ar kādu no šiem kodiem tika KLUSI IZLAISTS (SP_CODES[sp] undefined -> `if(!sp)continue;`) un tā G/H/D/krāja pazuda no summām — labots, visi kodi tagad iet "Citas sugas".
+const SP_CODES={1:"Priede",3:"Egle",4:"Bērzs",6:"Melnalksnis",8:"Apse",9:"Baltalksnis",10:"Ozols",11:"Osis",
+ 12:"Citas sugas",13:"Citas sugas",14:"Citas sugas",15:"Citas sugas",16:"Citas sugas",17:"Citas sugas",18:"Citas sugas",19:"Citas sugas",20:"Citas sugas",21:"Citas sugas",22:"Citas sugas",
+ 23:"Citas sugas",24:"Citas sugas",25:"Citas sugas",26:"Citas sugas",27:"Citas sugas",28:"Citas sugas",29:"Citas sugas",32:"Citas sugas",35:"Citas sugas",50:"Citas sugas",
+ 61:"Citas sugas",62:"Citas sugas",63:"Citas sugas",64:"Citas sugas",65:"Citas sugas",66:"Citas sugas",67:"Citas sugas",68:"Citas sugas",69:"Citas sugas"};
+// #74: VMD ZKAT_klasifikators (gis.vmd.gov.lv/Public/GetClasificators, lapa "ZKAT_klasifikators", pārbaudīts 05.09.2026) — zemes kategorija; iepriekš m.veids bija "num(a.zkat)===10?"Mežaudze":"Mežaudze""
+// (abi ternārā zara identiski — VIENMĒR "Mežaudze" neatkarīgi no reālā koda), tāpēc VMD jau reģistrēts izcirtums/purvs/lauce u.c. rādījās kā parasta mežaudze.
+const ZKAT_CODES={10:"Mežaudze",12:"Iznīkusi mežaudze",14:"Izcirtums",16:"Sēklu ieguves plantācija",21:"Sūnu purvs",22:"Zāļu purvs",23:"Pārejas purvs",31:"Meža lauce",32:"Meža dzīvnieku barošanas lauce",
+ 33:"Virsājs",34:"Smiltājs",41:"Pārplūstošs klajums",42:"Bebru applūdinājums",542:"Rekultivēta zeme",543:"Kokmateriālu krautuves vieta",544:"Rekreācijas platība"};
 // #50/C4: gis.vmd.gov.lv/Public/GetClasificators, lapa P_DARBV_klasifikators (pārbaudīts 04.09.2026, sk. data/vmd_darbibas.json) — pēdējās darbības veida kods (p_darbv)
 const DARB_CODES={1:"Koku ciršana",2:"MRM ieguve",4:"Atjaunošana",5:"Ieaudzēšana",6:"Jaunaudžu kopšana",7:"Meža bojājumi",10:"Atjaunošana/ kopšana",11:"Ieaudzēšana/ kopšana"};
 const DARB_KOPSANA_CODES=new Set([6,10,11]); // MK935 7.piel. piezīme "nedrīkst, ja pēdējos 3 g bijusi kopšana" attiecas TIKAI uz šiem; kods 1 (koku ciršana) NAV kopšana
@@ -1035,7 +1048,7 @@ function mergeZvInto(p,kad,items,extra){
  const added=[];
  for(const it of items){const a=it.props;const m=newMer();m.zv=kad;
   m.kvartals=String(a.kvartals??a.kvart??"");m.nogabals=String(a.nogabals??a.nog??"")+((a.anog&&String(a.anog)!=="0")?"."+a.anog:"");
-  m.platKop=num(a.platiba_ha??a.nog_plat);m.platMezs=m.platKop;m.veids=num(a.zkat)===10?"Mežaudze":"Mežaudze";
+  m.platKop=num(a.platiba_ha??a.nog_plat);m.platMezs=m.platKop;m.veids=ZKAT_CODES[num(a.zkat)]||(a.zkat?String(a.zkat):"Mežaudze");
   m.mezaTips=MT_CODES[num(a.mt)]||(a.mt?String(a.mt):"");
   const els=[];for(let i=0;i<5;i++){const sp=SP_CODES[num(a["s1"+i])];if(!sp)continue;els.push({s:sp,a:num(a["a1"+i]),h:num(a["h1"+i]),d:num(a["d1"+i]),g:num(a["g1"+i])});}
   if(els.length){const lead=els.reduce((x,y)=>y.g>x.g?y:x);m.suga=lead.s;m.vecums=lead.a;m.H=lead.h;m.G=+els.reduce((t,e)=>t+e.g,0).toFixed(1);
@@ -1064,7 +1077,8 @@ function mergeZvInto(p,kad,items,extra){
  if(extra&&extra.protected&&extra.protected.length){const add=extra.protected.map(x=>({kind:x.kind,name:x.name,zone:x.zone,ha:x.overlap_ha}));
   p.dapList=(p.dapList||[]).concat(add);p.iadtInfo=p.dapList.map(x=>x.kind+": "+x.name+(x.zone?" ("+x.zone+")":"")+" "+x.ha+" ha").join("; ");
   // ĪADT zona paliek objekta-vienskaitlī (pirmā atrastā ZV nosaka): ja NĪ vairākas ZV atrodas dažādās ĪADT zonās, precīzai pārbaudei jāskatās pa ZV atsevišķi
-  if(!p.iadt){const z=add.find(x=>x.kind==="zona");if(z){const zn=(z.zone||"").toLowerCase();p.iadt=/regul/.test(zn)?"regulējamā":/liegum/.test(zn)?"lieguma":/parka/.test(zn)?"dabas parka":/ainav/.test(zn)?"ainavu":/neitr/.test(zn)?"neitrālā":"";}}}
+  if(!p.iadt){const z=add.find(x=>x.kind==="zona");if(z){const zn=(z.zone||"").toLowerCase();p.iadt=/regul/.test(zn)?"regulējamā":/liegum/.test(zn)?"lieguma":/parka/.test(zn)?"dabas parka":/ainav/.test(zn)?"ainavu":/neitr/.test(zn)?"neitrālā":"";
+   if(!p.iadt&&zn)p.iadtZoneUnrecognized=z.zone;}}} // #74: DAP zonējuma teksts NAV kāds no 5 zināmajiem — agrāk klusi p.iadt="" (= "Nav ĪADT", bez limita); tagad brīdinājums runChecks vietā
  // cirsmas kā importā, TIKAI no šīs ZV jaunajiem nogabaliem (esošās cirsmas paliek neskartas); atslēga ietver ZV, lai kvartāla numurs nesajauktos starp ZV
  if(buildParts(p))p.splitVer=PARTS_VER;else{autoCirsmas(p,added);p.splitVer=SPLIT_VER;} // #49: parts[] modelis, ja ir ģeometrija (VMD dati vienmēr); citādi vecais Kc+sanitārā pa nogabalu sarakstu (imports bez ģeometrijas)
  return added;}
@@ -1564,9 +1578,10 @@ function parsePdfLines(lines){ // lines: array of strings (cells joined by singl
  if(/INVENTARIZĀCIJAS DATI/.test(txt)||/\d+ st\.-/.test(txt))return parseFormatB(lines);
  return null;}
 // #46: bez bonitātes cirtmetu NENOSAKA (agrāk tukšs bon klusi deva Priedei 121 g, Bērzam 51 g — sk. #46)
+// #74: cirtmetu tabula pēc Meža likuma 9.panta (NE MK935 — MK935 6.pielikums ir koku skaita noteikšanas forma, 7.pielikums ir caurmēra, ne vecuma, tabula; skat. data/cirtmeti_meza_likums.json avota atsaucei un pilnajam sugu sarakstam).
+// Baltalksnis (un Vītols/Blīgzna/Kārkls/Ieva, kas lietotnē nav atsevišķas sugas) likuma tabulā NAV — cirtmets nav noteikts, KC atļauta VIENMĒR (age>=0, nevis "nezināms"). "Citas sugas" apvieno gan sugas ar cirtmetu (Lapegle/Liepa/Goba/Vīksna/Kļava/Papele), gan bez tā — konservatīvi paliek bez cirtmeta (data failā paskaidrots).
 function cirtmetsKC(sp,age,bon){const b=String(bon||"").trim();if(!b)return "";
- // #60: baltalksnim MK935 1.pielikumā NAV noteikts minimālais cirtmets (likumi.lv/mezataksacija.lv: "meža īpašnieks galvenajā cirtē baltalksni var cirst pēc saviem ieskatiem") — 25 g sakrīt ar RULES.youngKeep praktisko slieksni
- const t={Priede:/^(Ia|I|II|III)$/.test(b)?101:121,Egle:81,Bērzs:/^(Ia|I|II|III)$/.test(b)?71:51,Melnalksnis:71,Apse:41,Ozols:101,Osis:81,Baltalksnis:25};return t[sp]&&age>=t[sp]?"KC":"";}
+ const t={Priede:/^(Ia|I|II|III)$/.test(b)?101:121,Egle:81,Bērzs:/^(Ia|I|II|III)$/.test(b)?71:51,Melnalksnis:71,Apse:41,Ozols:/^(Ia|I)$/.test(b)?101:121,Osis:81,Baltalksnis:0};return t[sp]!=null&&age>=t[sp]?"KC":"";}
 // #60: KC cirtes izpildes veids — "vecuma" (cirtmets sasniegts) vai "caurmēra" (MK935 7.piel. slieksnis pirms cirtmeta, incl. sanitārā izlase+KC un riskantais nesvērtais D ceļš). Viena cirsma nekad nesatur abus (MK935 15./16.p. grupēšana/limits ir pa veidam).
 function kcVeids(m){return cirtmetsKC(m.suga,m.vecums,bonOf(m).bon)==="KC"?"vecuma":"caurmēra";}
 function firstSp(formula){const m=String(formula).match(/\d+\s*(Ba|Ma|Ap|Oz|Os|Bl|Ie|Kr|P|E|B|A|M|K|L)/);return m?SPC[m[1]]:"";}
@@ -1750,6 +1765,7 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
  const dIadtBlocked=dCirteBlocked(p); // #60: ĪADT individuālie noteikumi liedz KC pēc caurmēra automātiskajā scenārijā
  if(!zone.kc)out.global.push("ĪADT zona: kailcirte aizliegta, plāns jāraksta kā izlases/kopšanas programma.");
  if(p.iadt)out.global.push("ĪADT sezona: darbi aizliegti 15.03 līdz 31.07, reāli viens ziemas logs. Atjaunošanā nedrīkst citzemju sugas.");
+ if(p.iadtZoneUnrecognized)out.global.push(`ĪADT zonējums "${p.iadtZoneUnrecognized}" NAV atpazīts nevienā no 5 zināmajām kategorijām (regulējamā/lieguma/dabas parka/ainavu/neitrālā) — lietotne to rāda kā "Nav ĪADT" (bez limita), kas var būt NEPAREIZI; pārbaudīt ar roku un izvēlēties zonu Cirsmās (#74).`); // #74
  if(p.dapList)for(const d of p.dapList){const k=d.kind;if(k==="mikroliegums")out.global.push(`Mikroliegums "${d.name}" ${d.ha} ha: koku ciršana aizliegta vai ierobežota, buferzona; pārbaudīt Ozolā.`);
   else if(k==="biotops")out.global.push(`Kartēts ES nozīmes biotops ${d.name||""} ${d.ha} ha (DAP dati): ārpus ĪADT un bez mikrolieguma tas cirti neaizliedz, bet ir mikrolieguma risks un kompensāciju pamats; pārbaudīt Ozolā, uz kuriem nogabaliem, un vai VMD izsniedz apliecinājumu.`);
   else if(k==="sugas atradne")out.global.push(`Aizsargājamas sugas atradne ${d.name} ${d.ha} ha: iespējams mikroliegums nākotnē.`);
@@ -1771,6 +1787,7 @@ function runChecks(p){const yr=new Date().getFullYear();const zone=RULES.iadt[p.
   if(dc&&num(m.D)>=dc&&!m.cirsmaKods){ // #60: sasniegts 7.piel. slieksnis, bet nav (vai nedrīkst būt) automātiski piedāvāts kā KC — pasaka, kāpēc
    if(dIadtBlocked)f.push({t:"warn",s:`sasniedz galvenās cirtes caurmēru ${dc} cm (MK935 7.piel.), BET ĪADT individuālie noteikumi šajā zonā liedz (vai piesardzīgi neiekļauj) kailcirti pēc caurmēra pirms cirtmeta — nav noklusējuma scenārijā, jāpārbauda ar DAP/VMD ar roku`});
    else f.push({t:"plus",s:`sasniedz galvenās cirtes caurmēru ${dc} cm (MK935 7.piel.), KC iespējama pirms cirtmeta; nedrīkst, ja pēdējos 3 g bijusi kopšana`});}
+  if(!m.suga&&(num(m.krajaImp)||num(m.G)||num(m.vecums)))f.push({t:"warn",s:"suga nav atpazīta (tukša), lai gan nogabalam ir taksācijas dati — cirtmets nav nosakāms, pārbaudīt ar roku (#74)"}); // #74: atšķir no "Citas sugas" (zināma, apzināta kategorija) — šeit suga vispār trūkst/nav atšifrēta
   if(m.dPlan&&m.dPlan.path==="kcMean")f.push({t:"warn",s:`KC pamatojums pēc NESVĒRTĀ vidējā D (MK935 14.p. noapaļots, ${m.dPlan.mean14} cm ≥ ${m.dPlan.dc} cm) — G-svērtais D nesasniedz slieksni; VMD var neatzīt šo pamatojumu, jāpārbauda ar roku (#50 scenārijs A)`}); // #50/D: scenārijs A — riskantāks pamatojums
   if(MK935.kcForbiddenSpecies.includes(m.suga)&&m.cirsmaKods==="KC")f.push({t:"bloks",s:"KC aizliegta: valdošā suga "+m.suga+" (MK935 65.2)"});
   if(m.cirsmaKods==="KKC"&&!(m.hasCert&&m.certamais>0)){const kc=kkcCertamais(m);if(kc.note)f.push({t:"ier",s:"kopšana: "+kc.note});}
