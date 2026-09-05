@@ -330,6 +330,42 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  ok(Math.abs(c21r.avgDist-1248.8)<2,"60700020059: svērtais vidējais izvešanas attālums ≈1249 m pa ceļu tīklu uz vienu krautuvi (got "+c21r.avgDist.toFixed(1)+")");
  const iz21r=JSON.parse(w.eval("JSON.stringify(izvedIzmaksas(P()))"));
  ok(iz21r.ok&&Math.abs(iz21r.cost-80689)<50,"60700020059: izvešanas izmaksas ≈80 689 € (bāzes likmes, #21) (got "+iz21r.cost.toFixed(0)+")");
+ // #81: saprāta pārbaude — sintētisks NESAVIENOTS ceļu tīkls (2 atsevišķi ceļa fragmenti, krautuve uz viena, nogabals pie otra) -> taisnās līnijas fallback ~5,5 km,
+ // kas pārsniedz 3000 m slieksni -> dzeltens brīdinājums, izmaksa NAV klusi ieskaitīta Max cenā (ne absurds skaitlis kā #81 Meža Vijolītēm pirms labojuma)
+ w=await app();
+ w.eval(`var _roadsDisc=[{t:"unclassified",geom:[[[25.0000,57.0000],[25.0005,57.0000]]]},{t:"unclassified",geom:[[[25.0500,57.0000],[25.0505,57.0000]]]}];
+  var _standDisc={id:"d1",zv:"1",kvartals:"1",nogabals:"D",platMezs:1,platKop:1,cirsmaKods:"KC",suga:"Priede",krajaImp:200,
+   geom:[[25.0501,57.0001],[25.0504,57.0001],[25.0504,57.0004],[25.0501,57.0004],[25.0501,57.0001]]};
+  var _cDisc=newCirsma();_cDisc.id="cDisc";_cDisc.species.Priede.m3=200;_standDisc.cirsma="cDisc";
+  var _pDisc={mer:[_standDisc],cirsmas:[_cDisc],infra:{roads:_roadsDisc},krautuve:{lon:25.0000,lat:57.0000,manual:true},izvedConfirmed:false};`);
+ const cDisc=JSON.parse(w.eval("JSON.stringify(izvedCalc(_pDisc))"));
+ ok(cDisc.ok&&cDisc.byNog[0].dist>3000,"#81 sintētisks nesavienots ceļu tīkls: fallback uz taisnu līniju, attālums >3000 m (got "+Math.round(cDisc.byNog[0].dist)+" m)");
+ const tDisc=JSON.parse(w.eval("JSON.stringify(calcProp(_pDisc))"));
+ ok(tDisc.izved.ok&&tDisc.izved.implausible&&tDisc.izved.excluded&&tDisc.izved.severity==="yellow"&&tDisc.izved.cost<tDisc.rev,
+  "#81 sintētisks nesavienots ceļu tīkls: dzeltens brīdinājums, izmaksa izslēgta no Max cenas, NAV absurds skaitlis (got severity="+tDisc.izved.severity+", excluded="+tDisc.izved.excluded+", cost="+Math.round(tDisc.izved.cost)+", rev="+Math.round(tDisc.rev)+")");
+ const cirsmaSumDisc=JSON.parse(w.eval("JSON.stringify(calcCirsma(_cDisc))")).max;
+ ok(Math.abs(tDisc.max-cirsmaSumDisc)<1,"#81 sintētisks nesavienots ceļu tīkls: Max cena = cirsmas max BEZ izslēgtās izvešanas izmaksas (got "+Math.round(tDisc.max)+" € pret "+Math.round(cirsmaSumDisc)+" €)");
+ w.eval("_pDisc.izvedConfirmed=true;");
+ const tDiscConf=JSON.parse(w.eval("JSON.stringify(calcProp(_pDisc))"));
+ ok(tDiscConf.izved.excluded===false&&Math.abs(tDiscConf.max-(tDisc.max-tDisc.izved.cost))<1,"#81 pēc lietotāja apstiprinājuma (izvedConfirmed) izmaksa TOMĒR ieskaitās Max cenā (got "+Math.round(tDiscConf.max)+" €)");
+ // #81: Meža Vijolītes — ZV kadastrs 60920063305 (UZMANĪBU: issue #81 minēja 60920060484, kas ir NĪ numurs, NEVIS ZV kadastrs — sk. atskaiti). Reāli dati: 9427 m vidējais izvešanas attālums,
+ // objekta diagonāle ≈1583 m (9427 >> 1583×3), pirms labojuma Max cena sagāzās uz 1 367 € pret cirsmu summu ≈225 000 €
+ w=await app();await w.eval("createFromPagasts('60920063305',['60920063305'])");
+ const mv=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const t=calcProp(p);
+  const cirsmaSum=p.cirsmas.filter(c=>c.stage!==2).reduce((a,c)=>a+calcCirsma(c).max,0);
+  return {izved:t.izved,rev:t.rev,max:t.max,cirsmaSum};})())`));
+ ok(mv.izved.ok&&mv.izved.implausible,"Meža Vijolītes: izvešanas attālums ("+Math.round(mv.izved.avgDist)+" m) atzīts par neticamu pret objekta diagonāli ("+Math.round(mv.izved.diag)+" m) (#81)");
+ ok(mv.izved.excluded===true,"Meža Vijolītes: neticamā/pārmērīgā izvešanas izmaksa nav klusi ieskaitīta Max cenā (got severity="+mv.izved.severity+")");
+ ok(Math.abs(mv.max-mv.cirsmaSum)<1,"Meža Vijolītes: Max cena ("+Math.round(mv.max)+" €) sakrīt ar cirsmu summu ("+Math.round(mv.cirsmaSum)+" €), NEVIS absurdi zema 1 367 € kā pirms labojuma");
+ ok(mv.max>50000,"Meža Vijolītes: Max cena saprātīgā kārtā (got "+Math.round(mv.max)+" €), ne 1 367 €");
+ // #85: datu ielādes secība — jauna objekta izveidē (11 ciparu ZV) p.dataLoading=true UZREIZ pēc buildFromGeo, PIRMS ģeometrijas/infra ielādes; UI rāda 'ielādē…', ne gatavu (bet nepilnīgu) skaitli;
+ // karogs pats notīrās, kad fona ielāde (pat neveiksmīga) pabeidzas — objekts nepaliek uz visiem laikiem 'ielādē' stāvoklī
+ w=await app();w.fetch=async(u)=>({ok:false,status:404}); // fiktīvs kadastrs/pagasts — nekādu reālu tīkla pieprasījumu, ātrs un determinēts
+ w.eval(`buildFromGeo([{kad:"99999999901",items:[{props:{kvartals:"1",nogabals:"1",platiba_ha:1}}],extra:{}}]);`);
+ ok(w.eval("P().dataLoading")===true,"#85: jauna objekta izveidē dataLoading=true uzreiz pēc buildFromGeo, pirms ģeometrijas/infra ielādes pabeigtas");
+ ok(/ielādē/.test(w.eval("izvedBadge(P(),calcProp(P()),true)")),"#85: izvedBadge rāda 'ielādē datus…' kamēr dataLoading=true, nevis gatavu skaitli ar pustukšiem datiem (got: "+w.eval("izvedBadge(P(),calcProp(P()),true)")+")");
+ await new Promise(r=>setTimeout(r,600));
+ ok(w.eval("P().dataLoading")===false,"#85: pēc fona ielādes pabeigšanas (pat neveiksmīgas, kadastrs fiktīvs) dataLoading atkal false, karogs nepaliek 'iestrēdzis' (got "+w.eval("P().dataLoading")+")");
  // #19: LiDAR/Sentinel salīdzinājums — sintētisks zināms pāris (sakrīt un nesakrīt), karodziņš un izcēlums
  w=await app();
  w.eval(`var _sMatch={kv:"2",nog:"5",ndvi_prev:0.75,ndvi_now:0.74,delta:-0.01,flag:"",checked:"2026-09-01"};
