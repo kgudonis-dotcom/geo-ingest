@@ -359,11 +359,12 @@ function calcCirsma(c){
  const cost=m3*costM3,max=rev*(1-num(c.marza))-cost;
  return {m3,rev,cost,costM3,max,bySp,revM3:m3?rev/m3:0,vidKoks:num(c.koki)?m3/num(c.koki):0,m3ha:num(c.platiba)?m3/num(c.platiba):0};
 }
-function calcProp(p){const t={m3:0,rev:0,cost:0,max:0,ha:0};const d2={ha:0,m3:0,rev:0,cost:0,max:0}; // #49 precizējums 2: 2. piegājiena cirsmas (pēc 1. piegājiena CA) skaitās atliktā vērtība, ne pašreizējie ieņēmumi
+function calcProp(p){const t={m3:0,rev:0,cost:0,max:0,ha:0};const d2={ha:0,m3:0,rev:0,cost:0,max:0};const kkc={ha:0,m3:0,rev:0,cost:0,max:0}; // #49 precizējums 2: 2. piegājiena cirsmas (pēc 1. piegājiena CA) skaitās atliktā vērtība, ne pašreizējie ieņēmumi
  for(const c of p.cirsmas){if(c.excluded)continue;const r=calcCirsma(c); // #82: lietotājs var izslēgt cirsmu no aprēķina Kopsavilkuma tabulā (paliek redzama, neskaitās)
+  if(c.tips==="KKC"){kkc.ha+=num(c.platiba);kkc.m3+=r.m3;kkc.rev+=r.rev;kkc.cost+=r.cost;kkc.max+=r.max;continue;} // #57: KKC PILNĪGI ārpus t/d2 — bez dastojuma etalona, kļūda nedrīkst paslēpties KC/kopējā summā
   if(c.stage===2){d2.ha+=num(c.platiba);d2.m3+=r.m3;d2.rev+=r.rev;d2.cost+=r.cost;d2.max+=r.max;continue;}
   t.m3+=r.m3;t.rev+=r.rev;t.cost+=r.cost;t.max+=r.max;t.ha+=num(c.platiba);}
- t.deferred2=d2;
+ t.deferred2=d2;t.kkc=kkc;
  const iz=izvedIzmaksas(p); // #21: izvešanas izmaksas summējas pie pārējām
  if(iz.ok){
   const revExceed=iz.cost>t.rev; // #81: neviena atsevišķa izmaksu pozīcija nedrīkst klusi pārsniegt objekta ieņēmumus
@@ -529,7 +530,7 @@ function summaryTable(p,t,r){if(!p.cirsmas.length)return "";
  const rowHtml=c=>{const cc=calcCirsma(c);const viol=cirsmaViolation(c,p,r);
   const san=c.sanIzlase?p.mer.find(m=>m.cirsma===c.id&&m.dPlan):null;
   const gadsTxt=c.atlikts?"pēc VMD reģ.":c.stage===2?"pēc 1. piegājiena CA noslēgšanas":"–";
-  const extra=`${c.stage===2?' <span class="pctinfo">2. piegājiens</span>':""}${c.blockedNote?` <span class="pctwarn">${esc(c.blockedNote)}</span>`:""}${san?` <span class="muted">D pēc tam ${san.dPlan.newD} cm, KC iespējama</span>`:""}${viol?` <span class="pctbad">${esc(viol)}</span>`:""}`;
+  const extra=`${c.stage===2?' <span class="pctinfo">2. piegājiens</span>':""}${c.blockedNote?` <span class="pctwarn">${esc(c.blockedNote)}</span>`:""}${san?` <span class="muted">D pēc tam ${san.dPlan.newD} cm, KC iespējama</span>`:""}${viol?` <span class="pctbad">${esc(viol)}</span>`:""}${c.isolatedWarn?` <span class="pctwarn">${esc(c.isolatedWarn)}</span>`:""}`;
   return `<tr class="${c.excluded?"muted":""}"><td style="text-align:left">${esc(cTips(c))} ${esc(c.kvartals)}/${esc(c.nogabali)}${extra}${c.manual?` <button class="btn sm sec" onclick="resetCirsmaAuto('${c.id}')" title="Atgriezt automātisko">auto</button>`:""}</td>
    <td><select onchange="setPiegajiens('${c.id}',this.value)"><option value="1" ${c.stage!==2?"selected":""}>1.</option><option value="2" ${c.stage===2?"selected":""}>2.</option></select></td>
    <td><input type="number" inputmode="decimal" step="0.01" style="width:72px" value="${num(c.platiba)||""}" onchange="cf('${c.id}','platiba',num(this.value))"></td>
@@ -538,17 +539,20 @@ function summaryTable(p,t,r){if(!p.cirsmas.length)return "";
    <td style="text-align:center"><input type="checkbox" ${c.excluded?"":"checked"} onchange="cf('${c.id}','excluded',!this.checked)"></td>
    <td>${gadsTxt}</td></tr>`;};
  const rows=p.cirsmas.map(rowHtml).join("");
- const subtot=stg=>{const list=p.cirsmas.filter(c=>(c.stage===2?2:1)===stg&&!c.excluded);const acc={ha:0,m3:0,rev:0,cost:0,max:0};
+ const subtot=stg=>{const list=p.cirsmas.filter(c=>c.tips!=="KKC"&&(c.stage===2?2:1)===stg&&!c.excluded);const acc={ha:0,m3:0,rev:0,cost:0,max:0}; // #57: KKC ārpus piegājiena apakšsummām, sava atsevišķa rinda
   for(const c of list){const cc=calcCirsma(c);acc.ha+=num(c.platiba);acc.m3+=cc.m3;acc.rev+=cc.rev;acc.cost+=cc.cost;acc.max+=cc.max;}return Object.assign(acc,{n:list.length});};
  const s1=subtot(1),s2=subtot(2);
+ const kkcList=p.cirsmas.filter(c=>c.tips==="KKC"&&!c.excluded);
+ const skkc=Object.assign(kkcList.reduce((a,c)=>{const cc=calcCirsma(c);a.ha+=num(c.platiba);a.m3+=cc.m3;a.rev+=cc.rev;a.cost+=cc.cost;a.max+=cc.max;return a;},{ha:0,m3:0,rev:0,cost:0,max:0}),{n:kkcList.length});
  const subRow=(label,s)=>s.n?`<tr class="subtot"><td style="text-align:left">${label} (${s.n})</td><td></td><td>${fmt(s.ha,2)}</td><td>${fmt(s.m3)}</td><td>${fmt(s.ha?s.m3/s.ha:0)}</td><td>${fmt(s.rev)}</td><td>${fmt(s.m3?s.cost/s.m3:0,1)}</td><td>${fmt(s.max)}</td><td></td><td></td></tr>`:"";
  const g=t.grand;
  return `<div class="card scroll"><h2>Kopsavilkums<span class="sp"></span>${p.cirsmas.some(c=>c.manual)?`<button class="btn sm sec" onclick="resetAllAuto()">Atgriezt automātisko (viss)</button>`:""}</h2>
   <table><tr><th>Cirsma</th><th>Piegājiens</th><th>ha</th><th>m³</th><th>m³/ha</th><th>Ieņēmumi €</th><th>Izm. €/m³</th><th>Max cena €</th><th>Iekļaut</th><th>Gads</th></tr>
   ${rows}
-  <tr class="tot"><td style="text-align:left">KOPĀ</td><td></td><td>${fmt(g.ha,2)}</td><td>${fmt(g.m3)}</td><td>${fmt(g.ha?g.m3/g.ha:0)}</td><td>${fmt(g.rev)}</td><td>${fmt(g.m3?g.cost/g.m3:0,1)}</td><td>${fmt(g.max)}</td><td></td><td></td></tr>
+  <tr class="tot"><td style="text-align:left">KOPĀ (kailcirte)</td><td></td><td>${fmt(g.ha,2)}</td><td>${fmt(g.m3)}</td><td>${fmt(g.ha?g.m3/g.ha:0)}</td><td>${fmt(g.rev)}</td><td>${fmt(g.m3?g.cost/g.m3:0,1)}</td><td>${fmt(g.max)}</td><td></td><td></td></tr>
   ${subRow("t.sk. 1. piegājiens",s1)}${subRow("t.sk. 2. piegājiens",s2)}
-  </table><div class="muted" style="margin-top:6px">KOPĀ ietver visas cirsmas neatkarīgi no piegājiena (izņemot "Iekļaut" atzīmētās kā izslēgtas), arī izvešanas izmaksas (#21, viena krautuve): ${izvedBadge(p,t,true)}. Pa nogabaliem: sadaļā Pārskats, kartē.
+  ${subRow("t.sk. KKC (bez dastojuma etalona, ārpus KOPĀ, #57)",skkc)}
+  </table><div class="muted" style="margin-top:6px">KOPĀ (kailcirte) ietver 1. un 2. piegājienu (izņemot "Iekļaut" atzīmētās kā izslēgtas), arī izvešanas izmaksas (#21, viena krautuve): ${izvedBadge(p,t,true)}. KKC (krājas kopšanas cirte) rādīta atsevišķā rindā un NAV summēta KOPĀ — tai nav dastojuma etalona, saplūdinot ar KC formulas kļūda nekad neuzrādītos (#57). Pa nogabaliem: sadaļā Pārskats, kartē.
   ${t.maxRange?`<div>Nenoteiktības diapazons (#88, ±${Math.round(t.uncertaintyPct)}% pēc datu avota — taksācija ±20%, dastojums ±10%): krāja ${fmt(t.m3Range.lo)}–${fmt(t.m3Range.hi)} m³, Max cena ${fmt(t.maxRange.lo)}–${fmt(t.maxRange.hi)} €.</div>`:""}</div></div>`;}
 function cirsmaCard(c){const r=calcCirsma(c);const open=S.open===c.id;
  let h=`<div class="card"><h2 onclick="tog('${c.id}')" style="cursor:pointer">${open?"▾":"▸"} ${esc(cTips(c))} · kv.${esc(c.kvartals)} nog.${esc(c.nogabali)||"–"}<span class="sp"></span><span class="muted">${fmt(r.m3)} m³ · ${fmt(r.max)} €</span></h2>`;
@@ -622,7 +626,7 @@ const plaus=nogPlausibleIssue(m); // #45
   ${m.pedCirte||m.pedDarb?`<div class="muted" style="margin-top:6px">${m.pedCirte?"Pēdējā cirte: "+esc(m.pedCirte)+". ":""}${m.pedDarb?"Pēdējā darbība: "+esc(m.pedDarb)+".":""}</div>`:""}
   ${m.formulaTxt?`<div class="muted">Sastāvs dokumentā: ${esc(m.formulaTxt)}</div>`:""}${m.src?`<div class="muted">Avots: ${esc(m.src)}</div>`:""}
   ${(function(){const bo=bonOf(m);const lbl=bo.src==="mk384"?" (MK 384 3. piel. "+MK384.TAB_LABEL[bo.tab]+")":bo.src==="vmd7"?" (VMD 7. tab. / MK 384, pēc meža tipa — jaunaudze)":bo.src==="missing"?" (trūkst H/vecuma)":bo.src==="jauns"?" (vecums zem MK 384 tabulas minimuma)":bo.src==="suga"?" (suga nav MK 384 tabulās)":"";
-   return `<div class="kv"><span>Bonitāte${lbl}</span><b>${esc(bo.bon)||"–"}</b></div>`;})()}${(function(){const gl=MK935.gLimits(m.suga,m.H);if(!gl)return "";const kc=kkcCertamais(m);return `<div class="kv"><span>MK935: Gmin ${gl.gmin} · Gkrit ${gl.gkrit} · kopšanas mērķis ${gl.gkrit+MK935.kkcMargin} m²/ha</span><b>${num(m.G)?(num(m.G)+" m²/ha"+(m.cirsmaKods==="KKC"&&!(m.hasCert&&m.certamais>0)?" → cērtamais "+kc.m3+" m³":"")):"G nav"}</b></div>`;})()}<div class="kv"><span>Krāja</span><b>${fmt(kr)} m³ (${fmt(num(m.platMezs||m.platKop)?kr/num(m.platMezs||m.platKop):0)} m³/ha)</b></div>${(()=>{if(!num(m.H)||!num(m.G))return "";const sn=krajaSensitivity(m);const c=p&&p.cirsmas.find(cc=>cc.id===m.cirsma);const rate=c?(()=>{const rr=calcCirsma(c);return rr.m3?rr.max/rr.m3:0;})():0;
+   return `<div class="kv"><span>Bonitāte${lbl}</span><b>${esc(bo.bon)||"–"}</b></div>`;})()}${(function(){const gl=MK935.gLimits(m.suga,m.H);if(!gl)return "";const kc=kkcCertamais(m);return `<div class="kv"><span>MK935: Gmin ${gl.gmin} · Gkrit ${gl.gkrit} · kopšanas mērķis ${gl.gkrit+kkcRezerve()} m²/ha</span><b>${num(m.G)?(num(m.G)+" m²/ha"+(m.cirsmaKods==="KKC"&&!(m.hasCert&&m.certamais>0)?" → cērtamais "+kc.m3+" m³":"")):"G nav"}</b></div>`;})()}<div class="kv"><span>Krāja</span><b>${fmt(kr)} m³ (${fmt(num(m.platMezs||m.platKop)?kr/num(m.platMezs||m.platKop):0)} m³/ha)</b></div>${(()=>{if(!num(m.H)||!num(m.G))return "";const sn=krajaSensitivity(m);const c=p&&p.cirsmas.find(cc=>cc.id===m.cirsma);const rate=c?(()=>{const rr=calcCirsma(c);return rr.m3?rr.max/rr.m3:0;})():0;
   return `<div class="kv"><span>Jutīgums (#88): +1 m H / +1 m²/ha G</span><b>${sn.dH>=0?"+":""}${fmt(sn.dH,1)} / ${sn.dG>=0?"+":""}${fmt(sn.dG,1)} m³${rate?` (≈${sn.dH>=0?"+":""}${fmt(sn.dH*rate)} € / ${sn.dG>=0?"+":""}${fmt(sn.dG*rate)} € max cenā)`:""}</b></div>`;})()}${plaus?`<div class="kv"><span class="pctbad">${esc(plausText(plaus))}</span>${fixEligible(m)?armBtn("fix1"+m.id,"Labot ×0,01",`fixByHundred('${m.id}')`,"btn sm amber","Tiešām reizināt ar 0,01? Spied vēlreiz"):""}</div>`:""}
   <div class="species"><h3>Sugu formula<span class="sp"></span><span class="muted ${ksum!==10?"pctbad":""}">Σ ${ksum}</span></h3>`;
   m.formula.forEach((f,i)=>{h+=`<div class="row" style="grid-template-columns:1fr 90px 48px;margin-bottom:6px"><select onchange="ff('${m.id}',${i},'s',this.value)">${SPECIES.map(z=>`<option value="${z}" ${z===f.s?"selected":""}>${z}</option>`).join("")}</select><input type="number" inputmode="numeric" value="${f.k}" onchange="ff('${m.id}',${i},'k',this.value)"><button class="btn sm danger" onclick="fdel('${m.id}',${i})">×</button></div>`;});
@@ -673,7 +677,7 @@ function vSet(){const s=S.settings;const o=s.owner||{};return `<div class="card"
  <div class="card"><h2>Finanšu uzraudzība</h2><div class="row"><div><label>Naudas izmaksas, % gadā</label><input type="number" inputmode="decimal" value="${s.capitalRate||8}" onchange="st('capitalRate',num(this.value))"></div><div><label>Mērķa bruto peļņa, % no iegādes</label><input type="number" inputmode="decimal" value="${s.targetBruto||20}" onchange="st('targetBruto',num(this.value))"></div><div><label>Sekot piedāvājumam pēc, dienas</label><input type="number" inputmode="numeric" value="${s.followDays||7}" onchange="st('followDays',num(this.value))"></div></div></div>
  <div class="card scroll"><h2>Aizsargjoslas, m (Aizsargjoslu likums 7., 7.1, 37. p.)</h2><table><tr><th style="text-align:left">Objekts</th><th>Josla m</th></tr>${[["stream","Ūdenstece ≤ 10 km (strauts)"],["river","Upe (10–25 km)"],["riverBig","Lielās upes (Daugava, Gauja, Venta, >100 km)"],["canal","Kanāls / mākslīgs > 0,1 ha"],["lake10","Ezers ≤ 10 ha"],["lake25","Ezers 10–25 ha"],["lake100","Ezers 25–100 ha"],["lake1000","Ezers 100–1000 ha"],["lakeBig","Ezers > 1000 ha"],["bog100","Purvs 10–100 ha"],["bogBig","Purvs > 100 ha"],["bogBigPeat","Purvs > 100 ha uz slapjas kūdras"],["kcBand","KC aizlieguma josla no ūdens (37.p.)"],["mainBand","Galvenās cirtes aizlieguma josla"],["roadState","Valsts autoceļš: LVC saskaņojums no ass"]].map(([k,l])=>`<tr><td style="text-align:left">${l}</td><td><input type="number" inputmode="numeric" value="${aj()[k]}" onchange="S.settings.aj=S.settings.aj||{};S.settings.aj['${k}']=num(this.value);save()"></td></tr>`).join("")}</table><div class="muted">Joslas rēķina no OSM ūdenstecēm, ezeriem un mitrājiem (grāvji, kas novada ūdeni, joslu neveido). Nopirktajiem importē oficiālos ATIS datus no kadastrs.lv.</div></div>
  <div class="card"><h2>Īpašnieks (iesniegumiem VMD)</h2><div class="row"><div><label>Nosaukums / vārds, uzvārds</label><input value="${esc(o.name||"")}" onchange="S.settings.owner=Object.assign({},S.settings.owner,{name:this.value});save()"></div><div><label>Reģ. Nr. / personas kods</label><input value="${esc(o.reg||"")}" onchange="S.settings.owner=Object.assign({},S.settings.owner,{reg:this.value});save()"></div><div><label>Adrese</label><input value="${esc(o.addr||"")}" onchange="S.settings.owner=Object.assign({},S.settings.owner,{addr:this.value});save()"></div><div><label>Tālrunis</label><input value="${esc(o.phone||"")}" onchange="S.settings.owner=Object.assign({},S.settings.owner,{phone:this.value});save()"></div><div><label>Pilnvarotā persona</label><input value="${esc(o.pilnv||"")}" onchange="S.settings.owner=Object.assign({},S.settings.owner,{pilnv:this.value});save()"></div></div></div><div class="card"><h2>Valoda</h2><select onchange="setLang(this.value)">${Object.entries(LANG_NAMES).map(([k,v])=>`<option value="${k}" ${k===S.lang?"selected":""}>${v}</option>`).join("")}</select></div><div class="card"><h2>Noklusētās izmaksas jaunām cirsmām, €/m³</h2><div class="row"><div><label>Sagatavošana</label><input type="number" inputmode="decimal" step="0.5" value="${s.sagat}" onchange="st('sagat',num(this.value))"></div><div><label>Pievešana</label><input type="number" inputmode="decimal" step="0.5" value="${s.piev}" onchange="st('piev',num(this.value))"></div><div><label>Transports</label><input type="number" inputmode="decimal" step="0.5" value="${s.trans}" onchange="st('trans',num(this.value))"></div><div><label>Min. marža %</label><input type="number" inputmode="decimal" value="${Math.round(s.marza*100)}" onchange="st('marza',num(this.value)/100)"></div></div></div>
- <div class="card"><h2>Atskaitījumi no cērtamās krājas</h2><div class="row"><div><label>Ekoloģiskie koki (MK 935: ${RULES.ecoTreesHa.KC}/ha KC, ${RULES.ecoTreesHa.KKC}/ha kopšanā, ${RULES.ecoTreeM3} m³ koks)</label><select onchange="st('ekoKoki',this.value==='1');recalcAll();save()"><option value="1" ${s.ekoKoki!==false?"selected":""}>Atskaitīt</option><option value="0" ${s.ekoKoki===false?"selected":""}>Neatskaitīt</option></select></div><div><label>Izstrādes zudumi un defekti, % no krājas</label><input type="number" inputmode="decimal" value="${s.zudumi||0}" onchange="st('zudumi',num(this.value));recalcAll();save()"></div></div><div class="muted">Kadastra atskaitē "cērtamais" kailcirtei ir visa krāja, tāpēc bez atskaitījumiem apjoms ir optimistisks. Nogabali ar "Aizliegts" ierobežojumos cirsmās netiek iekļauti.</div></div><div class="card"><h2>Izvešanas izmaksas</h2><div class="row"><div><label>Bāzes likme, €/m³</label><input type="number" inputmode="decimal" step="0.5" value="${s.izvedBase!=null?s.izvedBase:6}" onchange="st('izvedBase',num(this.value))"></div><div><label>Papildu likme, €/m³ par katriem 100 m virs bāzes attāluma</label><input type="number" inputmode="decimal" step="0.05" value="${s.izvedExtra!=null?s.izvedExtra:.25}" onchange="st('izvedExtra',num(this.value))"></div><div><label>Bāzes attālums, m</label><input type="number" inputmode="numeric" value="${s.izvedBaseDist!=null?s.izvedBaseDist:300}" onchange="st('izvedBaseDist',num(this.value))"></div></div><div class="muted">Izmaksa = bāzes likme + max(0, vidējais izvešanas attālums − bāzes attālums) / 100 × papildu likme, × cērtamais m³ (#21). Vidējais attālums = svērtais vidējais (svars = nogabala m³) no katra cērtamā nogabala efektīvākā ceļa uz objekta vienu krautuvi. Krautuvi māra un pārvieto sadaļā Pārskats, kartē.</div></div><div class="card"><h2>Dalījuma ekonomiskais slieksnis</h2><div class="row"><div><label>Min. platība, ha</label><input type="number" inputmode="decimal" step="0.05" value="${s.splitMinHa!=null?s.splitMinHa:0.3}" onchange="st('splitMinHa',num(this.value));rebuildAutoParts(P());save(S.cur)"></div><div><label>Min. apjoms, m³</label><input type="number" inputmode="numeric" value="${s.splitMinM3!=null?s.splitMinM3:50}" onchange="st('splitMinM3',num(this.value));rebuildAutoParts(P());save(S.cur)"></div></div><div class="muted">Piegulošu cirsmu josla (MK935 18.p. prakse) netiek veidota, ja tā atstātu tagad cērtamu daļu zem šī sliekšņa — izdevīgāk mazo nogabalu atlikt VESELU nākamajam piegājienam, nevis cirst šauru sloksni (#79).</div></div>
+ <div class="card"><h2>Atskaitījumi no cērtamās krājas</h2><div class="row"><div><label>Ekoloģiskie koki (MK 935: ${RULES.ecoTreesHa.KC}/ha KC, ${RULES.ecoTreesHa.KKC}/ha kopšanā, ${RULES.ecoTreeM3} m³ koks)</label><select onchange="st('ekoKoki',this.value==='1');recalcAll();save()"><option value="1" ${s.ekoKoki!==false?"selected":""}>Atskaitīt</option><option value="0" ${s.ekoKoki===false?"selected":""}>Neatskaitīt</option></select></div><div><label>Izstrādes zudumi un defekti, % no krājas</label><input type="number" inputmode="decimal" value="${s.zudumi||0}" onchange="st('zudumi',num(this.value));recalcAll();save()"></div><div><label>KKC rezerve virs Gkrit, m²/ha (#57)</label><input type="number" inputmode="decimal" step="0.5" value="${s.kkcRezerve!=null?s.kkcRezerve:KKC_G_REZERVE}" onchange="st('kkcRezerve',this.value===''?null:num(this.value));rebuildAutoParts(P());save(S.cur)"></div></div><div class="muted">Kadastra atskaitē "cērtamais" kailcirtei ir visa krāja, tāpēc bez atskaitījumiem apjoms ir optimistisks. Nogabali ar "Aizliegts" ierobežojumos cirsmās netiek iekļauti.</div><div class="muted pctwarn">KKC rezerve: avots nav apstiprināts — prakse, nav MK935 panta (#52). Krājas kopšanas cirtē necērt zem Gkrit + šī rezerve (noklusējums ${KKC_G_REZERVE} m²/ha).</div></div><div class="card"><h2>Izvešanas izmaksas</h2><div class="row"><div><label>Bāzes likme, €/m³</label><input type="number" inputmode="decimal" step="0.5" value="${s.izvedBase!=null?s.izvedBase:6}" onchange="st('izvedBase',num(this.value))"></div><div><label>Papildu likme, €/m³ par katriem 100 m virs bāzes attāluma</label><input type="number" inputmode="decimal" step="0.05" value="${s.izvedExtra!=null?s.izvedExtra:.25}" onchange="st('izvedExtra',num(this.value))"></div><div><label>Bāzes attālums, m</label><input type="number" inputmode="numeric" value="${s.izvedBaseDist!=null?s.izvedBaseDist:300}" onchange="st('izvedBaseDist',num(this.value))"></div></div><div class="muted">Izmaksa = bāzes likme + max(0, vidējais izvešanas attālums − bāzes attālums) / 100 × papildu likme, × cērtamais m³ (#21). Vidējais attālums = svērtais vidējais (svars = nogabala m³) no katra cērtamā nogabala efektīvākā ceļa uz objekta vienu krautuvi. Krautuvi māra un pārvieto sadaļā Pārskats, kartē.</div></div><div class="card"><h2>Dalījuma ekonomiskais slieksnis</h2><div class="row"><div><label>Min. platība, ha</label><input type="number" inputmode="decimal" step="0.05" value="${s.splitMinHa!=null?s.splitMinHa:0.3}" onchange="st('splitMinHa',num(this.value));rebuildAutoParts(P());save(S.cur)"></div><div><label>Min. apjoms, m³</label><input type="number" inputmode="numeric" value="${s.splitMinM3!=null?s.splitMinM3:50}" onchange="st('splitMinM3',num(this.value));rebuildAutoParts(P());save(S.cur)"></div></div><div class="muted">Piegulošu cirsmu josla (MK935 18.p. prakse) netiek veidota, ja tā atstātu tagad cērtamu daļu zem šī sliekšņa — izdevīgāk mazo nogabalu atlikt VESELU nākamajam piegājienam, nevis cirst šauru sloksni (#79).</div></div>
  <div class="card"><h2>Sinhronizācija</h2><div class="muted">Dati vienmēr glabājas ierīcē. Ja norādīts serveris, izmaiņas nosūta automātiski, kad ir tīkls (PUT /props/:id, GET /props).</div><label>Ģeodatu avots</label><select onchange="st('geoSource',this.value)"><option value="github" ${(s.geoSource||"github")==="github"?"selected":""}>Pagastu faili (GitHub, bezmaksas, bezsaistes kešs)</option><option value="supabase" ${s.geoSource==="supabase"?"selected":""}>Supabase datubāze</option></select><label>Pagastu failu adrese</label><input value="${esc(s.geoBase||GEO_BASE_DEFAULT)}" onchange="st('geoBase',this.value)"><label>Ģeodatu API (Supabase) adrese, rezerves variants</label><input value="${esc(s.supaUrl||"")}" placeholder="https://....supabase.co" onchange="st('supaUrl',this.value)"><label>Ģeodatu anon atslēga</label><input value="${esc(s.supaKey||"")}" onchange="st('supaKey',this.value)"><label>Atdalošās joslas platums starp cirsmām, m (prakse: 20)</label><input type="number" inputmode="numeric" value="${s.buferM||20}" onchange="st('buferM',num(this.value)||90);recalcAll();save()"><label>Skices mērogs 1:</label><input type="number" inputmode="numeric" value="${s.skiceScale||5000}" onchange="st('skiceScale',num(this.value)||5000)"><label>Sinhronizācijas servera adrese</label><input value="${esc(s.endpoint)}" placeholder="https://..." onchange="st('endpoint',this.value)"><label>Piekļuves atslēga</label><input value="${esc(s.token)}" onchange="st('token',this.value)"><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" onclick="sync().then(()=>toast('Nosūtīts'))">Sūtīt tagad</button><button class="btn sm sec" onclick="pull()">Ielādēt no servera</button></div><div class="muted" style="margin-top:8px">Rindā: ${S.queue.length} objekti</div></div>
  <div class="card"><h2>Rezerves kopija</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm sec" onclick="exportJSON()">Lejupielādēt JSON</button><label class="btn sm sec" style="display:inline-flex;align-items:center;cursor:pointer">Ielādēt JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(this.files[0])"></label></div></div>`;}
 function st(k,v){S.settings[k]=v;save();}
@@ -954,9 +958,9 @@ function nogCutM3(m){ // #21: cērtamā apjoms svēršanai — tā pati loģika,
  if(m.cirsmaKods==="KKC"){if(m.hasCert){if(!(m.certamais>0))return 0;kr=m.certamais;}else kr=nogPlausibleIssue(m)?0:kkcCertamais(m).m3;}
  return kr>0?kr:0;
 }
-function izvedNogabali(p){ // cērtamie nogabali: tikai tie, kas jau grupēti kādā cirsmā (izlaisti pēc bloķēšanas jau tur)
+function izvedNogabali(p){ // cērtamie nogabali: tikai tie, kas jau grupēti kādā cirsmā (izlaisti pēc bloķēšanas jau tur). KKC izslēgts (#57) — tāpat kā t.m3/max, bez dastojuma etalona nedrīkst saplūst ar kalibrētu izvešanas aprēķinu.
  const out=[];
- for(const c of p.cirsmas)for(const m of p.mer)if(m.cirsma===c.id&&m.geom){const m3=nogCutM3(m);if(m3>0)out.push({m,m3});}
+ for(const c of p.cirsmas){if(c.tips==="KKC")continue;for(const m of p.mer)if(m.cirsma===c.id&&m.geom){const m3=nogCutM3(m);if(m3>0)out.push({m,m3});}}
  return out;
 }
 function izvedCalc(p){ // {ok,reason} vai {ok:true,avgDist,totalM3,byNog:[{m,m3,dist,path}],krautuve,krNode}
@@ -1881,18 +1885,24 @@ const MK935={
  grp(sp){return {Priede:"P",Egle:"E",Bērzs:"B",Apse:"A",Melnalksnis:"A",Baltalksnis:"A","Citas sugas":"A",Ozols:"Oz",Osis:"Os"}[sp]||"A";},
  gLimits(sp,H){H=Math.round(num(H));if(H<12)return null;const t=this.G[this.grp(sp)];const r=t[Math.min(H,35)-12];return {gmin:r[0],gkrit:r[1]};},
  nLimits(sp,H){H=Math.round(num(H));if(H<1||H>=12)return null;const g=this.grp(sp);const t=this.N[g==="Os"?"Oz":g];const r=t[H-1];return {nmin:r[0],nkrit:r[1]};},
- kkcMargin:2, // lietotāja noteikums: kopšanā necērt zem Gkrit + 2
  dCirte(sp,bon){const t=this.D[sp];if(!t)return null;const b=String(bon||"").replace("a","a");return t[b]||t[b?.toUpperCase?.()]||null;},
  kcForbiddenSpecies:["Ozols","Liepa","Kļava","Goba","Vīksna","Skābardis"],
 };
-function kkcCertamais(m){ // cērtamais kopšanā = krāja daļa virs (Gkrit+2)
+// #57: KKC (krājas kopšanas cirte) rezerve virs Gkrit — PRAKSE, NAV MK935 panta (#52); Iestatījumos maināma (S.settings.kkcRezerve), šis ir noklusējums.
+const KKC_G_REZERVE=2;
+function kkcRezerve(){return S.settings.kkcRezerve!=null?S.settings.kkcRezerve:KKC_G_REZERVE;}
+// #57: TAS PATS MK935 1.piel. Gkrit, ko lieto sanitārā izlases cirte (dPaths/MK935.gLimits().gkrit tieši) — BET ATSEVIŠĶA funkcija (role-separation):
+// sanitārajā izlasē Gkrit nozīmē "zem šī nedrīkst" (cietais grīda), KKC tas nozīmē "līdz šim + rezerve drīkst nolaisties" (mērķis, ne aizliegums). Viens skaitlis, divas lomas.
+function gKritKKC(sp,H){const gl=MK935.gLimits(sp,H);return gl?gl.gkrit:null;}
+function kkcCertamais(m){ // cērtamais kopšanā = krāja daļa virs (Gkrit+KKC_G_REZERVE)
  const kr=krajaMer(m);const H=num(m.H),G=num(m.G);if(!kr)return {m3:0,note:"nav krājas"};
- const gl=MK935.gLimits(m.suga,H);
- if(!gl){return {m3:0,note:H&&H<12?"H<12 m: kopšanu vērtē pēc koku skaita (MK935 2.pielikums)":"nav H"};}
+ const gkrit=gKritKKC(m.suga,H);
+ if(gkrit==null){return {m3:0,note:H&&H<12?"H<12 m: kopšanu vērtē pēc koku skaita (MK935 2.pielikums)":"nav H"};}
  if(!G)return {m3:0,note:"nav G"};
- const target=gl.gkrit+MK935.kkcMargin;
+ const rez=kkcRezerve();const target=gkrit+rez;
  const share=Math.max(0,(G-target)/G);
- return {m3:Math.round(kr*share),share,gmin:gl.gmin,gkrit:gl.gkrit,target,note:share?"":"G jau ≤ Gkrit+"+MK935.kkcMargin};}
+ const gmin=(MK935.gLimits(m.suga,H)||{}).gmin;
+ return {m3:Math.round(kr*share),share,gmin,gkrit,target,note:share?"":"G jau ≤ Gkrit+"+rez};}
 
 /* ---------- MK 384 (21.06.2016) 3. pielikums: bonitāte, normālais šķērslaukums ---------- */
 // #46 pabeigšana (2026-09-03): avoti pārbaudīti neatkarīgi — https://www.vestnesis.lv/op/2016/122.3 un
@@ -2425,6 +2435,14 @@ function assignAutoCirtesVeids(p,dPolicy){ // #50/D: dPolicy="combined" (noklus�
   if(dPolicy==="meanD"){if(d.mean14>=d.dc){m.cirsmaKods="KC";m.dPlan={path:"kcMean",dc:d.dc,mean14:d.mean14,auto:true};}continue;} // scenārijs A: nesvērtais vidējais (MK935 14.p.) sasniedz slieksni, VMD var neatzīt
   if(d.izlase&&d.izlase.ok){m.cirsmaKods="KC";m.dPlan=Object.assign({path:"izlaseKc",dc:d.dc,auto:true},d.izlase);} // (c) sanitārā, tad KC — viena KC cirsma
  }}
+// #57: KKC (krājas kopšanas cirte) — PĒDĒJAIS solis, TIKAI nogabaliem, kam vecuma/D-cirtes/izlases ceļi (iepriekš) neko nepiešķīra. Nav apjoma/platības/attāluma sliekšņa (lietotāja lēmums, #57) —
+// vienīgais papildu pārbaudījums (tehnikas piekļuve) ir informatīvs brīdinājums pēc grupēšanas, sk. flagIsolatedKKC.
+function assignAutoKKC(p){
+ for(const m of p.mer){
+  if(m.cirsma||m.cirsmaManual||m.cirsmaKods||m.hasCert||!m.geom||/aizliegts/i.test(m.ierob||""))continue;
+  const kkc=kkcCertamais(m);
+  if(kkc.m3>0){m.cirsmaKods="KKC";m.dPlan={path:"kkc",auto:true,gkrit:kkc.gkrit,target:kkc.target,removeM3:kkc.m3};}
+ }}
 function finalizePartsCirsma(c,p){ // #49: c.platiba/bruto/species no c.parts, ne no m.cirsma piesaistes; aizsargjosla/eko/zudumi tāpat kā rebuildCirsma, proporcionāli daļas ha
  c.platiba=0;c.bruto=0;c.eko=0;c.zud=0;c.atlikts=0;c.atliktsHa=0;c.aizsargM3=0;for(const s of SPECIES)c.species[s].m3=0;const acc={};
  for(const part of c.parts||[]){
@@ -2441,11 +2459,12 @@ function finalizePartsCirsma(c,p){ // #49: c.platiba/bruto/species no c.parts, n
  for(const s2 in acc){const tot=Object.values(acc[s2]).reduce((a,b)=>a+b,0);c.species[s2].m3=Math.round(c.species[s2].m3);if(tot&&!c.species[s2].manual)for(const k in acc[s2])c.species[s2].pct[k]=+(acc[s2][k]/tot).toFixed(3);}}
 function buildParts(p,dPolicy){ // #49/#50: galvenais dalījuma algoritms — 1. piegājiens (KC grupas + sanitārā), 2. piegājiens (atlikumi + nākamie KC nogabali) kā ĪSTAS cirsmas ar parts[]; dPolicy sk. assignAutoCirtesVeids
  if(typeof turf==="undefined"||!p.mer.some(m=>m.geom))return false;
- const oldAuto=p.cirsmas.filter(c=>!c.manual&&(c.tips==="Kc"||c.sanIzlase));
+ const oldAuto=p.cirsmas.filter(c=>!c.manual&&(c.tips==="Kc"||c.sanIzlase||c.tips==="KKC")); // #57: KKC (auto) arī pārbūvējas katru reizi, tāpat kā Kc/sanitārā
  for(const c of oldAuto)for(const m of p.mer)if(m.cirsma===c.id)m.cirsma="";
  p.cirsmas=p.cirsmas.filter(c=>!oldAuto.includes(c));
  for(const m of p.mer){if(m.dPlan&&m.dPlan.auto){m.cirsmaKods="";delete m.dPlan;}}
  assignAutoCirtesVeids(p,dPolicy);
+ assignAutoKKC(p); // #57: PĒDĒJAIS solis — tikai nogabaliem, ko iepriekšējie ceļi neaiztika
  const r=runChecks(p);
  // 1. piegājiens: KC grupas (jau ģeometriski sadalītas oversized nogabaliem, joslas starp piegulošām grupām)
  for(const g of r.split){
@@ -2469,6 +2488,26 @@ function buildParts(p,dPolicy){ // #49/#50: galvenais dalījuma algoritms — 1.
   if(!c){c=newCirsma();c.tips="Sanitārā";c.sanIzlase=true;c.bojCelonis="Citi";c.stage=1;c.kvartals=m.kvartals;c.nogabali="";c.parts=[];sanBy[key]=c;p.cirsmas.push(c);}
   c.nogabali+=(c.nogabali?";":"")+m.nogabals;c.parts.push({nogKey:mKey(m),kind:"Sanitārā",poly:merFeature(m).geometry,ha:num(m.platMezs||m.platKop),m3:num(m.dPlan&&m.dPlan.removeM3)});m.cirsma=c.id;}
  for(const c of Object.values(sanBy))finalizePartsCirsma(c,p);
+ // #57: KKC (krājas kopšanas cirte) — grupē pēc REĀLAS ģeometriskās piegulības (kaiminiPairs), NE pa kvartālu (kvartālā var būt daudz nesaistītu nogabalu; VMD
+ // "Kopšanas cirte" apliecinājums grupē pieguloš(us) nogabalus, tāpat kā KC). Nav apjoma/platības limita (#57: "apjoma sliekšņa NAV") — savienoto komponenšu
+ // grupa aug, kamēr ir piegulošs vēl brīvs KKC kandidāts; jebkura reāla saskare skaitās ("pietiek ar blakusesamību", NAV MK935 18.p. 50 m sliekšņa, tas ir KC-KC bufera jautājums).
+ // BEZ c.parts modeļa — rebuildCirsma/recalcProp (zemāk) rēķina no m.cirsma piesaistes ar jau esošo kkcCertamais()/sortSharesForD() ceļu (identisks jebkurai citai cirtei).
+ const kkcCands=r.nog.filter(x=>x.m.cirsmaKods==="KKC"&&!x.m.cirsma&&x.m.geom);
+ const kkcAdjOf=new Map();
+ for(const pr of kaiminiPairs(p,r.nog)){if(!kkcCands.includes(pr.xa)||!kkcCands.includes(pr.xb))continue;
+  const ka=mKey(pr.xa.m),kb=mKey(pr.xb.m);
+  if(!kkcAdjOf.has(ka))kkcAdjOf.set(ka,[]);if(!kkcAdjOf.has(kb))kkcAdjOf.set(kb,[]);
+  kkcAdjOf.get(ka).push(pr.xb);kkcAdjOf.get(kb).push(pr.xa);}
+ const kkcRemaining=new Set(kkcCands.map(x=>mKey(x.m)));const kkcByKey=k=>kkcCands.find(x=>mKey(x.m)===k);
+ while(kkcRemaining.size){
+  const seedK=[...kkcRemaining][0];const seed=kkcByKey(seedK);
+  const groupNog=[];const queue=[seedK];const inThis=new Set();
+  while(queue.length){const k=queue.shift();if(inThis.has(k)||!kkcRemaining.has(k))continue;const x=kkcByKey(k);if(!x)continue;
+   if(groupNog.length&&x.m.zv!==seed.m.zv)continue; // #44: viena ZV
+   inThis.add(k);kkcRemaining.delete(k);groupNog.push(x);
+   for(const nb of (kkcAdjOf.get(k)||[])){const nk=mKey(nb.m);if(kkcRemaining.has(nk)&&!inThis.has(nk))queue.push(nk);}}
+  const c=newCirsma();c.tips="KKC";c.stage=1;c.kvartals=seed.m.kvartals;c.nogabali=groupNog.map(x=>x.m.nogabals).join(";");
+  p.cirsmas.push(c);for(const x of groupNog)x.m.cirsma=c.id;}
  // 2. piegājiens: atlikums + nākamie KC/sanitārā-eligible nogabali, kas ĢEOMETRISKI pieskaras atlikumam (#51/#52: nav 50 m prasības, viena cirsma) — ĪSTA cirsma, cērtama "pēc 1. piegājiena CA", ne kalendāra gadā
  for(const s of r.secondPass){
   const parts=[];const blocked=[];
@@ -2491,7 +2530,22 @@ function buildParts(p,dPolicy){ // #49/#50: galvenais dalījuma algoritms — 1.
   c.blockedNote=`Atlikts VESELS (nevis ${bufM()} m josla pret nog. ${dw.otherNog}) — josla atstātu tikai ${fmt(dw.remHa,2)} ha / ${dw.remM3} m³ tagad cērtamu, zem sliekšņa (#79)`;
   p.cirsmas.push(c);for(const x of dw.group.nog)x.m.cirsma=c.id;
   finalizePartsCirsma(c,p);}
- recalcProp(p);return true;}
+ recalcProp(p); // KKC cirsmām (bez c.parts) šis izsauc rebuildCirsma -> kkcCertamais/sortSharesForD, aizpilda c.platiba/species PIRMS flagIsolatedKKC
+ flagIsolatedKKC(p,r); // #57: informatīvs brīdinājums, NEKAD neizslēdz nogabalu, nemaina aprēķinu
+ return true;}
+// #57: KKC nogabals bez robežojošas cirsmas (jebkura tipa, tostarp cita KKC grupa) šajā objektā — atsevišķs pārbrauciens tehnikai, TIKAI informatīvs dzeltens brīdinājums.
+// "Blakusesamība" = jebkura reāla ģeometriskā saskare (p.kaimini/kaiminiPairs), BEZ 50 m sliekšņa (tas ir MK935 18.p. KC-KC piegulības prasība, šeit nav runa par to) un BEZ apjoma/platības/attāluma minimuma.
+function flagIsolatedKKC(p,r){
+ for(const c of p.cirsmas){if(c.tips!=="KKC"){continue;}
+  const nogsHere=new Set((c.nogabali||"").split(";").filter(Boolean));
+  const touchesOther=kaiminiPairs(p,r.nog).some(pr=>{
+   const aHere=nogsHere.has(pr.xa.m.nogabals),bHere=nogsHere.has(pr.xb.m.nogabals);
+   if(aHere===bHere)return false; // abi šajā KKC grupā (iekšēja robeža) vai neviens — neinteresē
+   const other=(aHere?pr.xb:pr.xa).m;
+   return !!other.cirsma&&other.cirsma!==c.id;
+  });
+  c.isolatedWarn=touchesOther?null:`Atsevišķs pārbrauciens, ${Math.round(calcCirsma(c).m3)} m³ uz ${fmt(c.platiba,2)} ha — pārbaudi rentabilitāti`;
+ }}
 function bufferSuggest(p,r){r=r||runChecks(p);const out={};
  for(const b of r.buffers){const m=b.victim;if(!m)continue;const ha=num(m.platMezs||m.platKop);out[m.id]=Math.min(100,Math.round((out[m.id]||0)+(ha?b.stripHa/ha*100:0)));} // #22: pēc objekta (b.victim), ne pēc nogabala numura (bija ambiguzs daudz-kvartālu objektos)
  for(const sp of (r.oversized||[])){const m=sp.x.m;const ha=num(m.platMezs||m.platKop);const def=sp.stripHa+sp.restHa;out[m.id]=Math.min(100,Math.round((out[m.id]||0)+(ha?def/ha*100:0)));}

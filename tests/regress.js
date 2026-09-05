@@ -235,6 +235,50 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
   const scanTxt=fs.existsSync(scanPath)?fs.readFileSync(scanPath,"utf8"):"";
   const needKad=["36680080031","70600050074","70420080041","60700020059","78880060148","68840080082","68840020027"];
   ok(scanTxt.length>200&&needKad.every(k=>scanTxt.includes(k)),"#72 tests/diag/dpaths_scan_2026-09-05.txt eksistē, nav tukšs un satur visus 7 etalonu kadastrus (got length="+scanTxt.length+", trūkst: "+needKad.filter(k=>!scanTxt.includes(k)).join(",")+")");}
+ // 8e. #57: KKC (krājas kopšanas cirte) — G krit + rezerve, atsevišķa uzskaite, tehnikas piekļuves brīdinājums
+ w=await app();await w.eval("createFromPagasts('68840020027')");
+ const kkcRunc=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const m11=p.mer.find(x=>x.nogabals==="11"),m13=p.mer.find(x=>x.nogabals==="13");
+  const c11=m11.cirsma?p.cirsmas.find(c=>c.id===m11.cirsma):null;const t=calcProp(p);
+  return {m11kods:m11.cirsmaKods,m13kods:m13.cirsmaKods,sameCirsma:m11.cirsma===m13.cirsma,
+   c11:c11&&{tips:c11.tips,platiba:c11.platiba,nogabali:c11.nogabali,isolatedWarn:c11.isolatedWarn},
+   t:{ha:t.ha,m3:t.m3,max:t.max,kkc:t.kkc}};})())`));
+ ok(kkcRunc.m11kods==="KKC"&&kkcRunc.m13kods==="KKC"&&kkcRunc.sameCirsma,"#57 Runcīši: nog.11 un nog.13 abi KKC, VIENĀ cirsmā (piegulošas, 98 m) (got "+JSON.stringify({m11:kkcRunc.m11kods,m13:kkcRunc.m13kods,same:kkcRunc.sameCirsma})+")");
+ ok(!!kkcRunc.c11&&kkcRunc.c11.tips==="KKC"&&Math.abs(kkcRunc.c11.platiba-3.34)<0.01&&(";"+kkcRunc.c11.nogabali+";").includes(";11;")&&(";"+kkcRunc.c11.nogabali+";").includes(";13;"),"#57 Runcīši nog.11+13: KKC cirsma ≈3,34 ha (1,31+2,03), nav sapludināta ar citiem nogabaliem tikai tāpēc, ka tie ir tajā pašā kvartālā (got "+JSON.stringify(kkcRunc.c11)+")");
+ ok(kkcRunc.c11.isolatedWarn===null,"#57 Runcīši nog.11+13: robežojas ar citām cirsmām (nog.12/14/9-10) — izolācijas brīdinājuma NAV (got "+kkcRunc.c11.isolatedWarn+")");
+ ok(Math.abs(kkcRunc.t.ha-12.69)<0.01&&Math.abs(kkcRunc.t.m3-2064)<1,"#57 Runcīši: KKC NEMAINA kailcirtes t.ha/t.m3 (paliek 12,69 ha/2064 m³, tāpat kā #72 blokā) — KKC NAV saplūdis ar KOPĀ (got ha="+kkcRunc.t.ha+", m3="+kkcRunc.t.m3+")");
+ ok(!!kkcRunc.t.kkc&&kkcRunc.t.kkc.ha>=3.34&&kkcRunc.t.kkc.m3>0,"#57 Runcīši: calcProp().kkc ir ATSEVIŠĶS objekts ar savu ha/m³ (got "+JSON.stringify(kkcRunc.t.kkc)+")");
+ ok(kkcRunc.t.ha+kkcRunc.t.kkc.ha>=16.0,"#57 Runcīši kopā (kailcirte ha + KKC ha) pēc šī bloka >= 16,0 ha (got "+(kkcRunc.t.ha+kkcRunc.t.kkc.ha)+")");
+ // gKritKKC() un sanitārās cirtes Gkrit (MK935.gLimits tieši) ir ATSEVIŠĶI izsaukumi ar TO PAŠU vērtību — krīt, ja KKC sāktu lasīt Gkrit tieši (funkcijas identitāte, ne tikai skaitlis)
+ const roleSep=JSON.parse(w.eval(`JSON.stringify({isFn:typeof gKritKKC==="function",notSameFn:gKritKKC!==MK935.gLimits,val:gKritKKC("Bērzs",14),direct:MK935.gLimits("Bērzs",14).gkrit})`));
+ ok(roleSep.isFn&&roleSep.notSameFn&&roleSep.val===roleSep.direct,"#57 gKritKKC() ir ATSEVIŠĶA funkcija no MK935.gLimits() (sanitārās izlases ceļš), bet tā PATI vērtība (Bērzs H14: "+roleSep.val+" = "+roleSep.direct+")");
+ // nogabals ar G fakt. <= Gkrit+rezerve KKC nesaņem
+ const belowRez=JSON.parse(w.eval(`JSON.stringify((()=>{const m={suga:"Bērzs",H:14,G:6,platMezs:1,platKop:1,krajaImp:100,formula:[{s:"Bērzs",k:10,h:14,g:6}]};return kkcCertamais(m);})())`));
+ ok(belowRez.m3===0,"#57 G=6 (Bērzam H14 Gkrit=5+rezerve 2=7, 6<=7): kkcCertamais().m3===0, KKC nesaņem (got "+JSON.stringify(belowRez)+")");
+ // KKC_G_REZERVE konfigurējama Iestatījumos (S.settings.kkcRezerve), ietekmē slieksni
+ const rezOverride=JSON.parse(w.eval(`JSON.stringify((()=>{S.settings.kkcRezerve=0;const m={suga:"Bērzs",H:14,G:6,platMezs:1,platKop:1,krajaImp:100,formula:[{s:"Bērzs",k:10,h:14,g:6}]};const r=kkcCertamais(m);S.settings.kkcRezerve=null;return r;})())`));
+ ok(rezOverride.m3>0,"#57 KKC_G_REZERVE konfigurējama: S.settings.kkcRezerve=0 -> G=6>Gkrit=5, kkcCertamais().m3>0 (got "+JSON.stringify(rezOverride)+")");
+ // izolētais brīdinājums — TIKAI mākslīgs izolēts nogabals (reāls Runcīši/Marija etalons nekad neizolējas, sk. testus augšā)
+ w.eval(`var _lat0=57.1,_lon0=25.1;var _dm=(m,isLon)=>isLon?m/(111320*Math.cos(_lat0*Math.PI/180)):m/111320;
+  var _dS=_dm(100,true);
+  var _gIso=[[_lon0,_lat0],[_lon0+_dS,_lat0],[_lon0+_dS,_lat0+_dS],[_lon0,_lat0+_dS],[_lon0,_lat0]];
+  var _mIso={id:"iso1",zv:"22222222222",kvartals:"9",nogabals:"99",platMezs:1,platKop:1,mezaTips:"Damaksnis",suga:"Bērzs",H:14,G:16,krajaImp:200,cirsmaKods:"",geom:_gIso,formula:[{s:"Bērzs",k:10,h:14,g:16}]};
+  var _pIso={mer:[_mIso],cirsmas:[],zv:["22222222222"],deferPairs:[],kaimini:""};`); // TUKŠS kaimini — nav neviena kaimiņa vispār (mākslīgi izolēts)
+ w.eval("buildParts(_pIso);");
+ const isoRes=JSON.parse(w.eval(`JSON.stringify((()=>{const c=_pIso.cirsmas.find(cc=>cc.tips==="KKC");return c&&{platiba:c.platiba,isolatedWarn:c.isolatedWarn,m3:calcCirsma(c).m3};})())`));
+ ok(!!isoRes&&/Atsevišķs pārbrauciens/.test(isoRes.isolatedWarn||"")&&/pārbaudi rentabilitāti/.test(isoRes.isolatedWarn||""),"#57 Mākslīgi izolēts KKC nogabals (tukšs p.kaimini): DZELTENS brīdinājums 'Atsevišķs pārbrauciens... pārbaudi rentabilitāti' (got "+JSON.stringify(isoRes)+")");
+ ok(!!isoRes&&isoRes.m3>0&&isoRes.platiba>0,"#57 Izolācijas brīdinājums NEKAD neizslēdz nogabalu un nemaina aprēķinu — m³/ha joprojām aprēķināti (got "+JSON.stringify(isoRes)+")");
+ // ne-izolēts sintētisks gadījums: piegulošs cita tipa cirsmai (KC) — brīdinājuma NAV. JAUNS nogabals (ne _mIso — tas jau piesaistīts iepriekšējā _pIso izsaukumā, m.cirsma jau aizņemts).
+ w.eval(`var _dm2=(m,isLon)=>isLon?m/(111320*Math.cos(_lat0*Math.PI/180)):m/111320;var _dN=_dm2(60,true);
+  var _mIso2={id:"iso2",zv:"22222222222",kvartals:"9",nogabals:"97",platMezs:1,platKop:1,mezaTips:"Damaksnis",suga:"Bērzs",H:14,G:16,krajaImp:200,cirsmaKods:"",geom:_gIso,formula:[{s:"Bērzs",k:10,h:14,g:16}]};
+  var _gKc=[[_lon0+_dS,_lat0],[_lon0+_dS+_dN,_lat0],[_lon0+_dS+_dN,_lat0+_dS],[_lon0+_dS,_lat0+_dS],[_lon0+_dS,_lat0]];
+  var _mKc={id:"kc1",zv:"22222222222",kvartals:"9",nogabals:"98",platMezs:1,platKop:1,mezaTips:"Damaksnis",suga:"Priede",H:25,krajaImp:300,cirsmaKods:"KC",geom:_gKc,formula:[{s:"Priede",k:10,h:25,g:22}]};
+  var _pAdj={mer:[_mIso2,_mKc],cirsmas:[],zv:["22222222222"],deferPairs:[],kaimini:"97-98:40"};`); // 40 m saskare — pietiek ar blakusesamību, nav MK935 18.p. 50 m sliekšņa šeit
+ w.eval("buildParts(_pAdj);");
+ const adjRes=JSON.parse(w.eval(`JSON.stringify((()=>{const c=_pAdj.cirsmas.find(cc=>cc.tips==="KKC");return c&&{isolatedWarn:c.isolatedWarn};})())`));
+ ok(!!adjRes&&adjRes.isolatedWarn===null,"#57 KKC nogabals piegulošs KC cirsmai (40 m, zem MK935 18.p. 50 m — bet KKC 'pietiek ar blakusesamību', nemēra metros): izolācijas brīdinājuma NAV (got "+JSON.stringify(adjRes)+")");
+ // baļķis (lielā diametra sortiments "26<") KKC nav izslēgts — liels D dod TĀS PAŠAS sortimentu daļas, kas kailcirtei (sortSharesForD ir cirtes-tipa-agnostisks, DEFAULT_SORT_BY_D)
+ const sortTest=JSON.parse(w.eval(`JSON.stringify({kc:sortSharesForD("Priede",35),kkc:sortSharesForD("Priede",35)})`));
+ ok(JSON.stringify(sortTest.kc)===JSON.stringify(sortTest.kkc)&&sortTest.kkc["26<"]>0,"#57 sortSharesForD nešķiro pēc cirtes tipa — liels D (35 cm) dod lielā diametra sortimentu '26<' (baļķis) arī KKC, tas NAV izslēgts (got "+JSON.stringify(sortTest.kkc)+")");
  // 8c. #88: nenoteiktības diapazons, jutīgums, jaunaudžu bonitāte pēc meža tipa (VMD 7.tabula)
  w=await app();
  w.eval(`var _mTaks={id:"ut1",suga:"Priede",H:20,G:25,vecums:60,platMezs:1,platKop:1,mezaTips:"Damaksnis",krajaImp:null,formula:[{s:"Priede",k:10,h:20,g:25}],src:"VMD atvērtie dati"};
@@ -438,7 +482,7 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  // objekta diagonāle ≈1583 m (9427 >> 1583×3), pirms labojuma Max cena sagāzās uz 1 367 € pret cirsmu summu ≈225 000 €
  w=await app();await w.eval("createFromPagasts('60920063305',['60920063305'])");
  const mv=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const t=calcProp(p);
-  const cirsmaSum=p.cirsmas.filter(c=>c.stage!==2).reduce((a,c)=>a+calcCirsma(c).max,0);
+  const cirsmaSum=p.cirsmas.filter(c=>c.stage!==2&&c.tips!=="KKC").reduce((a,c)=>a+calcCirsma(c).max,0); // #57: KKC ārpus t.max, tāpēc arī ārpus šī salīdzinājuma
   return {izved:t.izved,rev:t.rev,max:t.max,cirsmaSum};})())`));
  ok(mv.izved.ok&&mv.izved.implausible,"Meža Vijolītes: izvešanas attālums ("+Math.round(mv.izved.avgDist)+" m) atzīts par neticamu pret objekta diagonāli ("+Math.round(mv.izved.diag)+" m) (#81)");
  ok(mv.izved.excluded===true,"Meža Vijolītes: neticamā/pārmērīgā izvešanas izmaksa nav klusi ieskaitīta Max cenā (got severity="+mv.izved.severity+")");
@@ -710,27 +754,31 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  ok(mar.m11kods==="KC","Marija nog.11 (0,14 ha < REMNANT_HA, D jau sasniedz 7.piel. slieksni): #72 — REMNANT_HA attiecas TIKAI uz kailcirti (patstāvīgu), ne sanitāro izlases cirti, kam platības minimuma nav (#52); lietotne TAGAD piedāvā automātiski sanitārā-tad-KC (izlaseKc) ceļā (got nog11="+mar.m11kods+")");
  ok(mar.buffers.every(b=>b!=="10-12"&&b!=="12-10"),"Marija: nav joslas starp nog.9+10 (3,55 ha) un nog.12 (1,27 ha) cirsmām (got "+JSON.stringify(mar.buffers)+")");
  ok(mar.global910v12.length===1&&/kopējā platība/.test(mar.global910v12[0])&&/nepārsniedz limitu/.test(mar.global910v12[0]),"Marija (MK935 16.p.): nog.9+10 un nog.12 piegulošas (kontakts > 50 m), kopējā platība ≤ 5 ha limitu — abas cērtamas vienlaikus, informatīvs ieraksts, ne josla (got "+JSON.stringify(mar.global910v12)+")");
- // Ezermuiža (70600050074, Vestienas AAA): ĪADT individuālie noteikumi liedz KC pēc caurmēra automātiskajā scenārijā — dzeltens brīdinājums, nevis auto-KC
+ // Ezermuiža (70600050074, Vestienas AAA): ĪADT individuālie noteikumi liedz KC pēc caurmēra automātiskajā scenārijā — dzeltens brīdinājums, nevis auto-KC.
+ // #57: nog.4 (D 27 ≥ 27 cm, BET arī G 27 >> Gkrit 8 + rezerve 2) tagad AUTOMĀTISKI KKC (dCirteBlocked liedz TIKAI galvenās cirtes/D-cirtes ceļu — MK935/ĪADT
+ // "galvena"/"dCirte" ir atsevišķa juridiska kategorija no kopšanas cirtes, KKC to NEAIZTIEK, #57 uzdevumā nav prasīts to gatē) — "nezināms, jāpārbauda ar roku"
+ // brīdinājums pareizi pazūd, jo nogabalam TAGAD IR automātisks piedāvājums (KKC), nevis paliek bez neviena.
  w=await app();await w.eval("createFromPagasts('70600050074',['70600050074'])");
  const ez60=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const r=runChecks(p);
   const kcd=p.mer.filter(m=>m.cirsmaKods==="KC"&&m.dPlan&&m.dPlan.path==="kcD");
-  const warn=r.nog.find(x=>x.m.nogabals==="4").f.filter(f=>f.t==="warn"&&/caurmēru/.test(f.s));
-  return {blocked:dCirteBlocked(p),kcdCount:kcd.length,warn};})())`));
- ok(ez60.blocked===true&&ez60.kcdCount===0&&ez60.warn.length===1,"Ezermuiža (Vestienas AAA): dCirteBlocked=true, nevienam nogabalam nav automātiski piedāvāta 'Kailcirte pēc caurmēra' — caurmēra KC nedrīkst parādīties (#60), nog.4 (D 27 ≥ 27 cm) dzeltens brīdinājums (got "+JSON.stringify(ez60)+")");
+  const m4=p.mer.find(x=>x.nogabals==="4");
+  return {blocked:dCirteBlocked(p),kcdCount:kcd.length,m4kods:m4.cirsmaKods,m4path:m4.dPlan&&m4.dPlan.path};})())`));
+ ok(ez60.blocked===true&&ez60.kcdCount===0,"Ezermuiža (Vestienas AAA): dCirteBlocked=true, nevienam nogabalam nav automātiski piedāvāta 'Kailcirte pēc caurmēra' (kcD ceļš) — caurmēra KC nedrīkst parādīties (#60) (got "+JSON.stringify(ez60)+")");
+ ok(ez60.m4kods==="KKC"&&ez60.m4path==="kkc","Ezermuiža nog.4: D-cirte bloķēta ĪADT dēļ, BET G (27) >> Gkrit+rezerve (10) — #57 tagad piedāvā KKC (atsevišķa juridiska kategorija no galvenās/D-cirtes, ko dCirteBlocked liedz) (got "+JSON.stringify(ez60)+")");
  // #60 (Baltalksnim MK935 1.pielikumā nav noteikts cirtmets — likumi.lv/mezataksacija.lv) ietekmē arī citus etalona objektus: jaunas Kailcirte-pēc-vecuma cirsmas
  // baltalksņa nogabaliem ≥ 25 g (RULES.youngKeep), pieguloši esošam KC — pārbaudīts pret reālu ģeometriju/datiem, fiksēts kā regresijas vērtība.
  w=await app();await w.eval("createFromPagasts('36680080031',['36680080031'])");
  const zap60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
  ok(Math.abs(zap60.ha-6.82)<=0.05&&zap60.ncirsmas===8,"Zapasnaja: baltalksnis nog.6 (0,24 ha, 48 g) tagad sava KC cirsma — kopā ≈6,82 ha, 8 cirsmas (agrāk 6,58 ha/7, #60) (got "+JSON.stringify(zap60)+")");
  w=await app();await w.eval("createFromPagasts('70420080041',['70420080041'])");
- const o41_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
+ const o41_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.filter(c=>c.tips===\"Kc\").length};})())")); // #57: tips==="Kc" filtrs — KKC cirsmas (jaunas šim objektam, atsevišķas) neietekmē šo #60/#74-erā skaitu
  // #74: SP_CODES pilnīgums (previously-dropped elementi tagad summējas G) + Baltalksnis "vienmēr" (nevis 25 g slieksnis) kopā dod lielāku ha/cirsmu skaitu nekā #60-era starprezultāts
- ok(Math.abs(o41_60.ha-12.15)<=0.1&&o41_60.ncirsmas===11,"70420080041: baltalksņa nogabali (jebkurā vecumā, ne tikai ≥25 g) tagad KC cirsmās + SP_CODES papildinājums (#74) — kopā ≈12,15 ha, 11 cirsmas (#60 starprezultāts bija ≈10,32 ha/10) (got "+JSON.stringify(o41_60)+")");
+ ok(Math.abs(o41_60.ha-12.15)<=0.1&&o41_60.ncirsmas===11,"70420080041: baltalksņa nogabali (jebkurā vecumā, ne tikai ≥25 g) tagad KC cirsmās + SP_CODES papildinājums (#74) — kopā ≈12,15 ha, 11 Kc cirsmas (#60 starprezultāts bija ≈10,32 ha/10) (got "+JSON.stringify(o41_60)+")");
  w=await app();await w.eval("createFromPagasts('70600050074',['70600050074'])");
- const ez60b=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
- ok(Math.abs(ez60b.ha-12.39)<=0.1&&ez60b.ncirsmas===7,"Ezermuiža: baltalksņa nogabali nog.5/20/22/26 (jebkurā vecumā, ĪADT neietekmē — MK264 nedefinē cirtmetu) + SP_CODES papildinājums (#74) — kopā ≈12,39 ha, 7 cirsmas (#60 starprezultāts bija ≈10,42 ha/8) (got "+JSON.stringify(ez60b)+")");
+ const ez60b=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.filter(c=>c.tips===\"Kc\").length};})())"));
+ ok(Math.abs(ez60b.ha-12.39)<=0.1&&ez60b.ncirsmas===7,"Ezermuiža: baltalksņa nogabali nog.5/20/22/26 (jebkurā vecumā, ĪADT neietekmē — MK264 nedefinē cirtmetu) + SP_CODES papildinājums (#74) — kopā ≈12,39 ha, 7 Kc cirsmas (#60 starprezultāts bija ≈10,42 ha/8) (got "+JSON.stringify(ez60b)+")");
  w=await app();await w.eval("createFromPagasts('60700020059',['60700020059'])");
- const b59_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.length};})())"));
+ const b59_60=JSON.parse(w.eval("JSON.stringify((()=>{const t=calcProp(P());return {ha:+t.ha.toFixed(2),ncirsmas:P().cirsmas.filter(c=>c.tips===\"Kc\").length};})())"));
  ok(Math.abs(b59_60.ha-30.53)<=0.05&&b59_60.ncirsmas===19,"60700020059: nav baltalksņa/caurmēra-sliekšņa nogabalu — nemainās (#60) (got "+JSON.stringify(b59_60)+")");
  // #74: cirtmetu tabula pēc Meža likuma 9.panta (data/cirtmeti_meza_likums.json), MT/SP/ZKAT klasifikatoru labojumi, "suga nav atpazīta" un ĪADT zonas brīdinājumi.
  w=await app();
