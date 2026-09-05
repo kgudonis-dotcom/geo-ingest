@@ -24,6 +24,9 @@ Repo galvenie komponenti:
 - GitHub issues neveido pats; ja uzdevumam nav issue numura, jautā.
 - Nekad negaidi fona procesus, CI darbus vai pārbūves ar polling, sleep vai ieplānotiem wakeup. Ja rezultāts nav gatavs uzreiz, pabeidz darbu ar to, kas ir, uzraksti atskaiti un pasaki, ko pārbaudīt vēlāk. Lietotājs pats pateiks, kad turpināt.
 - Komandas un skriptus vienmēr palaid priekšplānā ar tiešu izvadi (nekad run_in_background), ar laika limitu līdz 10 minūtēm. Ja darbs ilgst ilgāk, sadali to mazākos soļos.
+- Nekad nepalaid komandu fonā (&, nohup, background). Visas komandas — sinhroni.
+- Ja komanda pabeidzas bez izvades, tā ir kļūda skriptā. Nepalaid to pašu komandu atkārtoti un negaidi — parādi skriptu un labo cēloni.
+- "Gaidu, kamēr pabeidz" nav derīga darbība. Ja nav ko darīt, atbildi lietotājam.
 - Pēc katra darba (pat maziem labojumiem vai jauniem prototipiem) jāatjauno [STATUSS.md](STATUSS.md). Tajā jānorāda:
   - datums
   - kas ir pabeigts
