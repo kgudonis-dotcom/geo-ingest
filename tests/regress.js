@@ -279,6 +279,34 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  // baļķis (lielā diametra sortiments "26<") KKC nav izslēgts — liels D dod TĀS PAŠAS sortimentu daļas, kas kailcirtei (sortSharesForD ir cirtes-tipa-agnostisks, DEFAULT_SORT_BY_D)
  const sortTest=JSON.parse(w.eval(`JSON.stringify({kc:sortSharesForD("Priede",35),kkc:sortSharesForD("Priede",35)})`));
  ok(JSON.stringify(sortTest.kc)===JSON.stringify(sortTest.kkc)&&sortTest.kkc["26<"]>0,"#57 sortSharesForD nešķiro pēc cirtes tipa — liels D (35 cm) dod lielā diametra sortimentu '26<' (baļķis) arī KKC, tas NAV izslēgts (got "+JSON.stringify(sortTest.kkc)+")");
+ // 8f. #72: marža no atlikuma (ne ieņēmumiem), izvešanas izmaksas sadalītas pa cirsmām PIRMS maržas
+ ok(w.eval("RULES_VERSION")>=2,"#72 RULES_VERSION palielināta uz >=2 (bija 1, #57 KKC bloks to neapstiprināja — labots šeit kopā ar maržas/izvešanas formulas maiņu, kas ARĪ maina max cenu visiem objektiem) (got "+w.eval("RULES_VERSION")+")");
+ w=await app();await w.eval("createFromPagasts('68840020027')");
+ const marzaRunc=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const t=calcProp(p);
+  const byNog=(a,b)=>{const c=p.cirsmas.find(cc=>{const ns=(cc.nogabali||"").split(";");return a.every(n=>ns.includes(n))&&(!b||ns.length===a.length);});return c;};
+  const c6=byNog(["6"]),c1113=byNog(["11","13"]);
+  const faktMarza=c=>{const cc=calcCirsma(c);const pirms=cc.rev-cc.cost-cc.izved;return pirms?1-cc.max/pirms:null;};
+  return {m6:c6&&{izved:calcCirsma(c6).izved,faktMarza:faktMarza(c6)},m1113:c1113&&{izved:calcCirsma(c1113).izved,faktMarza:faktMarza(c1113)},
+   izCost:t.izved&&t.izved.ok?t.izved.cost:0,sumIzved:+p.cirsmas.reduce((a,c)=>a+num(calcCirsma(c).izved),0).toFixed(2)};})())`));
+ ok(!!marzaRunc.m6&&Math.abs(marzaRunc.m6.faktMarza-0.05)<0.001,"#72 Runcīši nog.6: faktiskā marža == iestatītā 5% (ne 2,1%, kā pirms labojuma) (got "+JSON.stringify(marzaRunc.m6)+")");
+ ok(!!marzaRunc.m1113&&Math.abs(marzaRunc.m1113.faktMarza-0.05)<0.001,"#72 Runcīši nog.11;13 (KKC): faktiskā marža == 5% (ne 12,8%, kā pirms labojuma) (got "+JSON.stringify(marzaRunc.m1113)+")");
+ ok(Math.abs(marzaRunc.sumIzved-marzaRunc.izCost)<0.05,"#72 Runcīši: Σ visu cirsmu izvedShare ("+marzaRunc.sumIzved+" €) == objekta iz.cost ("+marzaRunc.izCost+" €) centa precizitātē (got starpība "+(marzaRunc.sumIzved-marzaRunc.izCost).toFixed(2)+" €)");
+ // cirsmas max cena kartītē (calcCirsma) == max cena, ko lieto Kopsavilkuma tabula (tā pati calcCirsma() vērtība) — pirms labojuma karte NEIETVĒRA izvešanu, tāpēc atšķīrās no KOPĀ/m³ vidējā
+ const cardVsSummary=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();calcProp(p);const c=p.cirsmas.find(cc=>cc.tips==="Kc"&&cc.stage!==2);
+  const cardMax=calcCirsma(c).max;const withoutIzved=(calcCirsma(c).rev-calcCirsma(c).cost)*(1-num(c.marza));
+  return {cardMax:+cardMax.toFixed(2),izved:calcCirsma(c).izved,differsFromNoIzved:Math.abs(cardMax-withoutIzved)>1};})())`));
+ ok(cardVsSummary.izved>0&&cardVsSummary.differsFromNoIzved,"#72 Cirsmas kartītes max cena (calcCirsma) TAGAD ietver šīs cirsmas izvedShare (pirms labojuma tas nebija — kartītes un Kopsavilkuma vērtība atšķīrās) (got "+JSON.stringify(cardVsSummary)+")");
+ // nerentabla cirsma: izmaksas+izvešana > ieņēmumi -> negatīva max cena, NEAPGRIEZTA uz nulli
+ w.eval(`var _cLoss=newCirsma();_cLoss.id="loss1";_cLoss.marza=0.05;_cLoss.sagat=50;_cLoss.piev=50;_cLoss.trans=50;_cLoss.species.Priede.m3=10;
+  _cLoss.izvedShare=500; // #72: sintētiski liela izvešanas daļa, lai garantēti pārsniegtu ieņēmumus`);
+ const lossRes=JSON.parse(w.eval("JSON.stringify(calcCirsma(_cLoss))"));
+ ok(lossRes.max<0,"#72 Nerentabla cirsma (izmaksas+izvešana > ieņēmumi) dod NEGATĪVU max cenu, NEAPGRIEZTU uz nulli (got "+lossRes.max+")");
+ // tests/diag/marza_2026-09-05.txt pārģenerēts — pārbaude "pirms_maržas × (1-marža) == max cena" jāiztur visos 84 cirsmu ierakstos (Σ-izvedShare noapaļošanas rindas ar ±0,02 € nav šis apgalvojums)
+ {const marzaPath="tests/diag/marza_2026-09-05.txt";
+  const marzaTxt=fs.existsSync(marzaPath)?fs.readFileSync(marzaPath,"utf8"):"";
+  const cirsmaLines=marzaTxt.split("\n").filter(l=>/^(Kc|KKC|OBJEKTS)/.test(l));
+  const failLines=cirsmaLines.filter(l=>/NĒ/.test(l));
+  ok(cirsmaLines.length>=91&&failLines.length===0,"#72 tests/diag/marza_2026-09-05.txt: visas cirsmu/OBJEKTS rindas (got "+cirsmaLines.length+", vajag >=91) rāda JĀ pārbaudei (got "+failLines.length+" ar NĒ: "+failLines.slice(0,3).join(" || ")+")");}
  // 8c. #88: nenoteiktības diapazons, jutīgums, jaunaudžu bonitāte pēc meža tipa (VMD 7.tabula)
  w=await app();
  w.eval(`var _mTaks={id:"ut1",suga:"Priede",H:20,G:25,vecums:60,platMezs:1,platKop:1,mezaTips:"Damaksnis",krajaImp:null,formula:[{s:"Priede",k:10,h:20,g:25}],src:"VMD atvērtie dati"};
@@ -477,7 +505,9 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  ok(Math.abs(tDisc.max-cirsmaSumDisc)<1,"#81 sintētisks nesavienots ceļu tīkls: Max cena = cirsmas max BEZ izslēgtās izvešanas izmaksas (got "+Math.round(tDisc.max)+" € pret "+Math.round(cirsmaSumDisc)+" €)");
  w.eval("_pDisc.izvedConfirmed=true;");
  const tDiscConf=JSON.parse(w.eval("JSON.stringify(calcProp(_pDisc))"));
- ok(tDiscConf.izved.excluded===false&&Math.abs(tDiscConf.max-(tDisc.max-tDisc.izved.cost))<1,"#81 pēc lietotāja apstiprinājuma (izvedConfirmed) izmaksa TOMĒR ieskaitās Max cenā (got "+Math.round(tDiscConf.max)+" €)");
+ const marzaDisc=JSON.parse(w.eval("JSON.stringify(_cDisc.marza)"));
+ // #72: izvešana tagad atskaitīta PIRMS maržas (calcCirsma), tāpēc iekļaušana samazina max par iz.cost×(1−marža), NE par pilnu iz.cost (kā pirms #72, kad atskaitīja pēc maržas objekta līmenī)
+ ok(tDiscConf.izved.excluded===false&&Math.abs(tDiscConf.max-(tDisc.max-tDisc.izved.cost*(1-marzaDisc)))<1,"#81/#72 pēc lietotāja apstiprinājuma (izvedConfirmed) izmaksa TOMĒR ieskaitās Max cenā, tagad PIRMS maržas (starpība = iz.cost×(1−marža)) (got "+Math.round(tDiscConf.max)+" €)");
  // #81: Meža Vijolītes — ZV kadastrs 60920063305 (UZMANĪBU: issue #81 minēja 60920060484, kas ir NĪ numurs, NEVIS ZV kadastrs — sk. atskaiti). Reāli dati: 9427 m vidējais izvešanas attālums,
  // objekta diagonāle ≈1583 m (9427 >> 1583×3), pirms labojuma Max cena sagāzās uz 1 367 € pret cirsmu summu ≈225 000 €
  w=await app();await w.eval("createFromPagasts('60920063305',['60920063305'])");
