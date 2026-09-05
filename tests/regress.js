@@ -188,6 +188,25 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  const marRef={"1;3;4":1000.05,"5":988.48,"9;10;12":1297.28,"8":687.42};
  for(const g of Object.keys(marRef)){const got=marASB[g],ref=marRef[g],dev=(got-ref)/ref;
   ok(Math.abs(dev)<=0.25,"#75 Marija nog."+g+": VMD krāja "+got+" m³ ASB "+ref+" m³ robežās ±25% — novirze "+(dev*100).toFixed(1)+"% (got "+got+")");}
+ // 8d. #72: novecojuši objekti (RULES_VERSION) redzami un pārrēķināmi TIKAI ar lietotāja pogu; REMNANT_HA (0,3 ha) attiecas TIKAI uz kailcirti, ne sanitāro izlases cirti (#52)
+ w=await app();await w.eval("createFromPagasts('68840020027')");
+ w.eval("P().rulesVersion=0"); // simulē objektu, kas saglabāts pirms šī labojuma (#74/D-cirtes) — vecāka rulesVersion
+ const staleBefore=JSON.parse(w.eval("JSON.stringify({rulesVersion:P().rulesVersion,ncirsmas:P().cirsmas.length,nog7:P().mer.find(x=>x.nogabals==='7').cirsmaKods})"));
+ ok(staleBefore.rulesVersion===0,"#72 Runcīši: simulēta veca rulesVersion=0 pirms atvēršanas");
+ w.eval("openProp(P().id,'dash')"); // openProp() PĀRBAUDA dalījuma versiju (migrateSplit), NEDRĪKST klusi mainīt RULES_VERSION vai cirsmaKodus
+ const afterOpen=JSON.parse(w.eval("JSON.stringify({rulesVersion:P().rulesVersion,ncirsmas:P().cirsmas.length,nog7:P().mer.find(x=>x.nogabals==='7').cirsmaKods})"));
+ ok(afterOpen.rulesVersion===0&&afterOpen.nog7===staleBefore.nog7&&afterOpen.ncirsmas===staleBefore.ncirsmas,"#72 Runcīši: openProp() NEPĀRRĒĶINA automātiski — rulesVersion, cirsmaKods un cirsmu skaits paliek nemainīgi (got "+JSON.stringify(afterOpen)+" vs "+JSON.stringify(staleBefore)+")");
+ ok(w.eval("P().mer.some(m=>m.geom)&&(P().rulesVersion||0)<RULES_VERSION")===true,"#72 Runcīši: novecojuša objekta karodziņa nosacījums (rulesVersion < RULES_VERSION) ir patiess — UI rāda dzelteno karodziņu");
+ const cmpBefore=JSON.parse(w.eval("JSON.stringify({rulesVersion:P().rulesVersion,nog7:P().mer.find(x=>x.nogabals==='7').cirsmaKods})"));
+ w.eval("rulesCompareData(P())"); // "Salīdzināt" — klons, objekts NEDRĪKST mainīties
+ const cmpAfter=JSON.parse(w.eval("JSON.stringify({rulesVersion:P().rulesVersion,nog7:P().mer.find(x=>x.nogabals==='7').cirsmaKods})"));
+ ok(cmpAfter.rulesVersion===cmpBefore.rulesVersion&&cmpAfter.nog7===cmpBefore.nog7,"#72 Runcīši: 'Salīdzināt' (rulesCompareData) NEMAINA objektu — tikai klonu");
+ w.eval("recalcRules()"); // TIKAI TAGAD, ar lietotāja pogu, drīkst mainīties
+ const afterRecalc=JSON.parse(w.eval("JSON.stringify({rulesVersion:P().rulesVersion,ha:calcProp(P()).ha,m3:calcProp(P()).m3,hist0:P().rulesHistory&&P().rulesHistory[0],nog7kods:P().mer.find(x=>x.nogabals==='7').cirsmaKods,nog7path:P().mer.find(x=>x.nogabals==='7').dPlan&&P().mer.find(x=>x.nogabals==='7').dPlan.path,nog7ha:P().mer.find(x=>x.nogabals==='7').platMezs,nog7cirsma:!!P().mer.find(x=>x.nogabals==='7').cirsma})"));
+ ok(afterRecalc.rulesVersion===w.eval("RULES_VERSION"),"#72 Runcīši: recalcRules() pēc lietotāja pogas uzstāda pašreizējo RULES_VERSION (got "+afterRecalc.rulesVersion+")");
+ ok(!!afterRecalc.hist0&&afterRecalc.hist0.rulesVersion===0,"#72 Runcīši: vecā versija (rulesVersion=0) saglabāta p.rulesHistory ar datumu (got "+JSON.stringify(afterRecalc.hist0)+")");
+ ok(afterRecalc.ha>=12.5&&afterRecalc.m3>=1900,"#72 Runcīši pēc pārrēķina: >=12,5 ha un >=1900 m³ (got "+afterRecalc.ha+" ha, "+afterRecalc.m3+" m³)");
+ ok(Math.abs(afterRecalc.nog7ha-0.24)<0.01&&afterRecalc.nog7kods==="KC"&&afterRecalc.nog7path==="izlaseKc"&&afterRecalc.nog7cirsma,"#72 nog.7 (0,24 ha, bērzs, VMD sanitārā izlases cirte): pēc pārrēķina VAIRS NAV izmests REMNANT_HA (0,3 ha) dēļ — tas ir kailcirtes noteikums, ne sanitārās izlases (#52) (got kods="+afterRecalc.nog7kods+", path="+afterRecalc.nog7path+", ha="+afterRecalc.nog7ha+", cirsma="+afterRecalc.nog7cirsma+")");
  // 8c. #88: nenoteiktības diapazons, jutīgums, jaunaudžu bonitāte pēc meža tipa (VMD 7.tabula)
  w=await app();
  w.eval(`var _mTaks={id:"ut1",suga:"Priede",H:20,G:25,vecums:60,platMezs:1,platKop:1,mezaTips:"Damaksnis",krajaImp:null,formula:[{s:"Priede",k:10,h:20,g:25}],src:"VMD atvērtie dati"};
@@ -640,8 +659,9 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
  for(const v of ["dash","cirs","mer","val","docs"]){const e=viewErr(v,null);ok(e==="","60700020059 cilne '"+v+"' renderējas bez kļūdas"+(e?" (got "+e+")":""));}
  {const cid=w.eval("P().cirsmas[0].id");const e=viewErr("cirs",cid);ok(e==="","60700020059 Cirsmas ar atvērtu kartīti renderējas"+(e?" (got "+e+")":""));}
  // #60: (1) KC pēc caurmēra kā automātisks scenārijs (ĪADT izņēmums), (2) cirsmu dalīšana pēc cirtes izpildes veida, (3) piegulošu cirsmu kopplatība (MK935 16.p.).
- // Marija mežs (68840080082, pagasts 6884): jauns etalons pēc VMD apliecinājumiem — nog.1 KC 1,81; nog.3+4 KC 2,25; nog.8 KC pēc caurmēra ≈2,6; nog.9+10 KC 3,55;
- // nog.12 KC pēc caurmēra ≈1,27; nog.7/nog.11 (sanitārās VMD lēmumā) lietotne pati nepiedāvā.
+ // Marija mežs (68840080082, pagasts 6884): jauns etalons pēc VMD apliecinājumiem — nog.1 KC 1,81; nog.3+4 KC 2,25; nog.8+11 KC pēc caurmēra ≈2,75; nog.9+10 KC 3,55;
+ // nog.12 KC pēc caurmēra ≈1,27; nog.7 (suga bez MK935 7.piel. sliekšņa) lietotne pati nepiedāvā. nog.11 (0,14 ha < REMNANT_HA) LĪDZ #72 arī nepiedāvāja —
+ // REMNANT_HA ir kailcirtes noteikums, ne sanitārās izlases (#52); tagad D jau sasniedz slieksni BEZ izciršanas (removeG=0), sanitārā-tad-KC ceļš (izlaseKc) to piedāvā automātiski, sapludinot ar piegulošo nog.8.
  w=await app();await w.eval("createFromPagasts('68840080082',['68840080082'])");
  const mar=JSON.parse(w.eval(`JSON.stringify((()=>{const p=P();const r=runChecks(p);
   const byNog=n=>p.cirsmas.find(c=>c.tips==="Kc"&&(";"+c.nogabali+";").includes(";"+n+";"));
@@ -655,10 +675,11 @@ async function app(){if(__lastWindow){try{__lastWindow.close();}catch(e){}__last
    buffers:r.buffers.map(b=>b.a+"-"+b.b),global910v12:r.global.filter(x=>/nog\\. 10-12/.test(x))};})())`));
  ok(mar.c1&&Math.abs(mar.c1.plat-1.81)<=0.02&&mar.c1.nog==="1","Marija nog.1: sava cirsma ≈1,81 ha (nog.1↔3 robeža 35 m ≤ 50 — atsevišķas cirsmas bez joslas) (got "+JSON.stringify(mar.c1)+")");
  ok(mar.c34&&mar.c34.same&&Math.abs(mar.c34.plat-2.25)<=0.02,"Marija nog.3+4: VIENA cirsma ≈2,25 ha (nog.4 KC pēc vecuma, nog.3 baltalksnis bez cirtmeta ierobežojuma ≥25 g, abi 'vecuma' veids) (got "+JSON.stringify(mar.c34)+")");
- ok(mar.c8&&Math.abs(mar.c8.plat-2.6)<=0.03&&mar.c8.dPlan&&mar.c8.dPlan.path==="kcD"&&mar.c8.dPlan.auto===true,"Marija nog.8: sava 'Kailcirte pēc caurmēra' cirsma ≈2,6 ha, piedāvāta automātiski (#60/1) (got "+JSON.stringify(mar.c8)+")");
+ ok(mar.c8&&Math.abs(mar.c8.plat-2.75)<=0.03&&(";"+mar.c8.nog+";").includes(";8;")&&(";"+mar.c8.nog+";").includes(";11;"),"Marija nog.8+11: VIENA 'Kailcirte pēc caurmēra' cirsma ≈2,75 ha (#60/1, #72: nog.11 0,14 ha < REMNANT_HA tagad arī piedāvāts izlaseKc ceļā un sapludināts ar piegulošo nog.8) (got "+JSON.stringify(mar.c8)+")");
  ok(mar.c910&&mar.c910.same&&Math.abs(mar.c910.plat-3.55)<=0.02,"Marija nog.9+10: VIENA cirsma ≈3,55 ha (nog.9 baltalksnis, nog.10 KC pēc vecuma, abi 'vecuma' veids) (got "+JSON.stringify(mar.c910)+")");
  ok(mar.c12&&Math.abs(mar.c12.plat-1.27)<=0.03&&mar.c12.dPlan&&mar.c12.dPlan.path==="kcD"&&mar.c12.dPlan.auto===true,"Marija nog.12: sava 'Kailcirte pēc caurmēra' cirsma ≈1,27 ha, piedāvāta automātiski (#60/1) (got "+JSON.stringify(mar.c12)+")");
- ok(mar.m7kods!=="KC"&&mar.m11kods!=="KC","Marija nog.7 (suga bez 7.piel. sliekšņa) un nog.11 (0,14 ha < 0,3 ha) lietotne pati nepiedāvā automātiskajā scenārijā — 'sanitārās' paliek zināms VMD lēmums, ne prasība (got nog7="+mar.m7kods+", nog11="+mar.m11kods+")");
+ ok(mar.m7kods!=="KC","Marija nog.7: suga bez MK935 7.piel. sliekšņa (dPaths()===null) — lietotne pati nepiedāvā, paliek zināms VMD lēmums, ne prasība (got nog7="+mar.m7kods+")");
+ ok(mar.m11kods==="KC","Marija nog.11 (0,14 ha < REMNANT_HA, D jau sasniedz 7.piel. slieksni): #72 — REMNANT_HA attiecas TIKAI uz kailcirti (patstāvīgu), ne sanitāro izlases cirti, kam platības minimuma nav (#52); lietotne TAGAD piedāvā automātiski sanitārā-tad-KC (izlaseKc) ceļā (got nog11="+mar.m11kods+")");
  ok(mar.buffers.every(b=>b!=="10-12"&&b!=="12-10"),"Marija: nav joslas starp nog.9+10 (3,55 ha) un nog.12 (1,27 ha) cirsmām (got "+JSON.stringify(mar.buffers)+")");
  ok(mar.global910v12.length===1&&/kopējā platība/.test(mar.global910v12[0])&&/nepārsniedz limitu/.test(mar.global910v12[0]),"Marija (MK935 16.p.): nog.9+10 un nog.12 piegulošas (kontakts > 50 m), kopējā platība ≤ 5 ha limitu — abas cērtamas vienlaikus, informatīvs ieraksts, ne josla (got "+JSON.stringify(mar.global910v12)+")");
  // Ezermuiža (70600050074, Vestienas AAA): ĪADT individuālie noteikumi liedz KC pēc caurmēra automātiskajā scenārijā — dzeltens brīdinājums, nevis auto-KC
